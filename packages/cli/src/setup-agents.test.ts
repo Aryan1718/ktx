@@ -1,0 +1,176 @@
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  plannedKloAgentFiles,
+  readKloAgentInstallManifest,
+  removeKloAgentInstall,
+  runKloSetupAgentsStep,
+} from './setup-agents.js';
+
+function makeIo() {
+  let stdout = '';
+  let stderr = '';
+  return {
+    io: {
+      stdout: { write: (chunk: string) => (stdout += chunk) },
+      stderr: { write: (chunk: string) => (stderr += chunk) },
+    },
+    stdout: () => stdout,
+    stderr: () => stderr,
+  };
+}
+
+describe('setup agents', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'klo-setup-agents-'));
+    await mkdir(join(tempDir, '.klo', 'agents'), { recursive: true });
+    await writeFile(join(tempDir, 'klo.yaml'), 'project: revenue\nconnections: {}\n', 'utf-8');
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('plans project-scoped CLI and MCP files for every target', () => {
+    expect(plannedKloAgentFiles({ projectDir: tempDir, target: 'claude-code', scope: 'project', mode: 'both' })).toEqual([
+      { kind: 'file', path: join(tempDir, '.claude/skills/klo/SKILL.md') },
+      { kind: 'json-key', path: join(tempDir, '.mcp.json'), jsonPath: ['mcpServers', 'klo'] },
+    ]);
+    expect(plannedKloAgentFiles({ projectDir: tempDir, target: 'codex', scope: 'project', mode: 'cli' })).toEqual([
+      { kind: 'file', path: join(tempDir, '.agents/skills/klo/SKILL.md') },
+    ]);
+    expect(plannedKloAgentFiles({ projectDir: tempDir, target: 'cursor', scope: 'project', mode: 'mcp' })).toEqual([
+      { kind: 'json-key', path: join(tempDir, '.cursor/mcp.json'), jsonPath: ['mcpServers', 'klo'] },
+    ]);
+    expect(plannedKloAgentFiles({ projectDir: tempDir, target: 'opencode', scope: 'project', mode: 'cli' })).toEqual([
+      { kind: 'file', path: join(tempDir, '.opencode/commands/klo.md') },
+    ]);
+    expect(plannedKloAgentFiles({ projectDir: tempDir, target: 'universal', scope: 'project', mode: 'both' })).toEqual([
+      { kind: 'file', path: join(tempDir, '.agents/skills/klo/SKILL.md') },
+      { kind: 'json-key', path: join(tempDir, '.agents/mcp/klo.json'), jsonPath: ['mcpServers', 'klo'] },
+    ]);
+  });
+
+  it('installs target files, writes a manifest, and marks agents complete', async () => {
+    const io = makeIo();
+
+    await expect(
+      runKloSetupAgentsStep(
+        {
+          projectDir: tempDir,
+          inputMode: 'disabled',
+          yes: true,
+          agents: true,
+          target: 'universal',
+          scope: 'project',
+          mode: 'both',
+          skipAgents: false,
+        },
+        io.io,
+      ),
+    ).resolves.toEqual({
+      status: 'ready',
+      projectDir: tempDir,
+      installs: [{ target: 'universal', scope: 'project', mode: 'both' }],
+    });
+
+    await expect(stat(join(tempDir, '.agents/skills/klo/SKILL.md'))).resolves.toBeDefined();
+    await expect(stat(join(tempDir, '.agents/mcp/klo.json'))).resolves.toBeDefined();
+    const skill = await readFile(join(tempDir, '.agents/skills/klo/SKILL.md'), 'utf-8');
+    expect(skill).toContain(`--project-dir ${tempDir}`);
+    expect(skill).toContain('must not print secrets');
+    expect(skill).toContain('klo agent sql execute');
+    expect(await readKloAgentInstallManifest(tempDir)).toMatchObject({
+      version: 1,
+      projectDir: tempDir,
+      installs: [{ target: 'universal', scope: 'project', mode: 'both' }],
+    });
+    expect(await readFile(join(tempDir, 'klo.yaml'), 'utf-8')).toContain('agents');
+    expect(io.stderr()).toBe('');
+  });
+
+  it('removes only manifest-listed files and JSON keys', async () => {
+    const io = makeIo();
+    await runKloSetupAgentsStep(
+      {
+        projectDir: tempDir,
+        inputMode: 'disabled',
+        yes: true,
+        agents: true,
+        target: 'claude-code',
+        scope: 'project',
+        mode: 'both',
+        skipAgents: false,
+      },
+      io.io,
+    );
+    await writeFile(join(tempDir, '.claude/skills/klo/keep.txt'), 'user file', 'utf-8');
+
+    await expect(removeKloAgentInstall(tempDir, io.io)).resolves.toBe(0);
+
+    await expect(stat(join(tempDir, '.claude/skills/klo/SKILL.md'))).rejects.toThrow();
+    await expect(stat(join(tempDir, '.claude/skills/klo/keep.txt'))).resolves.toBeDefined();
+    await expect(readKloAgentInstallManifest(tempDir)).resolves.toEqual(null);
+  });
+
+  it('uses prompts in interactive mode and supports Back', async () => {
+    const io = makeIo();
+    const prompts = {
+      select: vi.fn(async () => 'back'),
+      multiselect: vi.fn(async () => ['codex']),
+      cancel: vi.fn(),
+    };
+
+    await expect(
+      runKloSetupAgentsStep(
+        {
+          projectDir: tempDir,
+          inputMode: 'auto',
+          yes: false,
+          agents: true,
+          scope: 'project',
+          mode: 'cli',
+          skipAgents: false,
+        },
+        io.io,
+        { prompts },
+      ),
+    ).resolves.toEqual({ status: 'back', projectDir: tempDir });
+  });
+
+  it('explains how to select multiple agent targets in interactive mode', async () => {
+    const io = makeIo();
+    const prompts = {
+      select: vi.fn(async () => 'cli'),
+      multiselect: vi.fn(async () => ['back']),
+      cancel: vi.fn(),
+    };
+
+    await expect(
+      runKloSetupAgentsStep(
+        {
+          projectDir: tempDir,
+          inputMode: 'auto',
+          yes: false,
+          agents: true,
+          scope: 'project',
+          mode: 'cli',
+          skipAgents: false,
+        },
+        io.io,
+        { prompts },
+      ),
+    ).resolves.toEqual({ status: 'back', projectDir: tempDir });
+
+    expect(prompts.multiselect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          'Which agent targets should KLO install?\nUse Up/Down to move, Space to select or unselect, Enter to confirm, Escape to go back, or Ctrl+C to exit.',
+      }),
+    );
+  });
+});

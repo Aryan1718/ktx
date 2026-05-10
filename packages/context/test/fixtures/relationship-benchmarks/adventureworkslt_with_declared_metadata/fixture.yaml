@@ -1,0 +1,14 @@
+id: adventureworkslt_with_declared_metadata
+name: AdventureWorksLT (SQLite, declared metadata)
+tier: row_bearing
+origin: public
+thresholdEligible: true
+defaultModes:
+  - metadata_present
+  - declared_pks_and_declared_fks_removed
+  - declared_pks_removed
+  - declared_fks_removed
+  - profiling_disabled
+  - validation_disabled
+  - llm_disabled
+  - embeddings_disabled

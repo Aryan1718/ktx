@@ -1,0 +1,21 @@
+name: etl_runs
+table: etl_runs
+grain:
+- run_id
+columns:
+- name: run_id
+  type: number
+- name: destination
+  type: string
+- name: ended_at
+  type: time
+  role: time
+- name: rows_processed
+  type: number
+- name: source
+  type: string
+- name: started_at
+  type: time
+  role: time
+- name: status
+  type: string

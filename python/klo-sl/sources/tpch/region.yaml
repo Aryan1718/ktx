@@ -1,0 +1,10 @@
+name: region
+table: public.region
+grain: [r_regionkey]
+columns:
+  - name: r_regionkey
+    type: number
+  - name: r_name
+    type: string
+  - name: r_comment
+    type: string

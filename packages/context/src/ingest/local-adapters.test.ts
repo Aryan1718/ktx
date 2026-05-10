@@ -1,0 +1,444 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { initKloProject, type KloLocalProject, loadKloProject } from '../project/index.js';
+import type { SqlAnalysisPort } from '../sql-analysis/index.js';
+import { LocalLookerRuntimeStore } from './adapters/looker/local-runtime-store.js';
+import { createDefaultLocalIngestAdapters, localPullConfigForAdapter } from './local-adapters.js';
+
+describe('local ingest adapters', () => {
+  let tempDir: string;
+  let project: KloLocalProject;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'klo-local-adapters-'));
+    const projectDir = join(tempDir, 'project');
+    await initKloProject({ projectDir, projectName: 'warehouse' });
+    project = await loadKloProject({ projectDir });
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  function projectWithConnections(connections: KloLocalProject['config']['connections']): KloLocalProject {
+    return {
+      ...project,
+      config: {
+        ...project.config,
+        connections,
+      },
+    };
+  }
+
+  it('registers Metabase locally as a staged-bundle adapter', () => {
+    const adapters = createDefaultLocalIngestAdapters(project);
+
+    expect(adapters.map((adapter) => adapter.source)).toEqual([
+      'fake',
+      'live-database',
+      'lookml',
+      'dbt',
+      'metabase',
+      'looker',
+      'metricflow',
+      'notion',
+    ]);
+    expect(adapters.find((adapter) => adapter.source === 'metabase')?.fetch).toBeTypeOf('function');
+  });
+
+  it('uses an explicit Looker runtime client seam for local adapter fetch tests', async () => {
+    const runtimeClient = {
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      listDashboards: vi.fn().mockResolvedValue([]),
+      listLooks: vi.fn().mockResolvedValue([]),
+      listFolders: vi.fn().mockResolvedValue({ folders: [] }),
+      listUsers: vi.fn().mockResolvedValue([]),
+      listGroups: vi.fn().mockResolvedValue([]),
+      listLookmlModels: vi.fn().mockResolvedValue({ models: [] }),
+      getDashboard: vi.fn(),
+      getLook: vi.fn(),
+      getExplore: vi.fn(),
+      getSignals: vi.fn().mockResolvedValue({
+        dashboardUsage: [],
+        lookUsage: [],
+        scheduledPlans: [],
+        favorites: [],
+      }),
+    };
+    const adapters = createDefaultLocalIngestAdapters(project, { looker: { runtimeClient } });
+    const looker = adapters.find((adapter) => adapter.source === 'looker');
+
+    expect(looker).toBeDefined();
+    expect(looker?.fetch).toBeTypeOf('function');
+  });
+
+  it('returns the explicit Metabase fan-out boundary before runner construction', async () => {
+    const metabase = createDefaultLocalIngestAdapters(project).find((adapter) => adapter.source === 'metabase');
+
+    await expect(localPullConfigForAdapter(project, metabase!, 'warehouse')).rejects.toThrow(
+      'Metabase scheduled pulls fan out by mapping',
+    );
+  });
+
+  it('registers historic-sql locally when Postgres historic-SQL deps are provided', () => {
+    const sqlAnalysis: SqlAnalysisPort = {
+      async analyzeForFingerprint(sql) {
+        return {
+          fingerprint: 'fp',
+          normalizedSql: sql,
+          tablesTouched: ['public.orders'],
+          literalSlots: [],
+        };
+      },
+    };
+    const adapters = createDefaultLocalIngestAdapters(project, {
+      historicSql: {
+        sqlAnalysis,
+        postgresQueryClient: {
+          async executeQuery() {
+            return { headers: [], rows: [] };
+          },
+        },
+        postgresBaselineRootDir: join(project.projectDir, '.klo/cache/historic-sql'),
+      },
+    });
+
+    expect(adapters.map((adapter) => adapter.source)).toContain('historic-sql');
+    expect(adapters.find((adapter) => adapter.source === 'historic-sql')?.fetch).toBeTypeOf('function');
+  });
+
+  it('builds Postgres historic-sql pull config from a local connection', async () => {
+    const historicSql = createDefaultLocalIngestAdapters(project, {
+      historicSql: {
+        sqlAnalysis: {
+          async analyzeForFingerprint(sql) {
+            return {
+              fingerprint: 'fp',
+              normalizedSql: sql,
+              tablesTouched: ['public.orders'],
+              literalSlots: [],
+            };
+          },
+        },
+        postgresQueryClient: {
+          async executeQuery() {
+            return { headers: [], rows: [] };
+          },
+        },
+      },
+    }).find((adapter) => adapter.source === 'historic-sql');
+    const postgresProject = projectWithConnections({
+      warehouse: {
+        driver: 'postgres',
+        url: 'env:WAREHOUSE_DATABASE_URL',
+        historicSql: {
+          enabled: true,
+          dialect: 'postgres',
+          minCalls: 7,
+          maxTemplatesPerRun: 123,
+          serviceAccountUserPatterns: ['^svc_'],
+        },
+      },
+    });
+
+    await expect(localPullConfigForAdapter(postgresProject, historicSql!, 'warehouse')).resolves.toEqual({
+      dialect: 'postgres',
+      windowDays: 90,
+      lastSuccessfulCursor: null,
+      serviceAccountUserPatterns: ['^svc_'],
+      redactionPatterns: [],
+      maxTemplatesPerRun: 123,
+      minCalls: 7,
+    });
+  });
+
+  it('rejects local historic-sql pulls when the connection has not enabled historic SQL', async () => {
+    const historicSql = createDefaultLocalIngestAdapters(project, {
+      historicSql: {
+        sqlAnalysis: {
+          async analyzeForFingerprint(sql) {
+            return {
+              fingerprint: 'fp',
+              normalizedSql: sql,
+              tablesTouched: [],
+              literalSlots: [],
+            };
+          },
+        },
+        postgresQueryClient: {
+          async executeQuery() {
+            return { headers: [], rows: [] };
+          },
+        },
+      },
+    }).find((adapter) => adapter.source === 'historic-sql');
+    const postgresProject = projectWithConnections({
+      warehouse: {
+        driver: 'postgres',
+        url: 'env:WAREHOUSE_DATABASE_URL',
+      },
+    });
+
+    await expect(localPullConfigForAdapter(postgresProject, historicSql!, 'warehouse')).rejects.toThrow(
+      'Connection "warehouse" does not have historicSql.enabled: true',
+    );
+  });
+
+  it('builds Looker pull config from local mapping state', async () => {
+    const projectDir = await mkdtemp(join(tmpdir(), 'klo-local-looker-'));
+    const lookerProject = {
+      projectDir,
+      config: {
+        connections: {
+          'prod-looker': {
+            driver: 'looker',
+            base_url: 'https://looker.example.test',
+            client_id: 'client',
+          },
+          'prod-warehouse': {
+            driver: 'postgres',
+            url: 'postgresql://readonly@db.example.test/analytics',
+          },
+        },
+      },
+    } as never;
+    const store = new LocalLookerRuntimeStore({ dbPath: join(projectDir, '.klo/db.sqlite') });
+    await store.setCursors('prod-looker', { dashboardsLastSyncedAt: null, looksLastSyncedAt: null });
+    await store.upsertConnectionMapping({
+      lookerConnectionId: 'prod-looker',
+      lookerConnectionName: 'analytics',
+      kloConnectionId: 'prod-warehouse',
+      source: 'cli',
+    });
+    const lookerDeps = {
+      looker: {
+        client: {
+          listLookmlModels: async () => ({
+            source: 'looker',
+            fetchedAt: '2026-05-05T00:00:00.000Z',
+            models: [{ name: 'ecommerce', label: null, explores: [{ name: 'orders', label: null }] }],
+          }),
+          getExplore: async () => ({
+            source: 'looker',
+            modelName: 'ecommerce',
+            exploreName: 'orders',
+            label: null,
+            description: null,
+            connectionName: 'analytics',
+            viewName: null,
+            rawSqlTableName: 'public.orders',
+            fields: { dimensions: [], measures: [] },
+            joins: [],
+            targetWarehouseConnectionId: null,
+            targetTable: null,
+          }),
+        },
+        parser: {
+          parse: async () => ({
+            'ecommerce.orders': {
+              ok: true,
+              catalog: null,
+              schema: 'public',
+              name: 'orders',
+              canonical_table: 'public.orders',
+            },
+          }),
+        },
+      },
+    };
+    const adapter = createDefaultLocalIngestAdapters(lookerProject, lookerDeps).find(
+      (candidate) => candidate.source === 'looker',
+    );
+
+    await expect(localPullConfigForAdapter(lookerProject, adapter!, 'prod-looker', lookerDeps)).resolves.toMatchObject({
+      lookerConnectionId: 'prod-looker',
+      connectionMappings: { analytics: 'prod-warehouse' },
+      connectionTypes: { analytics: 'POSTGRESQL' },
+      parsedTargetTables: {
+        'ecommerce.orders': { ok: true, schema: 'public', name: 'orders', canonicalTable: 'public.orders' },
+      },
+    });
+  });
+
+  it('builds Looker pull config from yaml mapping bootstrap when SQLite is empty', async () => {
+    const projectDir = await mkdtemp(join(tmpdir(), 'klo-local-looker-yaml-'));
+    const lookerProject = {
+      projectDir,
+      config: {
+        connections: {
+          'prod-looker': {
+            driver: 'looker',
+            base_url: 'https://looker.example.test',
+            client_id: 'client',
+            mappings: { connectionMappings: { analytics: 'prod-warehouse' } },
+          },
+          'prod-warehouse': {
+            driver: 'postgres',
+            url: 'postgresql://readonly@db.example.test/analytics',
+          },
+        },
+      },
+    } as never;
+    const lookerDeps = {
+      looker: {
+        client: {
+          listLookmlModels: async () => ({
+            source: 'looker',
+            fetchedAt: '2026-05-05T00:00:00.000Z',
+            models: [{ name: 'ecommerce', label: null, explores: [{ name: 'orders', label: null }] }],
+          }),
+          getExplore: async () => ({
+            source: 'looker',
+            modelName: 'ecommerce',
+            exploreName: 'orders',
+            label: null,
+            description: null,
+            connectionName: 'analytics',
+            viewName: null,
+            rawSqlTableName: 'public.orders',
+            fields: { dimensions: [], measures: [] },
+            joins: [],
+            targetWarehouseConnectionId: null,
+            targetTable: null,
+          }),
+        },
+        parser: {
+          parse: async () => ({
+            'ecommerce.orders': {
+              ok: true,
+              catalog: null,
+              schema: 'public',
+              name: 'orders',
+              canonical_table: 'public.orders',
+            },
+          }),
+        },
+      },
+    };
+    const adapter = createDefaultLocalIngestAdapters(lookerProject, lookerDeps).find(
+      (candidate) => candidate.source === 'looker',
+    );
+
+    await expect(localPullConfigForAdapter(lookerProject, adapter!, 'prod-looker', lookerDeps)).resolves.toMatchObject({
+      connectionMappings: { analytics: 'prod-warehouse' },
+      connectionTypes: { analytics: 'POSTGRESQL' },
+    });
+  });
+
+  it('builds LookML pull config from flat klo.yaml connection fields', async () => {
+    const lookmlProject = {
+      projectDir: tempDir,
+      config: {
+        connections: {
+          'prod-lookml': {
+            driver: 'lookml',
+            repo_url: 'https://github.com/acme/looker.git',
+            branch: 'main',
+            path: 'models',
+            auth_token_ref: 'env:GITHUB_TOKEN',
+            mappings: { expectedLookerConnectionName: 'bigquery_prod' },
+          },
+        },
+      },
+    } as never;
+    const adapter = createDefaultLocalIngestAdapters(lookmlProject).find((candidate) => candidate.source === 'lookml');
+
+    await expect(
+      localPullConfigForAdapter(lookmlProject, adapter!, 'prod-lookml', {
+        looker: { env: { GITHUB_TOKEN: 'ghp_test_token' } },
+      }),
+    ).resolves.toEqual({
+      repoUrl: 'https://github.com/acme/looker.git',
+      branch: 'main',
+      path: 'models',
+      authToken: 'ghp_test_token',
+      expectedLookerConnectionName: 'bigquery_prod',
+      parsedTargetTables: {},
+    });
+  });
+
+  it('rejects local LookML scheduled pulls when repo_url is missing', async () => {
+    const lookmlProject = {
+      projectDir: tempDir,
+      config: { connections: { 'prod-lookml': { driver: 'lookml' } } },
+    } as never;
+    const adapter = createDefaultLocalIngestAdapters(lookmlProject).find((candidate) => candidate.source === 'lookml');
+
+    await expect(localPullConfigForAdapter(lookmlProject, adapter!, 'prod-lookml')).rejects.toThrow(
+      'lookml integration config missing repoUrl',
+    );
+  });
+
+  it('reads dbt source_dir from local connection config', async () => {
+    const project = projectWithConnections({
+      analytics_dbt: {
+        driver: 'dbt',
+        source_dir: '/repo/dbt',
+        profiles_path: '/repo/profiles',
+        target: 'prod',
+        project_name: 'analytics',
+      },
+    });
+    const adapter = createDefaultLocalIngestAdapters(project).find((candidate) => candidate.source === 'dbt');
+
+    await expect(localPullConfigForAdapter(project, adapter!, 'analytics_dbt')).resolves.toEqual({
+      sourceDir: '/repo/dbt',
+      profilesPath: '/repo/profiles',
+      target: 'prod',
+      projectName: 'analytics',
+    });
+  });
+
+  it('reads dbt git repo config from local connection config', async () => {
+    const dbtProject = projectWithConnections({
+      analytics_dbt: {
+        driver: 'dbt',
+        repo_url: 'https://github.com/acme/dbt.git',
+        branch: 'main',
+        path: 'analytics',
+        auth_token_ref: 'env:DBT_REPO_TOKEN',
+      },
+    });
+    const adapter = createDefaultLocalIngestAdapters(dbtProject).find((candidate) => candidate.source === 'dbt');
+
+    await expect(
+      localPullConfigForAdapter(dbtProject, adapter!, 'analytics_dbt', {
+        looker: { env: { DBT_REPO_TOKEN: 'token-123' } as NodeJS.ProcessEnv },
+      }),
+    ).resolves.toEqual({
+      repoUrl: 'https://github.com/acme/dbt.git',
+      branch: 'main',
+      path: 'analytics',
+      authToken: 'token-123',
+    });
+  });
+
+  it('resolves MetricFlow auth_token_ref without writing literal tokens to config', async () => {
+    const project = projectWithConnections({
+      metricflow_main: {
+        driver: 'metricflow',
+        metricflow: {
+          repoUrl: 'https://github.com/acme/metrics.git',
+          branch: 'main',
+          path: 'semantic_models',
+          auth_token_ref: 'env:METRICFLOW_REPO_TOKEN',
+        },
+      },
+    });
+    const adapter = createDefaultLocalIngestAdapters(project).find((candidate) => candidate.source === 'metricflow');
+
+    await expect(
+      localPullConfigForAdapter(project, adapter!, 'metricflow_main', {
+        looker: { env: { METRICFLOW_REPO_TOKEN: 'token-123' } as NodeJS.ProcessEnv },
+      }),
+    ).resolves.toEqual({
+      repoUrl: 'https://github.com/acme/metrics.git',
+      branch: 'main',
+      path: 'semantic_models',
+      authToken: 'token-123',
+      parsedTargetTables: {},
+    });
+  });
+});

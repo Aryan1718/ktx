@@ -1,0 +1,7 @@
+semantic_models:
+  - name: orders
+    model: ref('orders')
+    entities:
+      - {name: order_id, type: primary}
+    measures:
+      - {name: order_count, agg: count, expr: order_id}

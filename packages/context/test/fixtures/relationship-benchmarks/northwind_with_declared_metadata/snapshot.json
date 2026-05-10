@@ -1,0 +1,1055 @@
+{
+  "connectionId": "northwind_with_declared_metadata",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "metadata": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Categories",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 8,
+      "columns": [
+        {
+          "name": "CategoryID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CategoryName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Description",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Picture",
+          "nativeType": "BLOB",
+          "normalizedType": "blob",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "CustomerCustomerDemo",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 0,
+      "columns": [
+        {
+          "name": "CustomerID",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CustomerTypeID",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "CustomerTypeID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "CustomerDemographics",
+          "toColumn": "CustomerTypeID",
+          "constraintName": "CustomerCustomerDemo_CustomerTypeID_fkey"
+        },
+        {
+          "fromColumn": "CustomerID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Customers",
+          "toColumn": "CustomerID",
+          "constraintName": "CustomerCustomerDemo_CustomerID_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "CustomerDemographics",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 0,
+      "columns": [
+        {
+          "name": "CustomerTypeID",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CustomerDesc",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Customers",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 93,
+      "columns": [
+        {
+          "name": "CustomerID",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CompanyName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ContactName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ContactTitle",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Address",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "City",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Region",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "PostalCode",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Country",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Phone",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Fax",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "EmployeeTerritories",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 49,
+      "columns": [
+        {
+          "name": "EmployeeID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "TerritoryID",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "TerritoryID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Territories",
+          "toColumn": "TerritoryID",
+          "constraintName": "EmployeeTerritories_TerritoryID_fkey"
+        },
+        {
+          "fromColumn": "EmployeeID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Employees",
+          "toColumn": "EmployeeID",
+          "constraintName": "EmployeeTerritories_EmployeeID_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Employees",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 9,
+      "columns": [
+        {
+          "name": "EmployeeID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "LastName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "FirstName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Title",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "TitleOfCourtesy",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "BirthDate",
+          "nativeType": "DATE",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "HireDate",
+          "nativeType": "DATE",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Address",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "City",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Region",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "PostalCode",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Country",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "HomePhone",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Extension",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Photo",
+          "nativeType": "BLOB",
+          "normalizedType": "blob",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Notes",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ReportsTo",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "PhotoPath",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "ReportsTo",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Employees",
+          "toColumn": "EmployeeID",
+          "constraintName": "Employees_ReportsTo_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Order Details",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 609283,
+      "columns": [
+        {
+          "name": "OrderID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "ProductID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "UnitPrice",
+          "nativeType": "NUMERIC",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Quantity",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Discount",
+          "nativeType": "REAL",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "ProductID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Products",
+          "toColumn": "ProductID",
+          "constraintName": "Order Details_ProductID_fkey"
+        },
+        {
+          "fromColumn": "OrderID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Orders",
+          "toColumn": "OrderID",
+          "constraintName": "Order Details_OrderID_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Orders",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 16282,
+      "columns": [
+        {
+          "name": "OrderID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CustomerID",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "EmployeeID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "OrderDate",
+          "nativeType": "DATETIME",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "RequiredDate",
+          "nativeType": "DATETIME",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShippedDate",
+          "nativeType": "DATETIME",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShipVia",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Freight",
+          "nativeType": "NUMERIC",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShipName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShipAddress",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShipCity",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShipRegion",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShipPostalCode",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ShipCountry",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "ShipVia",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Shippers",
+          "toColumn": "ShipperID",
+          "constraintName": "Orders_ShipVia_fkey"
+        },
+        {
+          "fromColumn": "CustomerID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Customers",
+          "toColumn": "CustomerID",
+          "constraintName": "Orders_CustomerID_fkey"
+        },
+        {
+          "fromColumn": "EmployeeID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Employees",
+          "toColumn": "EmployeeID",
+          "constraintName": "Orders_EmployeeID_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Products",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 77,
+      "columns": [
+        {
+          "name": "ProductID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "ProductName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "SupplierID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "CategoryID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "QuantityPerUnit",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "UnitPrice",
+          "nativeType": "NUMERIC",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "UnitsInStock",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "UnitsOnOrder",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ReorderLevel",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Discontinued",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "SupplierID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Suppliers",
+          "toColumn": "SupplierID",
+          "constraintName": "Products_SupplierID_fkey"
+        },
+        {
+          "fromColumn": "CategoryID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Categories",
+          "toColumn": "CategoryID",
+          "constraintName": "Products_CategoryID_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Regions",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 4,
+      "columns": [
+        {
+          "name": "RegionID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "RegionDescription",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Shippers",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "ShipperID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CompanyName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Phone",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Suppliers",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 29,
+      "columns": [
+        {
+          "name": "SupplierID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CompanyName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ContactName",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ContactTitle",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Address",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "City",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Region",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "PostalCode",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Country",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Phone",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Fax",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "HomePage",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Territories",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 53,
+      "columns": [
+        {
+          "name": "TerritoryID",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "TerritoryDescription",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "RegionID",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "RegionID",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Regions",
+          "toColumn": "RegionID",
+          "constraintName": "Territories_RegionID_fkey"
+        }
+      ]
+    }
+  ]
+}

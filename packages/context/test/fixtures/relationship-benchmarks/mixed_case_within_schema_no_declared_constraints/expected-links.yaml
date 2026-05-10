@@ -1,0 +1,39 @@
+expectedPks:
+  - table: CustomerAccount
+    columns:
+      - AccountID
+  - table: InvoiceHeader
+    columns:
+      - InvoiceID
+  - table: subscriptionPlans
+    columns:
+      - planId
+expectedLinks:
+  - fromTable: InvoiceHeader
+    fromColumns:
+      - CustomerAccountID
+    toTable: CustomerAccount
+    toColumns:
+      - AccountID
+    relationship: many_to_one
+  - fromTable: line_items
+    fromColumns:
+      - invoice_id
+    toTable: InvoiceHeader
+    toColumns:
+      - InvoiceID
+    relationship: many_to_one
+  - fromTable: order_events
+    fromColumns:
+      - accountId
+    toTable: CustomerAccount
+    toColumns:
+      - AccountID
+    relationship: many_to_one
+  - fromTable: order_events
+    fromColumns:
+      - plan_id
+    toTable: subscriptionPlans
+    toColumns:
+      - planId
+    relationship: many_to_one

@@ -1,0 +1,8 @@
+id: semantic_embedding_aliases_no_declared_constraints
+name: Semantic embedding alias fixture with no declared constraints
+tier: row_bearing
+origin: synthetic
+defaultModes:
+  - declared_pks_and_declared_fks_removed
+  - llm_disabled
+  - embeddings_disabled

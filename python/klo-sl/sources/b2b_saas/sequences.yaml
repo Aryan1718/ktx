@@ -1,0 +1,14 @@
+name: sequences
+table: sequences
+grain:
+- sequence_id
+columns:
+- name: sequence_id
+  type: number
+- name: channel
+  type: string
+- name: created_at
+  type: time
+  role: time
+- name: name
+  type: string

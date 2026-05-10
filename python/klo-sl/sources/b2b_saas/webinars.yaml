@@ -1,0 +1,19 @@
+name: webinars
+table: webinars
+grain:
+- webinar_id
+columns:
+- name: webinar_id
+  type: number
+- name: cost
+  type: string
+- name: end_time
+  type: time
+  role: time
+- name: host_platform
+  type: string
+- name: start_time
+  type: time
+  role: time
+- name: title
+  type: string

@@ -1,0 +1,164 @@
+import type { KloEnrichedColumn, KloEnrichedTable } from './enrichment-types.js';
+import { normalizeKloRelationshipName, tokenizeKloRelationshipName } from './relationship-name-similarity.js';
+
+export interface KloRelationshipLocalityCandidateTable {
+  table: KloEnrichedTable;
+  score: number;
+  tokenScore: number;
+  embeddingScore: number;
+  reasons: string[];
+}
+
+export interface LocalKloRelationshipCandidateTablesInput {
+  childTable: KloEnrichedTable;
+  childColumn: KloEnrichedColumn;
+  parentTables: readonly KloEnrichedTable[];
+  maxParentTables?: number;
+}
+
+const DEFAULT_MAX_PARENT_TABLES = 20;
+const RELATIONSHIP_SUFFIX_TOKENS = new Set(['id', 'ids', 'key', 'keys', 'code', 'codes', 'uuid', 'uuids']);
+
+function roundedScore(value: number): number {
+  return Number(Math.max(0, Math.min(1, value)).toFixed(3));
+}
+
+function normalizedTokenVariants(name: string): string[] {
+  const normalized = normalizeKloRelationshipName(name);
+  return Array.from(
+    new Set([
+      ...normalized.tokens,
+      ...tokenizeKloRelationshipName(normalized.singular),
+      ...tokenizeKloRelationshipName(normalized.plural),
+    ]),
+  ).filter(Boolean);
+}
+
+function childColumnLocalityTokens(column: KloEnrichedColumn): string[] {
+  const tokens = normalizedTokenVariants(column.name);
+  const withoutSuffix = tokens.filter((token) => !RELATIONSHIP_SUFFIX_TOKENS.has(token));
+  return withoutSuffix.length > 0 ? withoutSuffix : tokens;
+}
+
+function uniqueTokens(values: readonly string[]): string[] {
+  return Array.from(new Set(values.filter((value) => value.length > 0)));
+}
+
+function jaccard(left: readonly string[], right: readonly string[]): number {
+  if (left.length === 0 || right.length === 0) {
+    return 0;
+  }
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  const intersectionSize = Array.from(leftSet).filter((token) => rightSet.has(token)).length;
+  const unionSize = new Set([...leftSet, ...rightSet]).size;
+  return unionSize === 0 ? 0 : intersectionSize / unionSize;
+}
+
+function cosineSimilarity(left: readonly number[] | null, right: readonly number[] | null): number {
+  if (!left || !right || left.length === 0 || left.length !== right.length) {
+    return 0;
+  }
+
+  let dot = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const leftValue = left[index] ?? 0;
+    const rightValue = right[index] ?? 0;
+    dot += leftValue * rightValue;
+    leftMagnitude += leftValue * leftValue;
+    rightMagnitude += rightValue * rightValue;
+  }
+
+  if (leftMagnitude === 0 || rightMagnitude === 0) {
+    return 0;
+  }
+
+  return dot / (Math.sqrt(leftMagnitude) * Math.sqrt(rightMagnitude));
+}
+
+function parentEmbeddingScore(childColumn: KloEnrichedColumn, parentTable: KloEnrichedTable): number {
+  if (!Array.isArray(childColumn.embedding) || childColumn.embedding.length === 0) {
+    return 0;
+  }
+
+  let best = 0;
+  for (const parentColumn of parentTable.columns) {
+    best = Math.max(best, cosineSimilarity(childColumn.embedding, parentColumn.embedding));
+  }
+  return best;
+}
+
+function tableTokenScore(input: {
+  childTable: KloEnrichedTable;
+  childColumn: KloEnrichedColumn;
+  parentTable: KloEnrichedTable;
+}): number {
+  const childTableTokens = normalizedTokenVariants(input.childTable.ref.name);
+  const childColumnTokens = childColumnLocalityTokens(input.childColumn);
+  const parentTokens = normalizedTokenVariants(input.parentTable.ref.name);
+  const columnOnlyScore = jaccard(childColumnTokens, parentTokens);
+  if (input.parentTable.id === input.childTable.id) {
+    return columnOnlyScore;
+  }
+  const columnAndTableScore = jaccard(uniqueTokens([...childTableTokens, ...childColumnTokens]), parentTokens);
+  return Math.max(columnOnlyScore, columnAndTableScore * 0.6);
+}
+
+function localityScore(input: {
+  childTable: KloEnrichedTable;
+  childColumn: KloEnrichedColumn;
+  parentTable: KloEnrichedTable;
+}): Omit<KloRelationshipLocalityCandidateTable, 'table'> {
+  const tokenScore = roundedScore(tableTokenScore(input));
+  const embeddingScore = roundedScore(parentEmbeddingScore(input.childColumn, input.parentTable));
+  const score =
+    embeddingScore > 0
+      ? roundedScore(Math.max(tokenScore, tokenScore * 0.8 + embeddingScore * 0.2, embeddingScore * 0.65))
+      : tokenScore;
+  const reasons: string[] = [];
+  if (tokenScore > 0) {
+    reasons.push('column_table_token_overlap');
+  }
+  if (embeddingScore > 0) {
+    reasons.push('embedding_similarity');
+  }
+  if (reasons.length === 0) {
+    reasons.push('locality_tie_breaker');
+  }
+  return {
+    score,
+    tokenScore,
+    embeddingScore,
+    reasons,
+  };
+}
+
+export function localCandidateTables(
+  input: LocalKloRelationshipCandidateTablesInput,
+): KloRelationshipLocalityCandidateTable[] {
+  const limit = input.maxParentTables ?? DEFAULT_MAX_PARENT_TABLES;
+  if (!Number.isFinite(limit) || limit <= 0) {
+    return [];
+  }
+
+  return input.parentTables
+    .map((table) => ({
+      table,
+      ...localityScore({
+        childTable: input.childTable,
+        childColumn: input.childColumn,
+        parentTable: table,
+      }),
+    }))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        right.tokenScore - left.tokenScore ||
+        right.embeddingScore - left.embeddingScore ||
+        left.table.ref.name.localeCompare(right.table.ref.name) ||
+        left.table.id.localeCompare(right.table.id),
+    )
+    .slice(0, Math.floor(limit));
+}

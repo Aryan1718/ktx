@@ -1,0 +1,161 @@
+{
+  "connectionId": "non_english_naming_no_declared_constraints",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "metadata": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "bestellungen",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "bestellnummer",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "kaeufer_nummer",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "betrag",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "kundenstamm",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "kundennummer",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "firmenname",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "stadt",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "seihin",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "seihin_bango",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "bezeichnung",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "kategorie",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "uriage",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "verkauf_nr",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "hinban",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "menge",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    }
+  ]
+}

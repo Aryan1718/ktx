@@ -1,0 +1,28 @@
+name: invoices
+table: invoices
+grain:
+- invoice_id
+columns:
+- name: invoice_id
+  type: number
+- name: account_id
+  type: number
+- name: contract_id
+  type: number
+- name: currency
+  type: string
+- name: due_date
+  type: time
+  role: time
+- name: invoice_date
+  type: time
+  role: time
+- name: status
+  type: string
+joins:
+- to: contracts
+  'on': contract_id = contracts.contract_id
+  relationship: many_to_one
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

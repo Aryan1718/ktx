@@ -1,0 +1,24 @@
+name: invoice_lines
+table: invoice_lines
+grain:
+- invoice_line_id
+columns:
+- name: invoice_line_id
+  type: number
+- name: amount
+  type: number
+- name: invoice_id
+  type: number
+- name: product_id
+  type: number
+- name: quantity
+  type: string
+- name: unit_price
+  type: number
+joins:
+- to: products
+  'on': product_id = products.product_id
+  relationship: many_to_one
+- to: invoices
+  'on': invoice_id = invoices.invoice_id
+  relationship: many_to_one

@@ -1,0 +1,24 @@
+name: opportunity_line_items
+table: opportunity_line_items
+grain:
+- discount_pct
+columns:
+- name: discount_pct
+  type: string
+- name: line_item_id
+  type: number
+- name: opportunity_id
+  type: number
+- name: product_id
+  type: number
+- name: quantity
+  type: string
+- name: unit_price
+  type: number
+joins:
+- to: products
+  'on': product_id = products.product_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one

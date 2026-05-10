@@ -1,0 +1,713 @@
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { cancel, isCancel, select } from '@clack/prompts';
+import { loadKloProject } from '@klo/context/project';
+import type { KloCliIo } from './cli-runtime.js';
+import type { KloDemoArgs } from './demo.js';
+import { defaultDemoProjectDir } from './demo-assets.js';
+import { formatSetupNextStepLines } from './next-steps.js';
+import { isKloSetupExitError, withSetupInterruptConfirmation } from './setup-interrupt.js';
+import {
+  type KloAgentInstallMode,
+  type KloAgentScope,
+  type KloAgentTarget,
+  type KloSetupAgentsDeps,
+  readKloAgentInstallManifest,
+  removeKloAgentInstall,
+  runKloSetupAgentsStep,
+} from './setup-agents.js';
+import {
+  type KloSetupDatabaseDriver,
+  type KloSetupDatabasesDeps,
+  runKloSetupDatabasesStep,
+} from './setup-databases.js';
+import { type KloSetupEmbeddingsDeps, runKloSetupEmbeddingsStep } from './setup-embeddings.js';
+import { type KloSetupModelDeps, runKloSetupAnthropicModelStep } from './setup-models.js';
+import { type KloSetupProjectDeps, runKloSetupProjectStep } from './setup-project.js';
+import { isKloSetupReady, type KloSetupReadyMenuDeps, runKloSetupReadyChangeMenu } from './setup-ready-menu.js';
+import { type KloSetupSourcesDeps, type KloSetupSourceType, runKloSetupSourcesStep } from './setup-sources.js';
+import { withMenuOptionsSpacing } from './prompt-navigation.js';
+import {
+  readKloSetupContextState,
+  runKloSetupContextCommand,
+  type KloSetupContextCommandArgs,
+  type KloSetupContextDeps,
+  type KloSetupContextResult,
+  runKloSetupContextStep,
+  setupContextStatusFromState,
+  type KloSetupContextStatusSummary,
+} from './setup-context.js';
+
+export interface KloSetupStatus {
+  project: { path: string; ready: boolean; name?: string };
+  llm: { backend?: string; ready: boolean; model?: string };
+  embeddings: { backend?: string; ready: boolean; model?: string; dimensions?: number };
+  databases: Array<{ connectionId: string; ready: boolean }>;
+  sources: Array<{ connectionId: string; type: string; ready: boolean }>;
+  context: KloSetupContextStatusSummary;
+  agents: Array<{ target: string; scope: string; ready: boolean }>;
+}
+
+export type KloSetupArgs =
+  | {
+      command: 'run';
+      projectDir: string;
+      mode: 'auto' | 'new' | 'existing';
+      agents: boolean;
+      target?: KloAgentTarget;
+      agentScope?: KloAgentScope;
+      agentInstallMode?: KloAgentInstallMode;
+      skipAgents?: boolean;
+      inputMode: 'auto' | 'disabled';
+      yes: boolean;
+      anthropicApiKeyEnv?: string;
+      anthropicApiKeyFile?: string;
+      anthropicModel?: string;
+      skipLlm: boolean;
+      embeddingBackend?: 'openai' | 'sentence-transformers';
+      embeddingApiKeyEnv?: string;
+      embeddingApiKeyFile?: string;
+      skipEmbeddings: boolean;
+      databaseDrivers?: KloSetupDatabaseDriver[];
+      databaseConnectionIds?: string[];
+      databaseConnectionId?: string;
+      databaseUrl?: string;
+      databaseSchemas: string[];
+      enableHistoricSql?: boolean;
+      disableHistoricSql?: boolean;
+      historicSqlWindowDays?: number;
+      historicSqlMinCalls?: number;
+      historicSqlServiceAccountPatterns?: string[];
+      historicSqlRedactionPatterns?: string[];
+      skipDatabases: boolean;
+      source?: KloSetupSourceType;
+      sourceConnectionId?: string;
+      sourcePath?: string;
+      sourceGitUrl?: string;
+      sourceBranch?: string;
+      sourceSubpath?: string;
+      sourceAuthTokenRef?: string;
+      sourceUrl?: string;
+      sourceApiKeyRef?: string;
+      sourceClientId?: string;
+      sourceClientSecretRef?: string;
+      sourceWarehouseConnectionId?: string;
+      sourceProjectName?: string;
+      sourceProfilesPath?: string;
+      sourceTarget?: string;
+      metabaseDatabaseId?: number;
+      notionCrawlMode?: 'all_accessible' | 'selected_roots';
+      notionRootPageIds?: string[];
+      runInitialSourceIngest?: boolean;
+      skipSources?: boolean;
+      showEntryMenu?: boolean;
+    }
+  | { command: 'status'; projectDir: string; json: boolean }
+  | { command: 'context-build'; projectDir: string; inputMode: 'auto' | 'disabled' }
+  | { command: 'context-watch'; projectDir: string; runId?: string; inputMode: 'auto' | 'disabled' }
+  | { command: 'context-status'; projectDir: string; runId?: string; json: boolean }
+  | { command: 'context-stop'; projectDir: string; runId?: string }
+  | { command: 'remove-agents'; projectDir: string };
+
+export interface KloSetupDeps {
+  project?: KloSetupProjectDeps;
+  model?: (
+    args: Parameters<typeof runKloSetupAnthropicModelStep>[0],
+    io: KloCliIo,
+  ) => Promise<Awaited<ReturnType<typeof runKloSetupAnthropicModelStep>>>;
+  modelDeps?: KloSetupModelDeps;
+  embeddings?: (
+    args: Parameters<typeof runKloSetupEmbeddingsStep>[0],
+    io: KloCliIo,
+  ) => Promise<Awaited<ReturnType<typeof runKloSetupEmbeddingsStep>>>;
+  embeddingsDeps?: KloSetupEmbeddingsDeps;
+  databases?: (
+    args: Parameters<typeof runKloSetupDatabasesStep>[0],
+    io: KloCliIo,
+  ) => Promise<Awaited<ReturnType<typeof runKloSetupDatabasesStep>>>;
+  databasesDeps?: KloSetupDatabasesDeps;
+  sources?: (
+    args: Parameters<typeof runKloSetupSourcesStep>[0],
+    io: KloCliIo,
+  ) => Promise<Awaited<ReturnType<typeof runKloSetupSourcesStep>>>;
+  sourcesDeps?: KloSetupSourcesDeps;
+  agents?: (
+    args: Parameters<typeof runKloSetupAgentsStep>[0],
+    io: KloCliIo,
+  ) => Promise<Awaited<ReturnType<typeof runKloSetupAgentsStep>>>;
+  agentsDeps?: KloSetupAgentsDeps;
+  context?: (args: Parameters<typeof runKloSetupContextStep>[0], io: KloCliIo) => Promise<KloSetupContextResult>;
+  contextDeps?: KloSetupContextDeps;
+  removeAgents?: typeof removeKloAgentInstall;
+  readyMenuDeps?: KloSetupReadyMenuDeps;
+  entryMenuDeps?: KloSetupEntryMenuDeps;
+  demo?: (args: KloDemoArgs, io: KloCliIo) => Promise<number>;
+}
+
+const SOURCE_DRIVERS = new Set(['dbt', 'metricflow', 'metabase', 'looker', 'lookml', 'notion']);
+
+type KloSetupEntryAction = 'setup' | 'new-project' | 'agents' | 'status' | 'demo' | 'exit';
+type KloSetupFlowStep = 'models' | 'embeddings' | 'databases' | 'sources' | 'context' | 'agents';
+type KloSetupFlowStatus =
+  | 'ready'
+  | 'skipped'
+  | 'back'
+  | 'missing-input'
+  | 'failed'
+  | 'detached'
+  | 'paused'
+  | 'interrupted';
+
+export interface KloSetupEntryMenuPromptAdapter {
+  select(options: { message: string; options: Array<{ value: string; label: string }> }): Promise<string>;
+  cancel(message: string): void;
+}
+
+export interface KloSetupEntryMenuDeps {
+  prompts?: KloSetupEntryMenuPromptAdapter;
+}
+
+function createEntryMenuPromptAdapter(): KloSetupEntryMenuPromptAdapter {
+  return {
+    async select(options) {
+      const value = await withSetupInterruptConfirmation(() => select(withMenuOptionsSpacing(options)));
+      if (isCancel(value)) {
+        return 'exit';
+      }
+      return String(value);
+    },
+    cancel(message) {
+      cancel(message);
+    },
+  };
+}
+
+async function runKloSetupEntryMenu(
+  status: KloSetupStatus,
+  deps: KloSetupEntryMenuDeps = {},
+): Promise<{ action: KloSetupEntryAction }> {
+  const prompts = deps.prompts ?? createEntryMenuPromptAdapter();
+  const options = status.project.ready
+    ? [
+        { value: 'setup', label: 'Resume or change an existing setup' },
+        { value: 'new-project', label: 'Create a new KLO project' },
+        { value: 'agents', label: 'Connect a coding agent to KLO' },
+        { value: 'status', label: 'Check setup status' },
+        { value: 'demo', label: 'Try KLO with packaged demo data' },
+        { value: 'exit', label: 'Exit' },
+      ]
+    : [
+        { value: 'setup', label: 'Set up KLO for my data' },
+        { value: 'status', label: 'Check setup status' },
+        { value: 'demo', label: 'Try KLO with packaged demo data' },
+        { value: 'exit', label: 'Exit' },
+      ];
+  const action = (await prompts.select({
+    message: 'What do you want to do?',
+    options,
+  })) as KloSetupEntryAction;
+  return { action };
+}
+
+async function runKloSetupDemoFromEntryMenu(
+  args: Extract<KloSetupArgs, { command: 'run' }>,
+  io: KloCliIo,
+  deps: KloSetupDeps,
+): Promise<number> {
+  const runner = deps.demo ?? (await import('./demo.js')).runKloDemo;
+  return await runner(
+    {
+      command: 'seeded',
+      projectDir: defaultDemoProjectDir(),
+      outputMode: 'viz',
+      inputMode: args.inputMode,
+    },
+    io,
+  );
+}
+
+function llmReady(status: KloSetupStatus['llm']): boolean {
+  return status.backend === 'anthropic' && typeof status.model === 'string' && status.model.length > 0;
+}
+
+function embeddingsReady(status: KloSetupStatus['embeddings']): boolean {
+  return (
+    status.backend !== undefined &&
+    status.backend !== 'none' &&
+    status.backend !== 'deterministic' &&
+    typeof status.model === 'string' &&
+    status.model.length > 0 &&
+    typeof status.dimensions === 'number' &&
+    status.dimensions > 0
+  );
+}
+
+function sourceConnections(config: Awaited<ReturnType<typeof loadKloProject>>['config']) {
+  return Object.entries(config.connections)
+    .filter(([, connection]) => SOURCE_DRIVERS.has(String(connection.driver ?? '').toLowerCase()))
+    .map(([connectionId, connection]) => ({
+      connectionId,
+      type: String(connection.driver).toLowerCase(),
+    }))
+    .sort((left, right) => left.connectionId.localeCompare(right.connectionId));
+}
+
+export async function readKloSetupStatus(projectDir: string): Promise<KloSetupStatus> {
+  const resolvedProjectDir = resolve(projectDir);
+  if (!existsSync(join(resolvedProjectDir, 'klo.yaml'))) {
+    return {
+      project: { path: resolvedProjectDir, ready: false },
+      llm: { ready: false },
+      embeddings: { ready: false },
+      databases: [],
+      sources: [],
+      context: setupContextStatusFromState(await readKloSetupContextState(resolvedProjectDir)),
+      agents: [],
+    };
+  }
+
+  const project = await loadKloProject({ projectDir: resolvedProjectDir });
+  const llm = {
+    backend: project.config.llm.provider.backend,
+    ready: false,
+    model: project.config.llm.models.default,
+  };
+  llm.ready = llmReady(llm);
+
+  const embeddings = {
+    backend: project.config.ingest.embeddings.backend,
+    ready: false,
+    model: project.config.ingest.embeddings.model,
+    dimensions: project.config.ingest.embeddings.dimensions,
+  };
+  embeddings.ready = embeddingsReady(embeddings);
+
+  const completedSteps = project.config.setup?.completed_steps ?? [];
+  const contextState = await readKloSetupContextState(resolvedProjectDir);
+  const databaseIds = project.config.setup?.database_connection_ids ?? Object.keys(project.config.connections);
+  const databasesComplete = completedSteps.includes('databases');
+  const manifest = await readKloAgentInstallManifest(resolvedProjectDir);
+  const agents =
+    manifest?.installs.map((install) => ({
+      target: install.target,
+      scope: install.scope,
+      ready: true,
+    })) ?? [];
+
+  return {
+    project: { path: resolvedProjectDir, ready: true, name: project.config.project },
+    llm,
+    embeddings,
+    databases: databaseIds.map((connectionId) => ({
+      connectionId,
+      ready: databasesComplete && Object.hasOwn(project.config.connections, connectionId),
+    })),
+    sources: sourceConnections(project.config).map((source) => ({
+      ...source,
+      ready: completedSteps.includes('sources'),
+    })),
+    context: setupContextStatusFromState(contextState, { completedStep: completedSteps.includes('context') }),
+    agents,
+  };
+}
+
+function formatReady(value: boolean): 'yes' | 'no' {
+  return value ? 'yes' : 'no';
+}
+
+function formatConnectionList(ids: string[]): string {
+  return ids.length > 0 ? `yes (${ids.join(', ')})` : 'no';
+}
+
+function formatContextBuilt(status: KloSetupContextStatusSummary): string {
+  if (status.ready) {
+    return 'yes';
+  }
+  if (status.status === 'not_started') {
+    return 'no';
+  }
+  const runSuffix = status.runId ? ` (${status.runId})` : '';
+  return `${status.status.replaceAll('_', ' ')}${runSuffix}`;
+}
+
+export function formatKloSetupStatus(status: KloSetupStatus): string {
+  if (!status.project.ready) {
+    return [
+      `No KLO project found at ${status.project.path}.`,
+      '',
+      'Check another project: klo --project-dir <folder> setup status',
+      'Or from that folder: klo setup status',
+      'Create a new KLO project here: klo setup',
+      '',
+    ].join('\n');
+  }
+
+  const lines = [
+    `KLO project: ${status.project.path}`,
+    `Project ready: ${formatReady(status.project.ready)}`,
+    `LLM ready: ${formatReady(status.llm.ready)}${status.llm.model ? ` (${status.llm.model})` : ''}`,
+    `Embeddings ready: ${formatReady(status.embeddings.ready)}${
+      status.embeddings.model ? ` (${status.embeddings.model})` : ''
+    }`,
+    `Primary sources configured: ${formatConnectionList(status.databases.map((database) => database.connectionId))}`,
+    `Context sources configured: ${formatConnectionList(status.sources.map((source) => source.connectionId))}`,
+    `KLO context built: ${formatContextBuilt(status.context)}`,
+    `Agent integration ready: ${formatReady(status.agents.some((agent) => agent.ready))}${
+      status.agents.length > 0 ? ` (${status.agents.map((agent) => `${agent.target}:${agent.scope}`).join(', ')})` : ''
+    }`,
+  ];
+  if (!status.context.ready && status.context.watchCommand && status.context.status === 'running') {
+    lines.push(`Resume: ${status.context.watchCommand}`);
+  }
+  if (!status.context.ready && status.context.status === 'failed' && status.context.detail) {
+    lines.push(
+      `Retry: ${status.context.retryCommand ?? `klo setup context build --project-dir ${status.project.path}`}`,
+    );
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+function setupStatusReady(status: KloSetupStatus): boolean {
+  if (!status.project.ready) {
+    return false;
+  }
+  if (!setupHasContextTargets(status)) {
+    return true;
+  }
+  return (
+    llmReady(status.llm) &&
+    embeddingsReady(status.embeddings) &&
+    status.databases.every((database) => database.ready) &&
+    status.sources.every((source) => source.ready)
+  );
+}
+
+function setupHasContextTargets(status: KloSetupStatus): boolean {
+  return status.databases.length > 0 || status.sources.length > 0;
+}
+
+function setupContextReady(status: KloSetupStatus): boolean {
+  return status.context.ready;
+}
+
+function writeContextNotReadyForAgents(projectDir: string, io: KloCliIo): void {
+  io.stderr.write('KLO context is not ready for agents.\n\n');
+  io.stderr.write(`Build context first:\n  klo setup context build --project-dir ${resolve(projectDir)}\n\n`);
+  io.stderr.write(`Then install agent integration:\n  klo setup --agents --project-dir ${resolve(projectDir)}\n`);
+}
+
+export async function runKloSetup(args: KloSetupArgs, io: KloCliIo, deps: KloSetupDeps = {}): Promise<number> {
+  try {
+    return await runKloSetupInner(args, io, deps);
+  } catch (error) {
+    if (isKloSetupExitError(error)) {
+      return 0;
+    }
+    throw error;
+  }
+}
+
+async function runKloSetupInner(args: KloSetupArgs, io: KloCliIo, deps: KloSetupDeps = {}): Promise<number> {
+  if (args.command === 'remove-agents') {
+    return await (deps.removeAgents ?? removeKloAgentInstall)(args.projectDir, io);
+  }
+
+  if (
+    args.command === 'context-build' ||
+    args.command === 'context-watch' ||
+    args.command === 'context-status' ||
+    args.command === 'context-stop'
+  ) {
+    const commandArgs: KloSetupContextCommandArgs =
+      args.command === 'context-build'
+        ? { command: 'build', projectDir: args.projectDir, inputMode: args.inputMode }
+        : args.command === 'context-watch'
+          ? {
+              command: 'watch',
+              projectDir: args.projectDir,
+              ...(args.runId ? { runId: args.runId } : {}),
+              inputMode: args.inputMode,
+            }
+          : args.command === 'context-status'
+            ? {
+                command: 'status',
+                projectDir: args.projectDir,
+                ...(args.runId ? { runId: args.runId } : {}),
+                json: args.json,
+              }
+            : { command: 'stop', projectDir: args.projectDir, ...(args.runId ? { runId: args.runId } : {}) };
+    return await runKloSetupContextCommand(commandArgs, io, deps.contextDeps);
+  }
+
+  if (args.command === 'status') {
+    const status = await readKloSetupStatus(args.projectDir);
+    io.stdout.write(args.json ? `${JSON.stringify(status, null, 2)}\n` : formatKloSetupStatus(status));
+    return 0;
+  }
+
+  io.stdout.write('KLO setup\n');
+  let entryAction: KloSetupEntryAction | undefined;
+  let projectResult: Awaited<ReturnType<typeof runKloSetupProjectStep>>;
+  const canShowEntryMenu =
+    args.showEntryMenu === true &&
+    args.inputMode !== 'disabled' &&
+    !args.agents &&
+    (io.stdout.isTTY === true || deps.entryMenuDeps?.prompts !== undefined);
+
+  setupLoop: while (true) {
+    entryAction = undefined;
+    if (canShowEntryMenu) {
+      const status = await readKloSetupStatus(args.projectDir);
+      entryAction = (await runKloSetupEntryMenu(status, deps.entryMenuDeps)).action;
+      if (entryAction === 'exit') {
+        (deps.entryMenuDeps?.prompts ?? createEntryMenuPromptAdapter()).cancel('Setup cancelled.');
+        return 0;
+      }
+      if (entryAction === 'status') {
+        io.stdout.write(formatKloSetupStatus(status));
+        return 0;
+      }
+      if (entryAction === 'demo') {
+        return await runKloSetupDemoFromEntryMenu(args, io, deps);
+      }
+    }
+
+    const projectMode = entryAction === 'new-project' ? 'prompt-new' : args.mode;
+    projectResult = await runKloSetupProjectStep(
+      {
+        projectDir: args.projectDir,
+        mode: projectMode,
+        inputMode: args.inputMode,
+        yes: args.yes,
+        allowBack: canShowEntryMenu,
+      },
+      io,
+      deps.project,
+    );
+
+    if (projectResult.status === 'back') {
+      continue;
+    }
+
+    if (projectResult.status !== 'ready') {
+      return projectResult.status === 'cancelled' ? 0 : 1;
+    }
+
+    const agentsRequested = args.agents || entryAction === 'agents';
+    const currentStatus = await readKloSetupStatus(projectResult.projectDir);
+    let readyAction: string | undefined;
+    if (args.inputMode !== 'disabled' && !agentsRequested && isKloSetupReady(currentStatus)) {
+      readyAction = (await runKloSetupReadyChangeMenu(currentStatus, deps.readyMenuDeps)).action;
+      if (readyAction === 'exit') return 0;
+    }
+
+    const runOnly = readyAction;
+    const shouldRunModels = !runOnly || runOnly === 'models';
+    const shouldRunEmbeddings = !runOnly || runOnly === 'embeddings';
+    const shouldRunDatabases = !runOnly || runOnly === 'databases';
+    const shouldRunSources = !runOnly || runOnly === 'sources';
+    const shouldRunContext = agentsRequested || !runOnly || runOnly === 'context';
+    const shouldRunAgents = agentsRequested || !runOnly || runOnly === 'agents';
+    const showPromptInstructions = projectResult.confirmedCreation !== true;
+
+    const setupSteps: KloSetupFlowStep[] = agentsRequested
+      ? ['context']
+      : ['models', 'embeddings', 'databases', 'sources', 'context'];
+    if (shouldRunAgents && args.skipAgents !== true) {
+      setupSteps.push('agents');
+    }
+
+    const forcePromptSteps = new Set<KloSetupFlowStep>();
+    const isNavigableSetupStep = (step: KloSetupFlowStep): boolean => {
+      if (step === 'models') return !args.skipLlm && shouldRunModels;
+      if (step === 'embeddings') return !args.skipEmbeddings && shouldRunEmbeddings;
+      if (step === 'databases') return !args.skipDatabases && shouldRunDatabases;
+      if (step === 'sources') return args.skipSources !== true && shouldRunSources;
+      if (step === 'context') return shouldRunContext;
+      return shouldRunAgents && args.skipAgents !== true;
+    };
+    const previousNavigableStepIndex = (currentIndex: number): number => {
+      for (let index = currentIndex - 1; index >= 0; index -= 1) {
+        const previousStep = setupSteps[index];
+        if (previousStep && isNavigableSetupStep(previousStep)) {
+          return index;
+        }
+      }
+      return -1;
+    };
+
+    for (let stepIndex = 0; stepIndex < setupSteps.length; ) {
+      const step = setupSteps[stepIndex];
+      if (!step) break;
+
+      let stepResult: { status: KloSetupFlowStatus };
+      if (step === 'models') {
+        const modelRunner =
+          deps.model ?? ((modelArgs, modelIo) => runKloSetupAnthropicModelStep(modelArgs, modelIo, deps.modelDeps));
+        stepResult = await modelRunner(
+          {
+            projectDir: projectResult.projectDir,
+            inputMode: args.inputMode,
+            ...(args.anthropicApiKeyEnv ? { anthropicApiKeyEnv: args.anthropicApiKeyEnv } : {}),
+            ...(args.anthropicApiKeyFile ? { anthropicApiKeyFile: args.anthropicApiKeyFile } : {}),
+            ...(args.anthropicModel ? { anthropicModel: args.anthropicModel } : {}),
+            forcePrompt: forcePromptSteps.has('models') || runOnly === 'models',
+            showPromptInstructions,
+            skipLlm: args.skipLlm || !shouldRunModels,
+          },
+          io,
+        );
+      } else if (step === 'embeddings') {
+        const embeddingsRunner =
+          deps.embeddings ??
+          ((embeddingArgs, embeddingIo) => runKloSetupEmbeddingsStep(embeddingArgs, embeddingIo, deps.embeddingsDeps));
+        stepResult = await embeddingsRunner(
+          {
+            projectDir: projectResult.projectDir,
+            inputMode: args.inputMode,
+            ...(args.embeddingBackend ? { embeddingBackend: args.embeddingBackend } : {}),
+            ...(args.embeddingApiKeyEnv ? { embeddingApiKeyEnv: args.embeddingApiKeyEnv } : {}),
+            ...(args.embeddingApiKeyFile ? { embeddingApiKeyFile: args.embeddingApiKeyFile } : {}),
+            forcePrompt: forcePromptSteps.has('embeddings') || runOnly === 'embeddings',
+            showPromptInstructions,
+            skipEmbeddings: args.skipEmbeddings || !shouldRunEmbeddings,
+          },
+          io,
+        );
+      } else if (step === 'databases') {
+        const databasesRunner =
+          deps.databases ??
+          ((databaseArgs, databaseIo) => runKloSetupDatabasesStep(databaseArgs, databaseIo, deps.databasesDeps));
+        stepResult = await databasesRunner(
+          {
+            projectDir: projectResult.projectDir,
+            inputMode: args.inputMode,
+            ...(args.databaseDrivers ? { databaseDrivers: args.databaseDrivers } : {}),
+            ...(args.databaseConnectionIds ? { databaseConnectionIds: args.databaseConnectionIds } : {}),
+            ...(args.databaseConnectionId ? { databaseConnectionId: args.databaseConnectionId } : {}),
+            ...(args.databaseUrl ? { databaseUrl: args.databaseUrl } : {}),
+            databaseSchemas: args.databaseSchemas,
+            ...(args.enableHistoricSql !== undefined ? { enableHistoricSql: args.enableHistoricSql } : {}),
+            ...(args.disableHistoricSql !== undefined ? { disableHistoricSql: args.disableHistoricSql } : {}),
+            ...(args.historicSqlWindowDays !== undefined ? { historicSqlWindowDays: args.historicSqlWindowDays } : {}),
+            ...(args.historicSqlMinCalls !== undefined ? { historicSqlMinCalls: args.historicSqlMinCalls } : {}),
+            ...(args.historicSqlServiceAccountPatterns
+              ? { historicSqlServiceAccountPatterns: args.historicSqlServiceAccountPatterns }
+              : {}),
+            ...(args.historicSqlRedactionPatterns
+              ? { historicSqlRedactionPatterns: args.historicSqlRedactionPatterns }
+              : {}),
+            skipDatabases: args.skipDatabases || !shouldRunDatabases,
+          },
+          io,
+        );
+      } else if (step === 'sources') {
+        const sourcesRunner =
+          deps.sources ?? ((sourceArgs, sourceIo) => runKloSetupSourcesStep(sourceArgs, sourceIo, deps.sourcesDeps));
+        stepResult = await sourcesRunner(
+          {
+            projectDir: projectResult.projectDir,
+            inputMode: args.inputMode,
+            ...(args.source ? { source: args.source } : {}),
+            ...(args.sourceConnectionId ? { sourceConnectionId: args.sourceConnectionId } : {}),
+            ...(args.sourcePath ? { sourcePath: args.sourcePath } : {}),
+            ...(args.sourceGitUrl ? { sourceGitUrl: args.sourceGitUrl } : {}),
+            ...(args.sourceBranch ? { sourceBranch: args.sourceBranch } : {}),
+            ...(args.sourceSubpath ? { sourceSubpath: args.sourceSubpath } : {}),
+            ...(args.sourceAuthTokenRef ? { sourceAuthTokenRef: args.sourceAuthTokenRef } : {}),
+            ...(args.sourceUrl ? { sourceUrl: args.sourceUrl } : {}),
+            ...(args.sourceApiKeyRef ? { sourceApiKeyRef: args.sourceApiKeyRef } : {}),
+            ...(args.sourceClientId ? { sourceClientId: args.sourceClientId } : {}),
+            ...(args.sourceClientSecretRef ? { sourceClientSecretRef: args.sourceClientSecretRef } : {}),
+            ...(args.sourceWarehouseConnectionId ? { sourceWarehouseConnectionId: args.sourceWarehouseConnectionId } : {}),
+            ...(args.sourceProjectName ? { sourceProjectName: args.sourceProjectName } : {}),
+            ...(args.sourceProfilesPath ? { sourceProfilesPath: args.sourceProfilesPath } : {}),
+            ...(args.sourceTarget ? { sourceTarget: args.sourceTarget } : {}),
+            ...(args.metabaseDatabaseId !== undefined ? { metabaseDatabaseId: args.metabaseDatabaseId } : {}),
+            ...(args.notionCrawlMode ? { notionCrawlMode: args.notionCrawlMode } : {}),
+            ...(args.notionRootPageIds ? { notionRootPageIds: args.notionRootPageIds } : {}),
+            runInitialSourceIngest: args.runInitialSourceIngest ?? false,
+            skipSources: args.skipSources === true || !shouldRunSources,
+          },
+          io,
+        );
+      } else if (step === 'context') {
+        const contextRunner =
+          deps.context ??
+          ((contextArgs, contextIo) => runKloSetupContextStep(contextArgs, contextIo, deps.contextDeps));
+        stepResult = await contextRunner(
+          {
+            projectDir: projectResult.projectDir,
+            inputMode: args.inputMode,
+            forcePrompt: forcePromptSteps.has('context') || runOnly === 'context',
+            allowEmpty: true,
+          },
+          io,
+        );
+      } else {
+        const agentsRunner =
+          deps.agents ?? ((agentArgs, agentIo) => runKloSetupAgentsStep(agentArgs, agentIo, deps.agentsDeps));
+        stepResult = await agentsRunner(
+          {
+            projectDir: projectResult.projectDir,
+            inputMode: args.inputMode,
+            yes: args.yes,
+            agents: true,
+            ...(args.target ? { target: args.target } : {}),
+            scope: args.agentScope ?? 'project',
+            mode: args.agentInstallMode ?? 'cli',
+            skipAgents: false,
+          },
+          io,
+        );
+      }
+
+      if (stepResult.status === 'failed' || stepResult.status === 'missing-input') {
+        return 1;
+      }
+      if (stepResult.status === 'back') {
+        const previousIndex = previousNavigableStepIndex(stepIndex);
+        if (previousIndex < 0) {
+          if (canShowEntryMenu) {
+            continue setupLoop;
+          }
+          return 0;
+        }
+        const previousStep = setupSteps[previousIndex];
+        if (previousStep) {
+          forcePromptSteps.add(previousStep);
+        }
+        stepIndex = previousIndex;
+        continue;
+      }
+      if (step === 'context' && stepResult.status !== 'ready') {
+        if (shouldRunAgents && args.skipAgents !== true) {
+          if (agentsRequested) {
+            writeContextNotReadyForAgents(projectResult.projectDir, io);
+            return args.inputMode === 'disabled' ? 1 : 0;
+          }
+          return 0;
+        }
+      }
+
+      forcePromptSteps.delete(step);
+      stepIndex += 1;
+    }
+
+    break;
+  }
+
+  const status = await readKloSetupStatus(projectResult.projectDir);
+  io.stdout.write(formatKloSetupStatus(status));
+  io.stdout.write('\nWhat you can do next:\n');
+  io.stdout.write(
+    `${formatSetupNextStepLines({
+      setupReady: setupStatusReady(status),
+      hasContextTargets: setupHasContextTargets(status),
+      contextReady: setupContextReady(status),
+      agentIntegrationReady: status.agents.some((agent) => agent.ready),
+    }).join('\n')}\n`,
+  );
+  return 0;
+}

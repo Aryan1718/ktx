@@ -1,0 +1,100 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { PromptService } from '../prompts/index.js';
+import { SkillsRegistryService } from '../skills/index.js';
+import { DEFAULT_SKILL_NAMES, type MemoryAgentSourceType, promptNameFor } from './index.js';
+
+const promptsDir = fileURLToPath(new URL('../../prompts', import.meta.url));
+const skillsDir = fileURLToPath(new URL('../../skills', import.meta.url));
+const memorySourceTypes: MemoryAgentSourceType[] = ['research', 'external_ingest', 'backfill'];
+const expectedSkillHeadings: Record<string, string> = {
+  knowledge_capture: '# Knowledge Capture',
+  sl: '# Semantic Layer',
+  sl_capture: '# Semantic Layer',
+};
+const expectedAdapterSkillHeadings: Record<string, string> = {
+  historic_sql_ingest: '# Historic SQL Ingest',
+  live_database_ingest: '# Live Database Ingest',
+  looker_ingest: '# Looker Runtime Ingest',
+  lookml_ingest: '# LookML to KLO Semantic Layer',
+  metabase_ingest: '# Metabase to KLO Semantic Layer',
+  metricflow_ingest: '# MetricFlow to KLO Semantic Layer',
+};
+
+function forbiddenProductPattern() {
+  return new RegExp([['Kae', 'lio'].join(''), ['kae', 'lio'].join(''), ['KAE', 'LIO_'].join('')].join('|'));
+}
+
+describe('memory runtime assets', () => {
+  it('packages every memory-agent base prompt referenced by promptNameFor()', async () => {
+    const prompts = new PromptService({ promptsDir, partials: [] });
+
+    for (const sourceType of memorySourceTypes) {
+      const promptName = promptNameFor(sourceType);
+      const prompt = await prompts.loadPrompt(promptName);
+
+      expect(prompt).toContain('<role>');
+      expect(prompt).toContain('<workflow>');
+      expect(prompt).not.toMatch(forbiddenProductPattern());
+    }
+  });
+
+  it('packages the default memory capture skills referenced by DEFAULT_SKILL_NAMES', async () => {
+    const registry = new SkillsRegistryService({ skillsDir });
+    const skills = await registry.listSkills([...DEFAULT_SKILL_NAMES], 'memory_agent');
+
+    expect(skills.map((skill) => skill.name).sort()).toEqual(['knowledge_capture', 'sl', 'sl_capture']);
+
+    for (const skill of skills) {
+      const body = await readFile(join(skill.path, 'SKILL.md'), 'utf-8');
+      const expectedHeading = expectedSkillHeadings[skill.name];
+      expect(expectedHeading).toBeDefined();
+      expect(body).toContain(expectedHeading);
+      expect(body).not.toMatch(forbiddenProductPattern());
+    }
+  });
+
+  it('keeps memory-only capture skills hidden from research callers', async () => {
+    const registry = new SkillsRegistryService({ skillsDir });
+    const skills = await registry.listSkills([...DEFAULT_SKILL_NAMES], 'research');
+
+    expect(skills.map((skill) => skill.name)).toEqual(['sl']);
+  });
+
+  it('packages ingest adapter skills referenced by bundled adapters', async () => {
+    const registry = new SkillsRegistryService({ skillsDir });
+    const skillNames = Object.keys(expectedAdapterSkillHeadings);
+    const skills = await registry.listSkills(skillNames, 'memory_agent');
+
+    expect(skills.map((skill) => skill.name).sort()).toEqual([...skillNames].sort());
+
+    for (const skill of skills) {
+      const body = await readFile(join(skill.path, 'SKILL.md'), 'utf-8');
+      expect(body).toContain(expectedAdapterSkillHeadings[skill.name]);
+      expect(body).not.toMatch(forbiddenProductPattern());
+    }
+  });
+
+  it('ships Looker runtime ingest guidance for warehouse target SL writes', async () => {
+    const body = await readFile(join(skillsDir, 'looker_ingest', 'SKILL.md'), 'utf-8');
+
+    expect(body).toContain('targetWarehouseConnectionId');
+    expect(body).toContain('targetTable.ok === true');
+    expect(body).toContain('targetTable.canonicalTable');
+    expect(body).toContain('source_tables preflight');
+    expect(body).toContain('emit_unmapped_fallback');
+    expect(body).toContain('no_connection_mapping');
+    expect(body).not.toContain('a standalone SL source only when raw evidence contains enough table or SQL structure');
+  });
+
+  it('packages LookML connection-mismatch SL gate guidance', async () => {
+    const body = await readFile(join(skillsDir, 'lookml_ingest', 'SKILL.md'), 'utf-8');
+
+    expect(body).toContain('[LOOKML SL WRITES DISALLOWED]');
+    expect(body).toContain('lookml_connection_mismatch');
+    expect(body).toContain('Do not call `sl_write_source` or `sl_edit_source`');
+    expect(body).toContain('LookML writes target the run connection directly');
+  });
+});

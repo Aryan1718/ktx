@@ -1,0 +1,40 @@
+name: opportunities
+table: opportunities
+grain:
+- opportunity_id
+columns:
+- name: opportunity_id
+  type: number
+- name: account_id
+  type: number
+- name: close_date
+  type: time
+  role: time
+- name: created_date
+  type: time
+  role: time
+- name: currency
+  type: string
+- name: lead_source
+  type: string
+- name: owner_rep_id
+  type: number
+- name: parent_opportunity_id
+  type: number
+- name: primary_competitor
+  type: string
+- name: region
+  type: string
+- name: risk_reason
+  type: string
+- name: stage
+  type: string
+- name: type
+  type: string
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': owner_rep_id = sales_reps.rep_id
+  relationship: many_to_one

@@ -1,0 +1,17 @@
+name: ad_groups
+table: ad_groups
+grain:
+- ad_group_id
+columns:
+- name: ad_group_id
+  type: number
+- name: ad_campaign_id
+  type: number
+- name: name
+  type: string
+- name: status
+  type: string
+joins:
+- to: ad_campaigns
+  'on': ad_campaign_id = ad_campaigns.ad_campaign_id
+  relationship: many_to_one

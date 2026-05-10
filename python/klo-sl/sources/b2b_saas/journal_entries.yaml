@@ -1,0 +1,12 @@
+name: journal_entries
+table: journal_entries
+grain:
+- journal_entry_id
+columns:
+- name: journal_entry_id
+  type: number
+- name: entry_date
+  type: time
+  role: time
+- name: memo
+  type: string

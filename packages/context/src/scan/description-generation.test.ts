@@ -1,0 +1,318 @@
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('ai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ai')>();
+  return { ...actual, generateText: vi.fn() };
+});
+
+import { generateText } from 'ai';
+import {
+  buildKloColumnDescriptionPrompt,
+  buildKloDataSourceDescriptionPrompt,
+  buildKloTableDescriptionPrompt,
+  type KloDescriptionCachePort,
+  KloDescriptionGenerator,
+} from './description-generation.js';
+import { createKloConnectorCapabilities, type KloScanConnector } from './types.js';
+
+function createCache(initial: Record<string, string> = {}): KloDescriptionCachePort {
+  const data = new Map(Object.entries(initial));
+  return {
+    buildTableKey: (table) => [table.catalog, table.db, table.name].filter(Boolean).join('.'),
+    buildColumnKey: (table, columnName) => [table.catalog, table.db, table.name, columnName].filter(Boolean).join('.'),
+    buildConnectionKey: (connectionName) => `__connection:${connectionName}`,
+    get: vi.fn(async (key: string) => data.get(key) ?? null),
+    set: vi.fn(async (key: string, value: string) => {
+      data.set(key, value);
+    }),
+  };
+}
+
+function createLlmProvider(text = 'generated description') {
+  vi.mocked(generateText).mockResolvedValue({ text } as never);
+  return {
+    getModel: vi.fn().mockReturnValue({ modelId: 'claude-sonnet-4-6', provider: 'anthropic' }),
+    getModelByName: vi.fn(),
+    cacheMarker: vi.fn(),
+    repairToolCallHandler: vi.fn(),
+    thinkingProviderOptions: vi.fn(),
+    telemetryConfig: vi.fn(),
+    promptCachingConfig: vi.fn(() => ({
+      enabled: false,
+      systemTtl: '1h',
+      toolsTtl: '1h',
+      historyTtl: '5m',
+      cacheSystem: true,
+      cacheTools: true,
+      cacheHistory: true,
+      vertexFallbackTo5m: false,
+    })),
+    activeBackend: vi.fn(() => 'anthropic'),
+  } as any;
+}
+
+function createConnector(): KloScanConnector {
+  return {
+    id: 'test-connector',
+    driver: 'postgres',
+    capabilities: createKloConnectorCapabilities({
+      tableSampling: true,
+      columnSampling: true,
+      nestedAnalysis: true,
+    }),
+    introspect: vi.fn(async () => {
+      throw new Error('introspection is not used by description generation');
+    }),
+    sampleColumn: vi.fn(async () => ({
+      values: ['paid', 'refunded', null],
+      nullCount: 1,
+      distinctCount: 2,
+    })),
+    sampleTable: vi.fn(async () => ({
+      headers: ['id', 'status', 'amount'],
+      rows: [
+        [1, 'paid', 20],
+        [2, 'refunded', 10],
+      ],
+      totalRows: 2,
+    })),
+  };
+}
+
+describe('KLO description prompt builders', () => {
+  it('builds column prompts with sample values, source descriptions, and nested BigQuery guidance', () => {
+    const prompt = buildKloColumnDescriptionPrompt({
+      columnName: 'payload',
+      columnValues: [{ nested: true }, '[1,2]'],
+      tableContext: 'Table: events | Columns: payload | Data source: BIGQUERY',
+      dataSourceType: 'BIGQUERY',
+      supportsNestedAnalysis: true,
+      rawDescriptions: { db: 'Raw event payload', ai: 'Old AI text', user: 'User text' },
+    });
+
+    expect(prompt).toContain(
+      '<table_context> Table: events | Columns: payload | Data source: BIGQUERY </table_context>',
+    );
+    expect(prompt).toContain('<column_name> payload </column_name>');
+    expect(prompt).toContain('<sample_values> [object Object], [1,2] </sample_values>');
+    expect(prompt).toContain('<db_documentation> Raw event payload </db_documentation>');
+    expect(prompt).not.toContain('Old AI text');
+    expect(prompt).not.toContain('User text');
+    expect(prompt).toContain('nested/structured data');
+  });
+
+  it('builds table and data-source prompts from sampled rows', () => {
+    const sample = {
+      headers: ['id', 'status'],
+      rows: [
+        [1, 'paid'],
+        [2, 'refunded'],
+      ],
+      totalRows: 2,
+    };
+
+    expect(
+      buildKloTableDescriptionPrompt({
+        tableName: 'orders',
+        sampleData: sample,
+        dataSourceType: 'POSTGRESQL',
+        rawDescriptions: { dbt: 'Fact table for commerce orders' },
+      }),
+    ).toContain('status: paid, refunded');
+
+    expect(
+      buildKloDataSourceDescriptionPrompt({
+        tableSamples: [['orders', sample]],
+        dataSourceType: 'POSTGRESQL',
+      }),
+    ).toContain('orders (2 columns, 2 sample rows)');
+  });
+});
+
+describe('KloDescriptionGenerator', () => {
+  it('generates column descriptions with pre-fetched values, cache hits, and word-limit metadata', async () => {
+    const cache = createCache({ 'warehouse.public.orders.cached_status': 'Cached status description' });
+    const llmProvider = createLlmProvider('Payment state');
+    const connector = createConnector();
+    const generator = new KloDescriptionGenerator({
+      llmProvider,
+      cache,
+      settings: {
+        columnMaxWords: 12,
+        tableMaxWords: 18,
+        dataSourceMaxWords: 24,
+        temperature: 0.2,
+        concurrencyLimit: 2,
+      },
+    });
+
+    const result = await generator.generateColumnDescriptions({
+      connectionId: 'conn-1',
+      connector,
+      context: { runId: 'run-1' },
+      dataSourceType: 'POSTGRESQL',
+      supportsNestedAnalysis: false,
+      table: {
+        catalog: 'warehouse',
+        db: 'public',
+        name: 'orders',
+        columns: [
+          { name: 'status', sampleValues: ['paid', 'refunded'], rawDescriptions: { db: 'Payment lifecycle' } },
+          { name: 'cached_status', sampleValues: ['open'] },
+        ],
+      },
+      skipExisting: false,
+      existingDescriptions: {},
+    });
+
+    expect(result).toEqual({
+      columnDescriptions: [
+        ['status', 'Payment state'],
+        ['cached_status', 'Cached status description'],
+      ],
+      processedColumns: ['status'],
+      skippedColumns: ['cached_status'],
+    });
+    expect(connector.sampleColumn).not.toHaveBeenCalled();
+    expect(generateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        temperature: 0.2,
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: 'user',
+            content: expect.stringContaining('Please provide a concise description in 12 words or less.'),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it('samples through the connector when column values are not pre-fetched', async () => {
+    const connector = createConnector();
+    const generator = new KloDescriptionGenerator({
+      llmProvider: createLlmProvider('Current order state'),
+      settings: {
+        columnMaxWords: 12,
+        tableMaxWords: 18,
+        dataSourceMaxWords: 24,
+      },
+    });
+
+    const result = await generator.generateColumnDescriptions({
+      connectionId: 'conn-1',
+      connector,
+      context: { runId: 'run-1' },
+      dataSourceType: 'POSTGRESQL',
+      supportsNestedAnalysis: false,
+      table: {
+        catalog: null,
+        db: 'public',
+        name: 'orders',
+        columns: [{ name: 'status' }],
+      },
+    });
+
+    expect(connector.sampleColumn).toHaveBeenCalledWith(
+      {
+        connectionId: 'conn-1',
+        table: { catalog: null, db: 'public', name: 'orders' },
+        column: 'status',
+        limit: 50,
+      },
+      { runId: 'run-1' },
+    );
+    expect(result.columnDescriptions).toEqual([['status', 'Current order state']]);
+  });
+
+  it('samples through a description sampling port without requiring structural introspection', async () => {
+    const sampler = {
+      id: 'description-sampler:conn-1',
+      sampleColumn: vi.fn(async () => ({
+        values: ['paid', 'refunded'],
+        nullCount: null,
+        distinctCount: null,
+      })),
+      sampleTable: vi.fn(async () => ({
+        headers: ['id', 'status'],
+        rows: [[1, 'paid']],
+        totalRows: 1,
+      })),
+    };
+    const generator = new KloDescriptionGenerator({
+      llmProvider: createLlmProvider('Generated through sampler'),
+      settings: {
+        columnMaxWords: 12,
+        tableMaxWords: 18,
+        dataSourceMaxWords: 24,
+      },
+    });
+
+    const result = await generator.generateColumnDescriptions({
+      connectionId: 'conn-1',
+      connector: sampler,
+      context: { runId: 'run-1' },
+      dataSourceType: 'POSTGRESQL',
+      supportsNestedAnalysis: false,
+      table: {
+        catalog: null,
+        db: 'public',
+        name: 'orders',
+        columns: [{ name: 'status' }],
+      },
+    });
+
+    expect(result.columnDescriptions).toEqual([['status', 'Generated through sampler']]);
+    expect(sampler.sampleColumn).toHaveBeenCalledWith(
+      {
+        connectionId: 'conn-1',
+        table: { catalog: null, db: 'public', name: 'orders' },
+        column: 'status',
+        limit: 50,
+      },
+      { runId: 'run-1' },
+    );
+    expect('introspect' in sampler).toBe(false);
+  });
+
+  it('generates and caches table and data-source descriptions', async () => {
+    const cache = createCache();
+    const connector = createConnector();
+    const generator = new KloDescriptionGenerator({
+      llmProvider: createLlmProvider('Commerce orders'),
+      cache,
+      settings: {
+        columnMaxWords: 12,
+        tableMaxWords: 18,
+        dataSourceMaxWords: 24,
+        concurrencyLimit: 2,
+      },
+    });
+
+    await expect(
+      generator.generateTableDescription({
+        connectionId: 'conn-1',
+        connector,
+        context: { runId: 'run-1' },
+        dataSourceType: 'POSTGRESQL',
+        table: { catalog: 'warehouse', db: 'public', name: 'orders', rawDescriptions: { db: 'Raw orders' } },
+      }),
+    ).resolves.toBe('Commerce orders');
+
+    await expect(
+      generator.generateDataSourceDescription({
+        connectionId: 'conn-1',
+        connector,
+        context: { runId: 'run-1' },
+        dataSourceType: 'POSTGRESQL',
+        tables: [
+          { catalog: 'warehouse', db: 'public', name: 'orders' },
+          { catalog: 'warehouse', db: 'public', name: 'customers' },
+        ],
+        connectionName: 'Warehouse',
+      }),
+    ).resolves.toBe('Commerce orders');
+
+    expect(cache.set).toHaveBeenCalledWith('warehouse.public.orders', 'Commerce orders');
+    expect(cache.set).toHaveBeenCalledWith('__connection:Warehouse', 'Commerce orders');
+  });
+});

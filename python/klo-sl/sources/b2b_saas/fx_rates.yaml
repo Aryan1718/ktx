@@ -1,0 +1,14 @@
+name: fx_rates
+table: fx_rates
+grain:
+- from_currency
+columns:
+- name: from_currency
+  type: string
+- name: rate
+  type: string
+- name: rate_date
+  type: time
+  role: time
+- name: to_currency
+  type: string

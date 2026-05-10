@@ -1,0 +1,186 @@
+{
+  "connectionId": "plan_code_no_declared_constraints",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "metadata": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": null,
+      "name": "stg_plans",
+      "kind": "table",
+      "comment": "Plan dimension with natural plan codes and copied attributes.",
+      "estimatedRows": 4,
+      "columns": [
+        {
+          "name": "plan_code",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "canonical_plan_code",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "email",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "is_deleted",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": null,
+      "name": "mart_account_segments",
+      "kind": "table",
+      "comment": "Account segment mart with current and normalized plan codes.",
+      "estimatedRows": 4,
+      "columns": [
+        {
+          "name": "account_segment_key",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "current_plan_code",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "normalized_plan_code",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "source_created_at",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "billing_email",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "source_is_deleted",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": null,
+      "name": "stg_plan_segment_mapping",
+      "kind": "table",
+      "comment": "Plan-to-segment staging mapping with canonical plan codes.",
+      "estimatedRows": 4,
+      "columns": [
+        {
+          "name": "mapping_key",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "canonical_plan_code",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "source_created_at",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "owner_email",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "source_is_deleted",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    }
+  ]
+}

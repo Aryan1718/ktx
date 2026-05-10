@@ -1,0 +1,206 @@
+expectedPks:
+  - table: actor
+    columns:
+      - actor_id
+  - table: address
+    columns:
+      - address_id
+  - table: category
+    columns:
+      - category_id
+  - table: city
+    columns:
+      - city_id
+  - table: country
+    columns:
+      - country_id
+  - table: customer
+    columns:
+      - customer_id
+  - table: film
+    columns:
+      - film_id
+  - table: film_actor
+    columns:
+      - actor_id
+      - film_id
+  - table: film_category
+    columns:
+      - film_id
+      - category_id
+  - table: film_text
+    columns:
+      - film_id
+  - table: inventory
+    columns:
+      - inventory_id
+  - table: language
+    columns:
+      - language_id
+  - table: payment
+    columns:
+      - payment_id
+  - table: rental
+    columns:
+      - rental_id
+  - table: staff
+    columns:
+      - staff_id
+  - table: store
+    columns:
+      - store_id
+expectedLinks:
+  - fromTable: address
+    fromColumns:
+      - city_id
+    toTable: city
+    toColumns:
+      - city_id
+    relationship: many_to_one
+  - fromTable: city
+    fromColumns:
+      - country_id
+    toTable: country
+    toColumns:
+      - country_id
+    relationship: many_to_one
+  - fromTable: customer
+    fromColumns:
+      - address_id
+    toTable: address
+    toColumns:
+      - address_id
+    relationship: many_to_one
+  - fromTable: customer
+    fromColumns:
+      - store_id
+    toTable: store
+    toColumns:
+      - store_id
+    relationship: many_to_one
+  - fromTable: film_actor
+    fromColumns:
+      - actor_id
+    toTable: actor
+    toColumns:
+      - actor_id
+    relationship: many_to_one
+  - fromTable: film_actor
+    fromColumns:
+      - film_id
+    toTable: film
+    toColumns:
+      - film_id
+    relationship: many_to_one
+  - fromTable: film_category
+    fromColumns:
+      - category_id
+    toTable: category
+    toColumns:
+      - category_id
+    relationship: many_to_one
+  - fromTable: film_category
+    fromColumns:
+      - film_id
+    toTable: film
+    toColumns:
+      - film_id
+    relationship: many_to_one
+  - fromTable: film
+    fromColumns:
+      - language_id
+    toTable: language
+    toColumns:
+      - language_id
+    relationship: many_to_one
+  - fromTable: film
+    fromColumns:
+      - original_language_id
+    toTable: language
+    toColumns:
+      - language_id
+    relationship: many_to_one
+  - fromTable: inventory
+    fromColumns:
+      - film_id
+    toTable: film
+    toColumns:
+      - film_id
+    relationship: many_to_one
+  - fromTable: inventory
+    fromColumns:
+      - store_id
+    toTable: store
+    toColumns:
+      - store_id
+    relationship: many_to_one
+  - fromTable: payment
+    fromColumns:
+      - customer_id
+    toTable: customer
+    toColumns:
+      - customer_id
+    relationship: many_to_one
+  - fromTable: payment
+    fromColumns:
+      - rental_id
+    toTable: rental
+    toColumns:
+      - rental_id
+    relationship: many_to_one
+  - fromTable: payment
+    fromColumns:
+      - staff_id
+    toTable: staff
+    toColumns:
+      - staff_id
+    relationship: many_to_one
+  - fromTable: rental
+    fromColumns:
+      - customer_id
+    toTable: customer
+    toColumns:
+      - customer_id
+    relationship: many_to_one
+  - fromTable: rental
+    fromColumns:
+      - inventory_id
+    toTable: inventory
+    toColumns:
+      - inventory_id
+    relationship: many_to_one
+  - fromTable: rental
+    fromColumns:
+      - staff_id
+    toTable: staff
+    toColumns:
+      - staff_id
+    relationship: many_to_one
+  - fromTable: staff
+    fromColumns:
+      - address_id
+    toTable: address
+    toColumns:
+      - address_id
+    relationship: many_to_one
+  - fromTable: staff
+    fromColumns:
+      - store_id
+    toTable: store
+    toColumns:
+      - store_id
+    relationship: many_to_one
+  - fromTable: store
+    fromColumns:
+      - address_id
+    toTable: address
+    toColumns:
+      - address_id
+    relationship: many_to_one
+  - fromTable: store
+    fromColumns:
+      - manager_staff_id
+    toTable: staff
+    toColumns:
+      - staff_id
+    relationship: many_to_one

@@ -1,0 +1,15 @@
+name: budgets
+table: budgets
+grain:
+- budget_id
+columns:
+- name: budget_id
+  type: number
+- name: department
+  type: string
+- name: period_end
+  type: string
+- name: period_start
+  type: string
+- name: planned_amount
+  type: number

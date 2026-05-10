@@ -1,0 +1,9 @@
+semantic_models:
+  - name: orders_ext
+    description: Orders with refund handling added.
+    model: ref('orders_ext')
+    extends: orders
+    measures:
+      - name: refund_amount
+        agg: sum
+        expr: refund_amt

@@ -1,0 +1,7 @@
+id: analytical_warehouse_no_naming_convention
+name: Analytical warehouse fixture with no naming convention
+tier: row_bearing
+origin: synthetic
+thresholdEligible: false
+defaultModes:
+  - declared_pks_and_declared_fks_removed

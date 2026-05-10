@@ -1,0 +1,365 @@
+import { existsSync } from 'node:fs';
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
+import { cancel, isCancel, select, text } from '@clack/prompts';
+import {
+  initKloProject,
+  type KloLocalProject,
+  loadKloProject,
+  markKloSetupStepComplete,
+  mergeKloSetupGitignoreEntries,
+  serializeKloProjectConfig,
+} from '@klo/context/project';
+import type { KloCliIo } from './cli-runtime.js';
+import { withMenuOptionsSpacing, withTextInputNavigation } from './prompt-navigation.js';
+import { withSetupInterruptConfirmation } from './setup-interrupt.js';
+
+export type KloSetupProjectMode = 'auto' | 'new' | 'existing' | 'prompt-new';
+export type KloSetupInputMode = 'auto' | 'disabled';
+
+export interface KloSetupProjectArgs {
+  projectDir: string;
+  mode: KloSetupProjectMode;
+  inputMode: KloSetupInputMode;
+  yes: boolean;
+  allowBack?: boolean;
+}
+
+export type KloSetupProjectResult =
+  | { status: 'ready'; projectDir: string; project: KloLocalProject; confirmedCreation?: boolean }
+  | { status: 'back'; projectDir: string }
+  | { status: 'cancelled'; projectDir: string }
+  | { status: 'missing-input'; projectDir: string };
+
+export interface KloSetupProjectPromptAdapter {
+  select(options: { message: string; options: Array<{ value: string; label: string }> }): Promise<string>;
+  text(options: { message: string; placeholder?: string }): Promise<string | undefined>;
+  cancel(message: string): void;
+}
+
+export interface KloSetupProjectDeps {
+  prompts?: KloSetupProjectPromptAdapter;
+  initProject?: typeof initKloProject;
+  loadProject?: typeof loadKloProject;
+  homeDir?: string;
+}
+
+type PromptProjectDirResult =
+  | { status: 'selected'; projectDir: string; confirmedCreation: boolean }
+  | { status: 'cancelled'; projectDir: string }
+  | { status: 'missing-input'; projectDir: string }
+  | { status: 'back'; projectDir: string };
+
+const DEFAULT_NEW_PROJECT_FOLDER_NAME = 'klo-project';
+
+function createClackSetupProjectPromptAdapter(): KloSetupProjectPromptAdapter {
+  return {
+    async select(options) {
+      const value = await withSetupInterruptConfirmation(() => select(withMenuOptionsSpacing(options)));
+      if (isCancel(value)) {
+        cancel('Setup cancelled.');
+        return 'exit';
+      }
+      return value;
+    },
+    async text(options) {
+      const value = await withSetupInterruptConfirmation(() =>
+        text({ ...options, message: withTextInputNavigation(options.message) }),
+      );
+      if (isCancel(value)) {
+        return undefined;
+      }
+      return value;
+    },
+    cancel(message) {
+      cancel(message);
+    },
+  };
+}
+
+function hasProjectConfig(projectDir: string): boolean {
+  return existsSync(join(projectDir, 'klo.yaml'));
+}
+
+function resolveFromProjectDir(projectDir: string, input: string, homeDir: string): string {
+  if (input === '~') {
+    return resolve(homeDir);
+  }
+  if (input.startsWith('~/') || input.startsWith('~\\')) {
+    return resolve(homeDir, input.slice(2));
+  }
+  return resolve(projectDir, input);
+}
+
+async function existingFolderState(
+  projectDir: string,
+): Promise<'missing' | 'empty-directory' | 'non-empty-directory' | 'not-directory'> {
+  try {
+    const projectDirStat = await stat(projectDir);
+    if (!projectDirStat.isDirectory()) {
+      return 'not-directory';
+    }
+    return (await readdir(projectDir)).length === 0 ? 'empty-directory' : 'non-empty-directory';
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      return 'missing';
+    }
+    throw error;
+  }
+}
+
+async function normalizeSetupGitignore(projectDir: string): Promise<void> {
+  const gitignorePath = join(projectDir, '.klo/.gitignore');
+  await mkdir(join(projectDir, '.klo'), { recursive: true });
+  const current = existsSync(gitignorePath) ? await readFile(gitignorePath, 'utf-8') : '';
+  await writeFile(gitignorePath, mergeKloSetupGitignoreEntries(current), 'utf-8');
+}
+
+async function persistProjectStep(project: KloLocalProject): Promise<KloLocalProject> {
+  const config = markKloSetupStepComplete(project.config, 'project');
+  await writeFile(project.configPath, serializeKloProjectConfig(config), 'utf-8');
+  await normalizeSetupGitignore(project.projectDir);
+  return await loadKloProject({ projectDir: project.projectDir });
+}
+
+async function createProject(projectDir: string, deps: KloSetupProjectDeps): Promise<KloLocalProject> {
+  const initProject = deps.initProject ?? initKloProject;
+  const initialized = await initProject({ projectDir, projectName: basename(projectDir) || 'klo-project' });
+  return await persistProjectStep(initialized);
+}
+
+async function loadExistingProject(projectDir: string, deps: KloSetupProjectDeps): Promise<KloLocalProject> {
+  const loadProject = deps.loadProject ?? loadKloProject;
+  const project = await loadProject({ projectDir });
+  return await persistProjectStep(project);
+}
+
+function printProjectSummary(io: KloCliIo, projectDir: string): void {
+  io.stdout.write(`Project: ${projectDir}\n`);
+}
+
+async function promptForNewProjectDir(
+  projectDir: string,
+  homeDir: string,
+  io: KloCliIo,
+  prompts: KloSetupProjectPromptAdapter,
+): Promise<PromptProjectDirResult> {
+  const defaultProjectDir = join(projectDir, DEFAULT_NEW_PROJECT_FOLDER_NAME);
+
+  while (true) {
+    io.stdout.write(`Relative paths are resolved from:\n  ${projectDir}\n`);
+    io.stdout.write(`Home paths are resolved from:\n  ${homeDir}\n`);
+    const destinationChoice = await prompts.select({
+      message: 'Where should KLO create the project?',
+      options: [
+        { value: 'default', label: `Create the default project folder: ${defaultProjectDir}` },
+        { value: 'custom', label: 'Enter a custom path' },
+        { value: 'back', label: 'Back' },
+      ],
+    });
+
+    let selectedDir: string;
+    if (destinationChoice === 'back') {
+      return { status: 'back', projectDir };
+    }
+
+    if (destinationChoice === 'default') {
+      selectedDir = defaultProjectDir;
+    } else if (destinationChoice === 'custom') {
+      const rawSelectedDir = await prompts.text({
+        message: withTextInputNavigation('Project folder path'),
+        placeholder: './analytics-klo, ~/analytics-klo, or /Users/you/projects/analytics-klo',
+      });
+      if (rawSelectedDir === undefined) {
+        continue;
+      }
+      const trimmedSelectedDir = rawSelectedDir.trim();
+      if (trimmedSelectedDir.length === 0) {
+        io.stderr.write(
+          'Enter a relative path like ./analytics-klo, a home path like ~/analytics-klo, or an absolute path.\n',
+        );
+        return { status: 'missing-input', projectDir };
+      }
+      selectedDir = resolveFromProjectDir(projectDir, trimmedSelectedDir, homeDir);
+    } else {
+      return { status: 'cancelled', projectDir };
+    }
+
+    const state = await existingFolderState(selectedDir);
+    let confirmedCreation = false;
+    if (state === 'not-directory') {
+      io.stderr.write(`Project folder path exists and is not a directory: ${selectedDir}\n`);
+      return { status: 'missing-input', projectDir };
+    }
+    if (state === 'non-empty-directory') {
+      const existingAction = await prompts.select({
+        message: `That folder already exists and is not empty: ${selectedDir}`,
+        options: [
+          { value: 'use-existing', label: 'Yes, create KLO files there' },
+          { value: 'choose-another', label: 'Choose another folder' },
+          { value: 'back', label: 'Back' },
+        ],
+      });
+      if (existingAction === 'choose-another') {
+        continue;
+      }
+      if (existingAction === 'back') {
+        return { status: 'back', projectDir };
+      }
+      if (existingAction !== 'use-existing') {
+        return { status: 'cancelled', projectDir };
+      }
+      confirmedCreation = true;
+    }
+
+    io.stdout.write(`KLO will create:\n  ${selectedDir}\n`);
+    if (state !== 'non-empty-directory') {
+      const createAction = await prompts.select({
+        message: `Create KLO project at ${selectedDir}?`,
+        options: [
+          { value: 'create', label: 'Create project' },
+          { value: 'choose-another', label: 'Choose another folder' },
+          { value: 'back', label: 'Back' },
+        ],
+      });
+      if (createAction === 'choose-another') {
+        continue;
+      }
+      if (createAction === 'back') {
+        return { status: 'back', projectDir };
+      }
+      if (createAction !== 'create') {
+        return { status: 'cancelled', projectDir };
+      }
+      confirmedCreation = true;
+    }
+    return { status: 'selected', projectDir: selectedDir, confirmedCreation };
+  }
+}
+
+export async function runKloSetupProjectStep(
+  args: KloSetupProjectArgs,
+  io: KloCliIo,
+  deps: KloSetupProjectDeps = {},
+): Promise<KloSetupProjectResult> {
+  const projectDir = resolve(args.projectDir);
+  const homeDir = deps.homeDir ?? homedir();
+  const exists = hasProjectConfig(projectDir);
+
+  if (args.mode === 'existing') {
+    if (!exists) {
+      io.stderr.write(`No existing KLO project found at ${projectDir}. Pass --new to create it.\n`);
+      return { status: 'missing-input', projectDir };
+    }
+    const project = await loadExistingProject(projectDir, deps);
+    printProjectSummary(io, projectDir);
+    return { status: 'ready', projectDir, project };
+  }
+
+  if (args.mode === 'new') {
+    const project = await createProject(projectDir, deps);
+    printProjectSummary(io, projectDir);
+    return { status: 'ready', projectDir, project };
+  }
+
+  if (args.mode === 'prompt-new') {
+    if (args.inputMode === 'disabled') {
+      io.stderr.write('Missing new project folder: pass --new --project-dir to create a project without prompts.\n');
+      return { status: 'missing-input', projectDir };
+    }
+    if (!io.stdout.isTTY && !deps.prompts) {
+      io.stderr.write(
+        'Missing new project folder: pass --new --project-dir to create a project outside an interactive terminal.\n',
+      );
+      return { status: 'missing-input', projectDir };
+    }
+
+    const prompts = deps.prompts ?? createClackSetupProjectPromptAdapter();
+    const selected = await promptForNewProjectDir(projectDir, homeDir, io, prompts);
+    if (selected.status === 'back') {
+      return args.allowBack ? { status: 'back', projectDir } : { status: 'cancelled', projectDir };
+    }
+    if (selected.status !== 'selected') {
+      return selected;
+    }
+
+    const project = await createProject(selected.projectDir, deps);
+    printProjectSummary(io, selected.projectDir);
+    return {
+      status: 'ready',
+      projectDir: selected.projectDir,
+      project,
+      confirmedCreation: selected.confirmedCreation,
+    };
+  }
+
+  if (exists) {
+    const project = await loadExistingProject(projectDir, deps);
+    printProjectSummary(io, projectDir);
+    return { status: 'ready', projectDir, project };
+  }
+
+  if (args.inputMode === 'disabled') {
+    if (!args.yes) {
+      io.stderr.write('Missing setup choice: pass --new or --yes to create a project in non-interactive setup.\n');
+      return { status: 'missing-input', projectDir };
+    }
+    const project = await createProject(projectDir, deps);
+    printProjectSummary(io, projectDir);
+    return { status: 'ready', projectDir, project };
+  }
+
+  if (!io.stdout.isTTY && !deps.prompts) {
+    io.stderr.write('Missing setup choice: pass --new or --yes to create a project outside an interactive terminal.\n');
+    return { status: 'missing-input', projectDir };
+  }
+
+  const prompts = deps.prompts ?? createClackSetupProjectPromptAdapter();
+  io.stdout.write(
+    'Use Up/Down to move, Enter to confirm the current selection, choose Back to return to the previous step, Ctrl+C to exit.\n',
+  );
+  while (true) {
+    const choice = await prompts.select({
+      message: 'Which KLO project should setup use?',
+      options: [
+        { value: 'current', label: 'Use current directory' },
+        { value: 'new', label: 'Create a new project folder' },
+        ...(args.allowBack ? [{ value: 'back', label: 'Back' }] : []),
+        ...(args.allowBack ? [] : [{ value: 'exit', label: 'Exit' }]),
+      ],
+    });
+
+    if (choice === 'back') {
+      return args.allowBack ? { status: 'back', projectDir } : { status: 'cancelled', projectDir };
+    }
+
+    if (choice === 'exit') {
+      prompts.cancel('Setup cancelled.');
+      return { status: 'cancelled', projectDir };
+    }
+
+    let selectedDir = projectDir;
+    let confirmedCreation = false;
+    if (choice === 'new') {
+      const selected = await promptForNewProjectDir(projectDir, homeDir, io, prompts);
+      if (selected.status === 'back') {
+        continue;
+      }
+      if (selected.status !== 'selected') {
+        return selected;
+      }
+      selectedDir = selected.projectDir;
+      confirmedCreation = selected.confirmedCreation;
+    }
+
+    if (choice !== 'current' && choice !== 'new') {
+      prompts.cancel('Setup cancelled.');
+      return { status: 'cancelled', projectDir };
+    }
+
+    const project = await createProject(selectedDir, deps);
+    printProjectSummary(io, selectedDir);
+    return { status: 'ready', projectDir: selectedDir, project, confirmedCreation };
+  }
+}

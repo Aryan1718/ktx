@@ -1,0 +1,144 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { AgentRunnerService } from '../agent/index.js';
+import { initKloProject, type KloLocalProject, loadKloProject } from '../project/index.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { FakeSourceAdapter } from './adapters/fake/fake.adapter.js';
+import { createLocalBundleIngestRuntime } from './local-bundle-runtime.js';
+
+type RuntimeWithConnectionDeps = {
+  deps: {
+    connections: {
+      listEnabledConnections(ids: string[]): Promise<Array<{ id: string; name: string; connectionType: string }>>;
+      getConnectionById(connectionId: string): Promise<{ id: string; name: string; connectionType: string } | null>;
+    };
+  };
+};
+
+describe('createLocalBundleIngestRuntime', () => {
+  let tempDir: string;
+  let project: KloLocalProject;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'klo-local-bundle-runtime-'));
+    const projectDir = join(tempDir, 'project');
+    await initKloProject({ projectDir, projectName: 'warehouse' });
+    await writeFile(
+      join(projectDir, 'klo.yaml'),
+      [
+        'project: warehouse',
+        'connections:',
+        '  warehouse:',
+        '    driver: postgres',
+        'ingest:',
+        '  adapters:',
+        '    - fake',
+        '  embeddings:',
+        '    backend: deterministic',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+    project = await loadKloProject({ projectDir });
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('requires an agent runner or configured local ingest LLM', () => {
+    expect(() =>
+      createLocalBundleIngestRuntime({
+        project,
+        adapters: [new FakeSourceAdapter()],
+      }),
+    ).toThrow('klo dev ingest run requires llm.provider.backend: anthropic, vertex, or gateway, or an injected agentRunner');
+  });
+
+  it('builds runner deps with local SQLite stores and context tools enabled', async () => {
+    const agentRunner = new AgentRunnerService({ llmProvider: { getModel: () => ({}) as never } as any });
+
+    const runtime = createLocalBundleIngestRuntime({
+      project,
+      adapters: [new FakeSourceAdapter()],
+      agentRunner,
+      jobIdFactory: () => 'job-1',
+    });
+
+    expect(runtime.nextJobId()).toBe('job-1');
+    expect(runtime.storage.resolvePullDir('job-1')).toBe(join(project.projectDir, '.klo/cache/local-ingest/job-1/pull'));
+    expect(runtime.storage.resolveUploadDir('job-1')).toBe(
+      join(project.projectDir, '.klo/cache/local-ingest/job-1/upload'),
+    );
+    expect(runtime.storage.resolveTranscriptDir('job-1')).toBe(
+      join(project.projectDir, '.klo/ingest-transcripts/job-1'),
+    );
+
+    await mkdir(runtime.storage.resolveUploadDir('job-1'), { recursive: true });
+  });
+
+  it('exposes canonical warehouse connection types to local ingest SL tools', async () => {
+    project.config.connections.warehouse = {
+      driver: 'postgres',
+      url: 'postgresql://readonly@db.example.test/analytics',
+    };
+    project.config.connections.bq = {
+      driver: 'bigquery',
+      project_id: 'acme',
+      dataset_id: 'warehouse',
+    };
+    const agentRunner = new AgentRunnerService({ llmProvider: { getModel: () => ({}) as never } as any });
+
+    const runtime = createLocalBundleIngestRuntime({
+      project,
+      adapters: [new FakeSourceAdapter()],
+      agentRunner,
+    });
+    const connections = (runtime.runner as unknown as RuntimeWithConnectionDeps).deps.connections;
+
+    await expect(connections.getConnectionById('warehouse')).resolves.toMatchObject({
+      id: 'warehouse',
+      connectionType: 'POSTGRESQL',
+    });
+    await expect(connections.listEnabledConnections(['warehouse', 'bq'])).resolves.toEqual([
+      { id: 'warehouse', name: 'warehouse', connectionType: 'POSTGRESQL' },
+      { id: 'bq', name: 'bq', connectionType: 'BIGQUERY' },
+    ]);
+  });
+
+  it('accepts a debug LLM request file when constructing the default agent runner', async () => {
+    await writeFile(
+      join(project.projectDir, 'klo.yaml'),
+      [
+        'project: warehouse',
+        'connections:',
+        '  warehouse:',
+        '    driver: postgres',
+        'llm:',
+        '  provider:',
+        '    backend: gateway',
+        '    gateway:',
+        '      base_url: https://gateway.example/v1',
+        '  models:',
+        '    default: anthropic/claude-sonnet-4-6',
+        'ingest:',
+        '  adapters:',
+        '    - fake',
+        '  embeddings:',
+        '    backend: deterministic',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+    project = await loadKloProject({ projectDir: project.projectDir });
+
+    const runtime = createLocalBundleIngestRuntime({
+      project,
+      adapters: [new FakeSourceAdapter()],
+      llmDebugRequestFile: join(project.projectDir, '.klo', 'llm-debug.jsonl'),
+    });
+
+    expect(runtime.storage.resolvePullDir('job-1')).toBe(join(project.projectDir, '.klo/cache/local-ingest/job-1/pull'));
+  });
+});

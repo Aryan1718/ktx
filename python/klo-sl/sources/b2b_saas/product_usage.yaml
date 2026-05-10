@@ -1,0 +1,20 @@
+name: product_usage
+table: product_usage
+grain:
+- usage_id
+columns:
+- name: usage_id
+  type: number
+- name: account_id
+  type: number
+- name: active_users
+  type: string
+- name: events_count
+  type: string
+- name: usage_date
+  type: time
+  role: time
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

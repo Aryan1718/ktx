@@ -1,0 +1,18 @@
+name: lead_status_history
+table: lead_status_history
+grain:
+- row_id
+columns:
+- name: changed_at
+  type: time
+  role: time
+- name: lead_id
+  type: number
+- name: row_id
+  type: number
+- name: status
+  type: string
+joins:
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one

@@ -1,0 +1,36 @@
+expectedPks:
+  - table: dim_commercial_plan
+    columns:
+      - plan_code
+  - table: dim_signup_country
+    columns:
+      - country_code
+expectedLinks:
+  - fromTable: mart_activation_cohort
+    fromColumns:
+      - first_touch_country
+    toTable: dim_signup_country
+    toColumns:
+      - country_code
+    relationship: many_to_one
+  - fromTable: mart_activation_cohort
+    fromColumns:
+      - purchased_plan
+    toTable: dim_commercial_plan
+    toColumns:
+      - plan_code
+    relationship: many_to_one
+  - fromTable: mart_revenue_daily
+    fromColumns:
+      - commercial_plan_code
+    toTable: dim_commercial_plan
+    toColumns:
+      - plan_code
+    relationship: many_to_one
+  - fromTable: mart_revenue_daily
+    fromColumns:
+      - signup_country_code
+    toTable: dim_signup_country
+    toColumns:
+      - country_code
+    relationship: many_to_one

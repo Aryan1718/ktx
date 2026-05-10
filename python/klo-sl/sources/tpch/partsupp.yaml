@@ -1,0 +1,27 @@
+name: partsupp
+table: public.partsupp
+grain: [ps_partkey, ps_suppkey]
+columns:
+  - name: ps_partkey
+    type: number
+  - name: ps_suppkey
+    type: number
+  - name: ps_availqty
+    type: number
+  - name: ps_supplycost
+    type: number
+  - name: ps_comment
+    type: string
+joins:
+  - to: part
+    "on": ps_partkey = part.p_partkey
+    relationship: many_to_one
+  - to: supplier
+    "on": ps_suppkey = supplier.s_suppkey
+    relationship: many_to_one
+measures:
+  - name: total_supply_cost
+    expr: sum(ps_supplycost * ps_availqty)
+    description: "Total value of parts in stock"
+  - name: avg_supply_cost
+    expr: avg(ps_supplycost)

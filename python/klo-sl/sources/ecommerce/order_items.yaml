@@ -1,0 +1,21 @@
+name: order_items
+table: public.order_items
+grain: [id]
+columns:
+  - name: id
+    type: number
+  - name: order_id
+    type: number
+  - name: product_id
+    type: number
+  - name: quantity
+    type: number
+  - name: price
+    type: number
+joins:
+  - to: orders
+    "on": order_id = orders.id
+    relationship: many_to_one
+  - to: products
+    "on": product_id = products.id
+    relationship: many_to_one

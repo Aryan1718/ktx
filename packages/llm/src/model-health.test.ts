@@ -1,0 +1,61 @@
+import { describe, expect, it, vi } from 'vitest';
+import { runKloLlmHealthCheck } from './model-health.js';
+
+const anthropicModel = { modelId: 'claude-sonnet-4-6' } as never;
+
+describe('KLO LLM health check', () => {
+  it('runs a minimal non-streaming model call through the configured provider', async () => {
+    const generateText = vi.fn(async () => ({ text: 'ok' }));
+    const createAnthropic = vi.fn(() => vi.fn(() => anthropicModel));
+
+    await expect(
+      runKloLlmHealthCheck(
+        {
+          backend: 'anthropic',
+          anthropic: { apiKey: 'sk-ant-test' },
+          modelSlots: { default: 'claude-sonnet-4-6' },
+        },
+        { deps: { createAnthropic, generateText } },
+      ),
+    ).resolves.toEqual({ ok: true });
+
+    expect(createAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: 'sk-ant-test',
+      }),
+    );
+    expect(generateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: anthropicModel,
+        prompt: 'Reply with exactly: ok',
+        temperature: 0,
+        maxOutputTokens: 8,
+      }),
+    );
+  });
+
+  it('returns a failed result without exposing secret values', async () => {
+    const generateText = vi.fn(async () => {
+      throw new Error('401 invalid x-api-key sk-ant-secret');
+    });
+
+    await expect(
+      runKloLlmHealthCheck(
+        {
+          backend: 'anthropic',
+          anthropic: { apiKey: 'sk-ant-secret' },
+          modelSlots: { default: 'claude-sonnet-4-6' },
+        },
+        {
+          deps: {
+            createAnthropic: vi.fn(() => vi.fn(() => anthropicModel)),
+            generateText,
+          },
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      message: '401 invalid x-api-key [redacted]',
+    });
+  });
+});

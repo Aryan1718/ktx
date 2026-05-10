@@ -1,0 +1,23 @@
+name: ga4_event_params
+table: ga4_event_params
+grain:
+- param_id
+columns:
+- name: param_id
+  type: number
+- name: ga4_event_id
+  type: number
+- name: key
+  type: string
+- name: value
+  type: string
+joins:
+- to: ga4_events
+  'on': ga4_event_id = ga4_events.ga4_event_id
+  relationship: many_to_one
+- to: email_events
+  'on': ga4_event_id = email_events.event_id
+  relationship: many_to_one
+- to: web_events
+  'on': ga4_event_id = web_events.event_id
+  relationship: many_to_one

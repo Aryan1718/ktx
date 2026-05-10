@@ -1,0 +1,113 @@
+expectedPks:
+  - table: Album
+    columns:
+      - AlbumId
+  - table: Artist
+    columns:
+      - ArtistId
+  - table: Customer
+    columns:
+      - CustomerId
+  - table: Employee
+    columns:
+      - EmployeeId
+  - table: Genre
+    columns:
+      - GenreId
+  - table: Invoice
+    columns:
+      - InvoiceId
+  - table: InvoiceLine
+    columns:
+      - InvoiceLineId
+  - table: MediaType
+    columns:
+      - MediaTypeId
+  - table: Playlist
+    columns:
+      - PlaylistId
+  - table: PlaylistTrack
+    columns:
+      - PlaylistId
+      - TrackId
+  - table: Track
+    columns:
+      - TrackId
+expectedLinks:
+  - fromTable: Album
+    fromColumns:
+      - ArtistId
+    toTable: Artist
+    toColumns:
+      - ArtistId
+    relationship: many_to_one
+  - fromTable: Customer
+    fromColumns:
+      - SupportRepId
+    toTable: Employee
+    toColumns:
+      - EmployeeId
+    relationship: many_to_one
+  - fromTable: Employee
+    fromColumns:
+      - ReportsTo
+    toTable: Employee
+    toColumns:
+      - EmployeeId
+    relationship: many_to_one
+  - fromTable: Invoice
+    fromColumns:
+      - CustomerId
+    toTable: Customer
+    toColumns:
+      - CustomerId
+    relationship: many_to_one
+  - fromTable: InvoiceLine
+    fromColumns:
+      - InvoiceId
+    toTable: Invoice
+    toColumns:
+      - InvoiceId
+    relationship: many_to_one
+  - fromTable: InvoiceLine
+    fromColumns:
+      - TrackId
+    toTable: Track
+    toColumns:
+      - TrackId
+    relationship: many_to_one
+  - fromTable: PlaylistTrack
+    fromColumns:
+      - PlaylistId
+    toTable: Playlist
+    toColumns:
+      - PlaylistId
+    relationship: many_to_one
+  - fromTable: PlaylistTrack
+    fromColumns:
+      - TrackId
+    toTable: Track
+    toColumns:
+      - TrackId
+    relationship: many_to_one
+  - fromTable: Track
+    fromColumns:
+      - AlbumId
+    toTable: Album
+    toColumns:
+      - AlbumId
+    relationship: many_to_one
+  - fromTable: Track
+    fromColumns:
+      - GenreId
+    toTable: Genre
+    toColumns:
+      - GenreId
+    relationship: many_to_one
+  - fromTable: Track
+    fromColumns:
+      - MediaTypeId
+    toTable: MediaType
+    toColumns:
+      - MediaTypeId
+    relationship: many_to_one

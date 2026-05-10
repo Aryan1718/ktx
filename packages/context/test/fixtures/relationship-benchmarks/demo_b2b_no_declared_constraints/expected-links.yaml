@@ -1,0 +1,51 @@
+expectedPks:
+  - table: accounts
+    columns: [id]
+  - table: users
+    columns: [id]
+  - table: subscriptions
+    columns: [id]
+  - table: opportunities
+    columns: [id]
+  - table: product_events
+    columns: [id]
+  - table: support_tickets
+    columns: [id]
+  - table: invoices
+    columns: [id]
+expectedLinks:
+  - fromTable: users
+    fromColumns: [account_id]
+    toTable: accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: subscriptions
+    fromColumns: [account_id]
+    toTable: accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: opportunities
+    fromColumns: [account_id]
+    toTable: accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: product_events
+    fromColumns: [account_id]
+    toTable: accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: product_events
+    fromColumns: [user_id]
+    toTable: users
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: support_tickets
+    fromColumns: [account_id]
+    toTable: accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: invoices
+    fromColumns: [account_id]
+    toTable: accounts
+    toColumns: [id]
+    relationship: many_to_one

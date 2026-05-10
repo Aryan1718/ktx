@@ -1,0 +1,22 @@
+name: card_transactions
+table: card_transactions
+grain:
+- amount
+columns:
+- name: amount
+  type: number
+- name: card_txn_id
+  type: number
+- name: department
+  type: string
+- name: employee_email
+  type: string
+- name: txn_date
+  type: time
+  role: time
+- name: vendor_id
+  type: number
+joins:
+- to: vendors
+  'on': vendor_id = vendors.vendor_id
+  relationship: many_to_one

@@ -1,0 +1,59 @@
+expectedPks:
+  - table: dim_accounts
+    columns: [id]
+  - table: dim_users
+    columns: [id]
+  - table: dim_workspaces
+    columns: [id]
+  - table: fct_product_events
+    columns: [id]
+  - table: fct_invoices
+    columns: [id]
+  - table: support_tickets
+    columns: [id]
+expectedLinks:
+  - fromTable: dim_users
+    fromColumns: [account_id]
+    toTable: dim_accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: dim_workspaces
+    fromColumns: [account_id]
+    toTable: dim_accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: dim_workspaces
+    fromColumns: [user_id]
+    toTable: dim_users
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: fct_product_events
+    fromColumns: [account_id]
+    toTable: dim_accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: fct_product_events
+    fromColumns: [user_id]
+    toTable: dim_users
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: fct_product_events
+    fromColumns: [workspace_id]
+    toTable: dim_workspaces
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: fct_invoices
+    fromColumns: [account_id]
+    toTable: dim_accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: support_tickets
+    fromColumns: [account_id]
+    toTable: dim_accounts
+    toColumns: [id]
+    relationship: many_to_one
+  - fromTable: support_tickets
+    fromColumns: [user_id]
+    toTable: dim_users
+    toColumns: [id]
+    relationship: many_to_one

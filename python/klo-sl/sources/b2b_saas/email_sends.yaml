@@ -1,0 +1,33 @@
+name: email_sends
+table: email_sends
+grain:
+- send_id
+columns:
+- name: send_id
+  type: number
+- name: campaign_id
+  type: number
+- name: email_id
+  type: number
+- name: lead_id
+  type: number
+- name: rep_id
+  type: number
+- name: sent_at
+  type: time
+  role: time
+- name: sequence_id
+  type: number
+joins:
+- to: campaigns
+  'on': campaign_id = campaigns.campaign_id
+  relationship: many_to_one
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one
+- to: sequences
+  'on': sequence_id = sequences.sequence_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one

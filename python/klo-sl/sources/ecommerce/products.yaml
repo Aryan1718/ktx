@@ -1,0 +1,12 @@
+name: products
+table: public.products
+grain: [id]
+columns:
+  - name: id
+    type: number
+  - name: name
+    type: string
+  - name: category
+    type: string
+  - name: price
+    type: number

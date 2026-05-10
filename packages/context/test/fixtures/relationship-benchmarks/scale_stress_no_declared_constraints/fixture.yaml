@@ -1,0 +1,8 @@
+id: scale_stress_no_declared_constraints
+name: Scale stress fixture with no declared constraints
+tier: row_bearing
+origin: synthetic
+thresholdEligible: false
+validationBudget: 800
+defaultModes:
+  - declared_pks_and_declared_fks_removed

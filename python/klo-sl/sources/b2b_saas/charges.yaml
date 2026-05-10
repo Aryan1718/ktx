@@ -1,0 +1,24 @@
+name: charges
+table: charges
+grain:
+- charge_id
+columns:
+- name: charge_id
+  type: number
+- name: amount
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: currency
+  type: string
+- name: payment_intent_id
+  type: number
+- name: payment_method
+  type: string
+- name: status
+  type: string
+joins:
+- to: payment_intents
+  'on': payment_intent_id = payment_intents.payment_intent_id
+  relationship: many_to_one

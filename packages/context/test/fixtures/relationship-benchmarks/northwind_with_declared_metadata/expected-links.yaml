@@ -1,0 +1,135 @@
+expectedPks:
+  - table: Categories
+    columns:
+      - CategoryID
+  - table: CustomerCustomerDemo
+    columns:
+      - CustomerID
+      - CustomerTypeID
+  - table: CustomerDemographics
+    columns:
+      - CustomerTypeID
+  - table: Customers
+    columns:
+      - CustomerID
+  - table: Employees
+    columns:
+      - EmployeeID
+  - table: EmployeeTerritories
+    columns:
+      - EmployeeID
+      - TerritoryID
+  - table: Order Details
+    columns:
+      - OrderID
+      - ProductID
+  - table: Orders
+    columns:
+      - OrderID
+  - table: Products
+    columns:
+      - ProductID
+  - table: Regions
+    columns:
+      - RegionID
+  - table: Shippers
+    columns:
+      - ShipperID
+  - table: Suppliers
+    columns:
+      - SupplierID
+  - table: Territories
+    columns:
+      - TerritoryID
+expectedLinks:
+  - fromTable: CustomerCustomerDemo
+    fromColumns:
+      - CustomerID
+    toTable: Customers
+    toColumns:
+      - CustomerID
+    relationship: many_to_one
+  - fromTable: CustomerCustomerDemo
+    fromColumns:
+      - CustomerTypeID
+    toTable: CustomerDemographics
+    toColumns:
+      - CustomerTypeID
+    relationship: many_to_one
+  - fromTable: Employees
+    fromColumns:
+      - ReportsTo
+    toTable: Employees
+    toColumns:
+      - EmployeeID
+    relationship: many_to_one
+  - fromTable: EmployeeTerritories
+    fromColumns:
+      - EmployeeID
+    toTable: Employees
+    toColumns:
+      - EmployeeID
+    relationship: many_to_one
+  - fromTable: EmployeeTerritories
+    fromColumns:
+      - TerritoryID
+    toTable: Territories
+    toColumns:
+      - TerritoryID
+    relationship: many_to_one
+  - fromTable: Order Details
+    fromColumns:
+      - OrderID
+    toTable: Orders
+    toColumns:
+      - OrderID
+    relationship: many_to_one
+  - fromTable: Order Details
+    fromColumns:
+      - ProductID
+    toTable: Products
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Orders
+    fromColumns:
+      - CustomerID
+    toTable: Customers
+    toColumns:
+      - CustomerID
+    relationship: many_to_one
+  - fromTable: Orders
+    fromColumns:
+      - EmployeeID
+    toTable: Employees
+    toColumns:
+      - EmployeeID
+    relationship: many_to_one
+  - fromTable: Orders
+    fromColumns:
+      - ShipVia
+    toTable: Shippers
+    toColumns:
+      - ShipperID
+    relationship: many_to_one
+  - fromTable: Products
+    fromColumns:
+      - CategoryID
+    toTable: Categories
+    toColumns:
+      - CategoryID
+    relationship: many_to_one
+  - fromTable: Products
+    fromColumns:
+      - SupplierID
+    toTable: Suppliers
+    toColumns:
+      - SupplierID
+    relationship: many_to_one
+  - fromTable: Territories
+    fromColumns:
+      - RegionID
+    toTable: Regions
+    toColumns:
+      - RegionID
+    relationship: many_to_one

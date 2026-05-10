@@ -1,0 +1,32 @@
+expectedPks:
+  - table: cust
+    columns:
+      - cust_id
+  - table: ord_hdr
+    columns:
+      - ord_id
+  - table: prod
+    columns:
+      - prod_cd
+expectedLinks:
+  - fromTable: ord_hdr
+    fromColumns:
+      - cust_id
+    toTable: cust
+    toColumns:
+      - cust_id
+    relationship: many_to_one
+  - fromTable: ord_ln
+    fromColumns:
+      - ord_id
+    toTable: ord_hdr
+    toColumns:
+      - ord_id
+    relationship: many_to_one
+  - fromTable: ord_ln
+    fromColumns:
+      - prod_cd
+    toTable: prod
+    toColumns:
+      - prod_cd
+    relationship: many_to_one

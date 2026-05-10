@@ -1,0 +1,28 @@
+name: ad_campaigns
+table: ad_campaigns
+grain:
+- ad_campaign_id
+columns:
+- name: ad_campaign_id
+  type: number
+- name: ad_account_id
+  type: number
+- name: campaign_name
+  type: string
+- name: channel
+  type: string
+- name: end_date
+  type: time
+  role: time
+- name: objective
+  type: string
+- name: start_date
+  type: time
+  role: time
+joins:
+- to: ad_accounts
+  'on': ad_account_id = ad_accounts.ad_account_id
+  relationship: many_to_one
+- to: accounts
+  'on': ad_account_id = accounts.account_id
+  relationship: many_to_one

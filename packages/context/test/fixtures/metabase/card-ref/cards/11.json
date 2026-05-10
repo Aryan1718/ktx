@@ -1,0 +1,15 @@
+{
+  "metabaseId": 11,
+  "name": "Revenue filtered",
+  "description": null,
+  "type": "question",
+  "databaseId": 42,
+  "collectionId": 5,
+  "archived": false,
+  "resolvedSql": "SELECT day, revenue_cents FROM ({{#10}}) WHERE revenue_cents > 0",
+  "templateTags": [{ "name": "base", "type": "card", "defaultValue": null, "cardReference": 10 }],
+  "resultMetadata": [],
+  "collectionPath": ["Orders Team"],
+  "referencedCardIds": [10],
+  "resolutionStatus": "resolved"
+}

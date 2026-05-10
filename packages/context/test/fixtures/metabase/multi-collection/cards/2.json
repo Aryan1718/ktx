@@ -1,0 +1,32 @@
+{
+  "metabaseId": 2,
+  "name": "Revenue by day",
+  "description": null,
+  "type": "model",
+  "databaseId": 42,
+  "collectionId": 5,
+  "archived": false,
+  "resolvedSql": "SELECT date_trunc('day', created_at) AS day, SUM(amount_cents) AS revenue_cents FROM public.orders GROUP BY 1",
+  "templateTags": [],
+  "resultMetadata": [
+    {
+      "name": "day",
+      "display_name": "Day",
+      "base_type": "type/DateTime",
+      "semantic_type": "type/CreationTimestamp",
+      "description": null,
+      "fk_target_field_id": null
+    },
+    {
+      "name": "revenue_cents",
+      "display_name": "Revenue (cents)",
+      "base_type": "type/Integer",
+      "semantic_type": null,
+      "description": null,
+      "fk_target_field_id": null
+    }
+  ],
+  "collectionPath": ["Orders Team"],
+  "referencedCardIds": [],
+  "resolutionStatus": "resolved"
+}

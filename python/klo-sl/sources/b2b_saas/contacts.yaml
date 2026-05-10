@@ -1,0 +1,23 @@
+name: contacts
+table: contacts
+grain:
+- contact_id
+columns:
+- name: contact_id
+  type: number
+- name: account_id
+  type: number
+- name: email
+  type: string
+- name: first_name
+  type: string
+- name: last_name
+  type: string
+- name: phone
+  type: string
+- name: title
+  type: string
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

@@ -1,0 +1,22 @@
+name: open_roles
+table: open_roles
+grain:
+- budgeted_salary
+columns:
+- name: budgeted_salary
+  type: number
+- name: dept_id
+  type: number
+- name: opened_date
+  type: time
+  role: time
+- name: req_id
+  type: number
+- name: status
+  type: string
+- name: title
+  type: string
+joins:
+- to: departments_hr
+  'on': dept_id = departments_hr.dept_id
+  relationship: many_to_one

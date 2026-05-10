@@ -1,0 +1,24 @@
+name: quote_line_items
+table: quote_line_items
+grain:
+- quote_line_item_id
+columns:
+- name: quote_line_item_id
+  type: number
+- name: discount_pct
+  type: string
+- name: product_id
+  type: number
+- name: quantity
+  type: string
+- name: quote_id
+  type: number
+- name: unit_price
+  type: number
+joins:
+- to: quotes
+  'on': quote_id = quotes.quote_id
+  relationship: many_to_one
+- to: products
+  'on': product_id = products.product_id
+  relationship: many_to_one

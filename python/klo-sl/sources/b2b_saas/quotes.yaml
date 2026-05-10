@@ -1,0 +1,28 @@
+name: quotes
+table: quotes
+grain:
+- quote_id
+columns:
+- name: quote_id
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: opportunity_id
+  type: number
+- name: pricebook_id
+  type: number
+- name: rep_id
+  type: number
+- name: status
+  type: string
+joins:
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one
+- to: pricebooks
+  'on': pricebook_id = pricebooks.pricebook_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one

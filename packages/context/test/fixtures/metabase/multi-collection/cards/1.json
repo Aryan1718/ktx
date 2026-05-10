@@ -1,0 +1,32 @@
+{
+  "metabaseId": 1,
+  "name": "Daily orders",
+  "description": "Orders rolled up by day",
+  "type": "model",
+  "databaseId": 42,
+  "collectionId": 5,
+  "archived": false,
+  "resolvedSql": "SELECT date_trunc('day', created_at) AS day, COUNT(*) AS order_count FROM public.orders GROUP BY 1",
+  "templateTags": [],
+  "resultMetadata": [
+    {
+      "name": "day",
+      "display_name": "Day",
+      "base_type": "type/DateTime",
+      "semantic_type": "type/CreationTimestamp",
+      "description": null,
+      "fk_target_field_id": null
+    },
+    {
+      "name": "order_count",
+      "display_name": "Count",
+      "base_type": "type/Integer",
+      "semantic_type": null,
+      "description": null,
+      "fk_target_field_id": null
+    }
+  ],
+  "collectionPath": ["Orders Team"],
+  "referencedCardIds": [],
+  "resolutionStatus": "resolved"
+}

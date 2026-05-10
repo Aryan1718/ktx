@@ -1,0 +1,24 @@
+name: ad_creative_stats
+table: ad_creative_stats
+grain:
+- row_id
+columns:
+- name: clicks
+  type: number
+- name: conversions
+  type: number
+- name: creative_id
+  type: number
+- name: impressions
+  type: number
+- name: row_id
+  type: number
+- name: spend
+  type: number
+- name: stat_date
+  type: time
+  role: time
+joins:
+- to: ad_creatives
+  'on': creative_id = ad_creatives.creative_id
+  relationship: many_to_one

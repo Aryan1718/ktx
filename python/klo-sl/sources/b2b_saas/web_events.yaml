@@ -1,0 +1,22 @@
+name: web_events
+table: web_events
+grain:
+- event_id
+columns:
+- name: event_id
+  type: number
+- name: event_name
+  type: string
+- name: event_time
+  type: time
+  role: time
+- name: page
+  type: string
+- name: session_id
+  type: number
+- name: value
+  type: string
+joins:
+- to: web_sessions
+  'on': session_id = web_sessions.session_id
+  relationship: many_to_one

@@ -1,0 +1,10 @@
+id: demo_b2b_no_declared_constraints
+name: Packaged B2B demo with declared PK and FK metadata masked
+tier: smoke
+origin: synthetic
+defaultModes:
+  - declared_pks_and_declared_fks_removed
+  - profiling_disabled
+  - validation_disabled
+  - llm_disabled
+  - embeddings_disabled

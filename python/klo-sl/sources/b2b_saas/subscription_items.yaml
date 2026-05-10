@@ -1,0 +1,18 @@
+name: subscription_items
+table: subscription_items
+grain:
+- product_id
+columns:
+- name: product_id
+  type: number
+- name: sub_item_id
+  type: number
+- name: subscription_id
+  type: number
+joins:
+- to: products
+  'on': product_id = products.product_id
+  relationship: many_to_one
+- to: subscriptions
+  'on': subscription_id = subscriptions.subscription_id
+  relationship: many_to_one

@@ -1,0 +1,7 @@
+semantic_models:
+  - name: campaigns
+    model: ref('campaigns')
+    entities:
+      - {name: campaign_id, type: primary}
+    measures:
+      - {name: spend, agg: sum, expr: spend_cents}

@@ -1,0 +1,22 @@
+name: meeting_bookings
+table: meeting_bookings
+grain:
+- meeting_date
+columns:
+- name: meeting_date
+  type: time
+- name: meeting_id
+  type: number
+- name: opportunity_id
+  type: number
+- name: rep_id
+  type: number
+- name: source
+  type: string
+joins:
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one

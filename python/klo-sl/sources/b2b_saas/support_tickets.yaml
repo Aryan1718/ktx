@@ -1,0 +1,31 @@
+name: support_tickets
+table: support_tickets
+grain:
+- ticket_id
+columns:
+- name: ticket_id
+  type: number
+- name: account_id
+  type: number
+- name: closed_at
+  type: time
+  role: time
+- name: created_at
+  type: time
+  role: time
+- name: first_response_at
+  type: time
+  role: time
+- name: resolved_at
+  type: time
+  role: time
+- name: severity
+  type: string
+- name: sla_breached
+  type: string
+- name: status
+  type: string
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

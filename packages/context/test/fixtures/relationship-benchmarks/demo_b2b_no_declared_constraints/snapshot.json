@@ -1,0 +1,137 @@
+{
+  "connectionId": "demo_b2b",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "accounts",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 30,
+      "columns": [
+        { "name": "id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": true, "comment": null },
+        { "name": "name", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "segment", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "region", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "lifecycle_status", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "users",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 150,
+      "columns": [
+        { "name": "id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": true, "comment": null },
+        { "name": "account_id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "email", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "role", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "active", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "boolean", "nullable": false, "primaryKey": false, "comment": null }
+      ],
+      "foreignKeys": [
+        { "fromColumn": "account_id", "toCatalog": null, "toDb": "main", "toTable": "accounts", "toColumn": "id", "constraintName": "users_account_id_fkey" }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "subscriptions",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 90,
+      "columns": [
+        { "name": "id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": true, "comment": null },
+        { "name": "account_id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "plan", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "arr", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "started_at", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "time", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "ended_at", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "time", "nullable": true, "primaryKey": false, "comment": null }
+      ],
+      "foreignKeys": [
+        { "fromColumn": "account_id", "toCatalog": null, "toDb": "main", "toTable": "accounts", "toColumn": "id", "constraintName": "subscriptions_account_id_fkey" }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "opportunities",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 180,
+      "columns": [
+        { "name": "id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": true, "comment": null },
+        { "name": "account_id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "stage", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "amount", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "close_date", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "time", "nullable": false, "primaryKey": false, "comment": null }
+      ],
+      "foreignKeys": [
+        { "fromColumn": "account_id", "toCatalog": null, "toDb": "main", "toTable": "accounts", "toColumn": "id", "constraintName": "opportunities_account_id_fkey" }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "product_events",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 1500,
+      "columns": [
+        { "name": "id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": true, "comment": null },
+        { "name": "account_id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "user_id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "event_name", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "occurred_at", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "time", "nullable": false, "primaryKey": false, "comment": null }
+      ],
+      "foreignKeys": [
+        { "fromColumn": "account_id", "toCatalog": null, "toDb": "main", "toTable": "accounts", "toColumn": "id", "constraintName": "product_events_account_id_fkey" },
+        { "fromColumn": "user_id", "toCatalog": null, "toDb": "main", "toTable": "users", "toColumn": "id", "constraintName": "product_events_user_id_fkey" }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "support_tickets",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 270,
+      "columns": [
+        { "name": "id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": true, "comment": null },
+        { "name": "account_id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "severity", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "status", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "resolution_hours", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": true, "primaryKey": false, "comment": null }
+      ],
+      "foreignKeys": [
+        { "fromColumn": "account_id", "toCatalog": null, "toDb": "main", "toTable": "accounts", "toColumn": "id", "constraintName": "support_tickets_account_id_fkey" }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "invoices",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 240,
+      "columns": [
+        { "name": "id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": true, "comment": null },
+        { "name": "account_id", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "amount", "nativeType": "INTEGER", "normalizedType": "integer", "dimensionType": "number", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "status", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "string", "nullable": false, "primaryKey": false, "comment": null },
+        { "name": "issued_at", "nativeType": "TEXT", "normalizedType": "text", "dimensionType": "time", "nullable": false, "primaryKey": false, "comment": null }
+      ],
+      "foreignKeys": [
+        { "fromColumn": "account_id", "toCatalog": null, "toDb": "main", "toTable": "accounts", "toColumn": "id", "constraintName": "invoices_account_id_fkey" }
+      ]
+    }
+  ],
+  "metadata": {
+    "fixture": "packaged-b2b-demo"
+  }
+}

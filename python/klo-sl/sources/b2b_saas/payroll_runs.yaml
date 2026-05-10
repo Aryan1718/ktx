@@ -1,0 +1,17 @@
+name: payroll_runs
+table: payroll_runs
+grain:
+- run_id
+columns:
+- name: run_id
+  type: number
+- name: benefits
+  type: number
+- name: gross_pay
+  type: string
+- name: pay_period_end
+  type: string
+- name: pay_period_start
+  type: string
+- name: taxes
+  type: string

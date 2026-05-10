@@ -1,0 +1,11 @@
+id: orbit_style_product_no_declared_constraints
+name: Orbit-style product warehouse fixture with no declared constraints
+tier: product
+origin: synthetic
+thresholdEligible: true
+defaultModes:
+  - declared_pks_and_declared_fks_removed
+  - llm_disabled
+  - profiling_disabled
+  - validation_disabled
+  - embeddings_disabled

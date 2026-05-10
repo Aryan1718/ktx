@@ -1,0 +1,13 @@
+id: demo_b2b_declared_metadata
+name: Packaged B2B demo with declared metadata
+tier: smoke
+origin: synthetic
+defaultModes:
+  - metadata_present
+  - declared_fks_removed
+  - declared_pks_removed
+  - declared_pks_and_declared_fks_removed
+  - llm_disabled
+  - profiling_disabled
+  - validation_disabled
+  - embeddings_disabled

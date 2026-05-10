@@ -1,0 +1,9 @@
+metrics:
+  - name: revenue
+    type: derived
+    description: Net revenue (gross minus refunds).
+    type_params:
+      expr: gross_amount - refund_amount
+      metrics:
+        - name: gross_amount
+        - name: refund_amount

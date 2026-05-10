@@ -1,0 +1,13 @@
+name: pricebooks
+table: pricebooks
+grain:
+- pricebook_id
+columns:
+- name: pricebook_id
+  type: number
+- name: currency
+  type: string
+- name: name
+  type: string
+- name: region
+  type: string

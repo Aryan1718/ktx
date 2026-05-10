@@ -1,0 +1,194 @@
+import * as z from 'zod';
+import type { TouchedSlSource } from '../tools/index.js';
+import { memoryFlowReplayInputSchema } from './memory-flow/schema.js';
+import type { IngestReportSnapshot } from './reports.js';
+
+const ingestDiffSummarySchema = z.object({
+  added: z.number().int(),
+  modified: z.number().int(),
+  deleted: z.number().int(),
+  unchanged: z.number().int(),
+});
+
+const ingestActionSchema = z.object({
+  target: z.enum(['wiki', 'sl']),
+  type: z.enum(['created', 'updated', 'removed']),
+  key: z.string(),
+  detail: z.string(),
+  targetConnectionId: z.string().nullable().default(null),
+});
+
+const touchedSlSourceSchema = z.object({
+  connectionId: z.string().min(1),
+  sourceName: z.string().min(1),
+});
+
+const touchedSlSourceInputSchema = z.union([z.string(), touchedSlSourceSchema]);
+
+const conflictResolvedSchema = z
+  .object({
+    unitKey: z.string().optional(),
+    kind: z.enum(['structural_duplicate', 'near_duplicate', 'definitional_contradiction', 're_ingest_change']),
+    contestedKey: z.string().optional(),
+    artifactKey: z.string(),
+    detail: z.string(),
+    flaggedForHuman: z.boolean(),
+  })
+  .passthrough();
+
+const evictionAppliedSchema = z
+  .object({
+    rawPath: z.string(),
+    artifactKind: z.enum(['sl', 'wiki']),
+    artifactKey: z.string(),
+    action: z.enum(['removed', 'retained_deprecated']),
+    reason: z.string(),
+  })
+  .passthrough();
+
+const unmappedFallbackSchema = z
+  .object({
+    rawPath: z.string(),
+    reason: z.enum([
+      'no_connection_mapping',
+      'looker_template_unresolved',
+      'derived_table_not_supported',
+      'no_physical_table',
+      'multiple_table_references',
+      'unsupported_dialect',
+      'parse_error',
+      'missing_target_table',
+    ]),
+    detail: z.string().optional(),
+    fallback: z.enum(['sql_standalone', 'wiki_only', 'flagged']),
+  })
+  .passthrough();
+
+const artifactResolutionSchema = z
+  .object({
+    rawPath: z.string(),
+    artifactKind: z.enum(['sl', 'wiki']),
+    artifactKey: z.string(),
+    actionType: z.enum(['merged', 'subsumed']),
+    reason: z.string(),
+  })
+  .passthrough();
+
+const provenanceDetailSchema = z.object({
+  rawPath: z.string(),
+  artifactKind: z.enum(['sl', 'wiki']).nullable(),
+  artifactKey: z.string().nullable(),
+  targetConnectionId: z.string().nullable().default(null),
+  actionType: z.enum([
+    'source_created',
+    'measure_added',
+    'join_added',
+    'merged',
+    'subsumed',
+    'wiki_written',
+    'skipped',
+  ]),
+});
+
+const toolTranscriptSummarySchema = z.object({
+  unitKey: z.string(),
+  path: z.string(),
+  toolCallCount: z.number().int().min(0),
+  errorCount: z.number().int().min(0),
+  toolNames: z.array(z.string()),
+});
+
+const sourceFetchIssueKindSchema = z.enum([
+  'unmapped_looker_connection',
+  'unparseable_sql_table_name',
+  'looker_template_unresolved',
+  'derived_table_not_supported',
+  'lookml_connection_mismatch',
+]);
+
+const sourceFetchIssueSchema = z.object({
+  rawPath: z.string(),
+  entityType: z.string(),
+  entityId: z.string().nullable(),
+  severity: z.enum(['warning', 'error']),
+  statusCode: z.number().int().nullable(),
+  message: z.string(),
+  retryRecommended: z.boolean(),
+  kind: sourceFetchIssueKindSchema.optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
+});
+
+const sourceFetchReportSchema = z.object({
+  status: z.enum(['success', 'partial']),
+  retryRecommended: z.boolean(),
+  skipped: z.array(sourceFetchIssueSchema).default([]),
+  warnings: z.array(sourceFetchIssueSchema).default([]),
+});
+
+export const ingestReportSnapshotSchema = z
+  .object({
+    id: z.string().min(1),
+    runId: z.string().min(1),
+    jobId: z.string().min(1),
+    connectionId: z.string().min(1),
+    sourceKey: z.string().min(1),
+    createdAt: z.string().min(1),
+    body: z
+      .object({
+        syncId: z.string().min(1),
+        diffSummary: ingestDiffSummarySchema,
+        fetch: sourceFetchReportSchema.optional(),
+        commitSha: z.string().nullable(),
+        workUnits: z.array(
+          z.object({
+            unitKey: z.string().min(1),
+            rawFiles: z.array(z.string()),
+            status: z.enum(['success', 'failed']),
+            reason: z.string().optional(),
+            actions: z.array(ingestActionSchema),
+            touchedSlSources: z.array(touchedSlSourceInputSchema),
+            slDisallowed: z.boolean().optional(),
+            slDisallowedReason: z.enum(['lookml_connection_mismatch']).optional(),
+          }),
+        ),
+        failedWorkUnits: z.array(z.string()),
+        reconciliationSkipped: z.boolean(),
+        conflictsResolved: z.array(conflictResolvedSchema).default([]),
+        evictionsApplied: z.array(evictionAppliedSchema).default([]),
+        unmappedFallbacks: z.array(unmappedFallbackSchema).default([]),
+        artifactResolutions: z.array(artifactResolutionSchema).default([]),
+        evictionInputs: z.array(z.string()),
+        unresolvedCards: z.array(z.unknown()).default([]),
+        supersededBy: z.string().nullable().default(null),
+        overrideOf: z.string().nullable().default(null),
+        provenanceRows: z.array(provenanceDetailSchema).default([]),
+        toolTranscripts: z.array(toolTranscriptSummarySchema).default([]),
+        memoryFlow: memoryFlowReplayInputSchema.optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
+function normalizeTouchedSlSources(connectionId: string, value: Array<string | TouchedSlSource>): TouchedSlSource[] {
+  return value.map((entry) =>
+    typeof entry === 'string'
+      ? { connectionId, sourceName: entry }
+      : { connectionId: entry.connectionId, sourceName: entry.sourceName },
+  );
+}
+
+export function parseIngestReportSnapshot(value: unknown): IngestReportSnapshot {
+  const result = ingestReportSnapshotSchema.safeParse(value);
+  if (!result.success) {
+    throw new Error(`Invalid ingest report snapshot: ${z.prettifyError(result.error)}`);
+  }
+  const snapshot = result.data as IngestReportSnapshot;
+  snapshot.body.workUnits = snapshot.body.workUnits.map((workUnit) => ({
+    ...workUnit,
+    touchedSlSources: normalizeTouchedSlSources(
+      snapshot.connectionId,
+      workUnit.touchedSlSources as Array<string | TouchedSlSource>,
+    ),
+  }));
+  return snapshot;
+}

@@ -1,0 +1,13 @@
+packages:
+  - "packages/*"
+
+overrides:
+  "@types/node": ^24.3.0
+
+dedupePeerDependents: false
+preferWorkspacePackages: true
+injectWorkspacePackages: true
+syncInjectedDepsAfterScripts:
+  - build
+shamefullyHoist: false
+verifyDepsBeforeRun: install

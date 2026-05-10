@@ -1,0 +1,83 @@
+import { describe, expect, it, vi } from 'vitest';
+import { buildReconcileSystemPrompt, buildReconcileToolSet } from './build-reconcile-context.js';
+
+describe('buildReconcileSystemPrompt', () => {
+  it('appends canonical pins when relevant pins are supplied', () => {
+    const prompt = buildReconcileSystemPrompt({
+      baseFraming: '<role>reconcile</role>',
+      skillsPrompt: '<skills>ingest_triage</skills>',
+      syncId: 'sync-1',
+      sourceKey: 'lookml',
+      canonicalPins: [
+        {
+          contestedKey: 'churn_risk_score',
+          canonicalArtifactKey: 'billing.churn_risk_score',
+          pinnedAt: '2026-04-27T12:00:00.000Z',
+          pinnedBy: 'user-1',
+          reason: 'billing owns the contractual definition',
+        },
+      ],
+    });
+
+    expect(prompt).toContain('<canonical_pins>');
+    expect(prompt).toContain('contestedKey: churn_risk_score');
+    expect(prompt).toContain('canonicalArtifactKey: billing.churn_risk_score');
+    expect(prompt).toContain('<context>');
+  });
+
+  it('omits canonical_pins when none are relevant', () => {
+    const prompt = buildReconcileSystemPrompt({
+      baseFraming: '<role>reconcile</role>',
+      skillsPrompt: '',
+      syncId: 'sync-1',
+      sourceKey: 'lookml',
+      canonicalPins: [],
+    });
+
+    expect(prompt).not.toContain('<canonical_pins>');
+    expect(prompt).toContain('syncId: sync-1');
+  });
+});
+
+describe('buildReconcileToolSet', () => {
+  it('includes emit_unmapped_fallback with the reconciliation tools', () => {
+    const toolSet = buildReconcileToolSet({
+      loadSkillTool: { load_skill: { description: 'load', inputSchema: {} as any, execute: vi.fn() } } as any,
+      stageListTool: { stage_list: { description: 'stage list', inputSchema: {} as any, execute: vi.fn() } } as any,
+      stageDiffTool: { stage_diff: { description: 'stage diff', inputSchema: {} as any, execute: vi.fn() } } as any,
+      evictionListTool: {
+        eviction_list: { description: 'eviction list', inputSchema: {} as any, execute: vi.fn() },
+      } as any,
+      emitConflictResolutionTool: {
+        emit_conflict_resolution: { description: 'conflict', inputSchema: {} as any, execute: vi.fn() },
+      } as any,
+      emitEvictionDecisionTool: {
+        emit_eviction_decision: { description: 'eviction', inputSchema: {} as any, execute: vi.fn() },
+      } as any,
+      emitArtifactResolutionTool: {
+        emit_artifact_resolution: { description: 'resolution', inputSchema: {} as any, execute: vi.fn() },
+      } as any,
+      emitUnmappedFallbackTool: {
+        emit_unmapped_fallback: { description: 'fallback', inputSchema: {} as any, execute: vi.fn() },
+      } as any,
+      readRawSpanTool: { read_raw_span: { description: 'raw span', inputSchema: {} as any, execute: vi.fn() } } as any,
+      toolsetTools: { sl_write_source: {} as any, wiki_write: {} as any },
+    });
+
+    expect(Object.keys(toolSet).sort()).toEqual(
+      [
+        'emit_conflict_resolution',
+        'emit_eviction_decision',
+        'emit_artifact_resolution',
+        'emit_unmapped_fallback',
+        'eviction_list',
+        'load_skill',
+        'read_raw_span',
+        'sl_write_source',
+        'stage_diff',
+        'stage_list',
+        'wiki_write',
+      ].sort(),
+    );
+  });
+});

@@ -1,0 +1,405 @@
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  contextBuildCommands,
+  readKloSetupContextState,
+  runKloSetupContextCommand,
+  runKloSetupContextStep,
+  writeKloSetupContextState,
+} from './setup-context.js';
+
+function makeIo() {
+  let stdout = '';
+  let stderr = '';
+  return {
+    io: {
+      stdout: {
+        write: (chunk: string) => {
+          stdout += chunk;
+        },
+      },
+      stderr: {
+        write: (chunk: string) => {
+          stderr += chunk;
+        },
+      },
+    },
+    stdout: () => stdout,
+    stderr: () => stderr,
+  };
+}
+
+async function writeReadyProject(projectDir: string) {
+  await writeFile(
+    join(projectDir, 'klo.yaml'),
+    [
+      'project: revenue',
+      'setup:',
+      '  database_connection_ids:',
+      '    - warehouse',
+      '  completed_steps:',
+      '    - project',
+      '    - llm',
+      '    - embeddings',
+      '    - databases',
+      '    - sources',
+      'connections:',
+      '  warehouse:',
+      '    driver: postgres',
+      '    url: env:DATABASE_URL',
+      '  docs:',
+      '    driver: notion',
+      '    auth_token_ref: env:NOTION_TOKEN',
+      '    crawl_mode: all_accessible',
+      'llm:',
+      '  provider:',
+      '    backend: anthropic',
+      '  models:',
+      '    default: claude-sonnet-4-6',
+      'ingest:',
+      '  embeddings:',
+      '    backend: openai',
+      '    model: text-embedding-3-small',
+      '    dimensions: 1536',
+      'scan:',
+      '  enrichment:',
+      '    mode: llm',
+      '',
+    ].join('\n'),
+    'utf-8',
+  );
+}
+
+async function writeScanReport(
+  projectDir: string,
+  syncId: string,
+  report: { mode: string; tableDescriptions: string; columnDescriptions: string; embeddings: string },
+) {
+  const reportDir = join(projectDir, 'raw-sources', 'warehouse', 'live-database', syncId);
+  await mkdir(reportDir, { recursive: true });
+  await writeFile(
+    join(reportDir, 'scan-report.json'),
+    `${JSON.stringify(
+      {
+        connectionId: 'warehouse',
+        mode: report.mode,
+        dryRun: false,
+        artifactPaths: {
+          manifestShards: ['semantic-layer/warehouse/_schema/public.yaml'],
+          enrichmentArtifacts:
+            report.mode === 'enriched'
+              ? [`raw-sources/warehouse/live-database/${syncId}/enrichment/descriptions.json`]
+              : [],
+        },
+        enrichment: {
+          tableDescriptions: report.tableDescriptions,
+          columnDescriptions: report.columnDescriptions,
+          embeddings: report.embeddings,
+        },
+        enrichmentState: {
+          completedStages: report.tableDescriptions === 'completed' ? ['descriptions', 'embeddings'] : [],
+          failedStages: report.tableDescriptions === 'failed' ? ['descriptions'] : [],
+        },
+        createdAt: syncId,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
+async function writeReadyEnrichedScanReport(projectDir: string, syncId = '2026-05-09T10:00:00.000Z') {
+  await writeScanReport(projectDir, syncId, {
+    mode: 'enriched',
+    tableDescriptions: 'completed',
+    columnDescriptions: 'completed',
+    embeddings: 'completed',
+  });
+}
+
+describe('setup context build state', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'klo-setup-context-'));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('reads missing state as not started and writes durable command metadata without secrets', async () => {
+    await expect(readKloSetupContextState(tempDir)).resolves.toMatchObject({ status: 'not_started' });
+
+    await writeKloSetupContextState(tempDir, {
+      runId: 'setup-context-local-abc123',
+      status: 'running',
+      startedAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+      primarySourceConnectionIds: ['warehouse'],
+      contextSourceConnectionIds: ['docs'],
+      reportIds: [],
+      artifactPaths: [],
+      retryableFailedTargets: [],
+      commands: contextBuildCommands(tempDir, 'setup-context-local-abc123'),
+    });
+
+    const state = await readKloSetupContextState(tempDir);
+    expect(state).toMatchObject({
+      runId: 'setup-context-local-abc123',
+      status: 'running',
+      primarySourceConnectionIds: ['warehouse'],
+      contextSourceConnectionIds: ['docs'],
+      commands: {
+        watch: `klo setup context watch setup-context-local-abc123 --project-dir ${tempDir}`,
+        status: `klo setup context status setup-context-local-abc123 --project-dir ${tempDir}`,
+        resume: `klo setup --project-dir ${tempDir}`,
+      },
+    });
+    expect(JSON.stringify(state)).not.toContain('DATABASE_URL');
+    expect(JSON.stringify(state)).not.toContain('NOTION_TOKEN');
+  });
+
+  it('runs setup context build, verifies readiness, and marks context complete', async () => {
+    await writeReadyProject(tempDir);
+    const io = makeIo();
+    const runContextBuildMock = vi.fn(async () => ({ exitCode: 0, detached: false }));
+    const verifyContextReady = vi.fn(async () => ({
+      ready: true,
+      agentContextReady: true,
+      semanticSearchReady: true,
+      details: ['warehouse: enriched scan complete', 'docs: memory update complete'],
+    }));
+
+    await expect(
+      runKloSetupContextStep(
+        { projectDir: tempDir, inputMode: 'disabled' },
+        io.io,
+        {
+          runIdFactory: () => 'setup-context-local-abc123',
+          now: () => new Date('2026-05-09T10:00:00.000Z'),
+          runContextBuild: runContextBuildMock,
+          verifyContextReady,
+        },
+      ),
+    ).resolves.toEqual({ status: 'ready', projectDir: tempDir, runId: 'setup-context-local-abc123' });
+
+    expect(runContextBuildMock).toHaveBeenCalledWith(
+      expect.objectContaining({ projectDir: tempDir }),
+      expect.objectContaining({
+        projectDir: tempDir,
+        inputMode: 'disabled',
+        scanMode: 'enriched',
+        detectRelationships: true,
+      }),
+      io.io,
+      expect.objectContaining({ onDetach: expect.any(Function) }),
+    );
+    expect(verifyContextReady).toHaveBeenCalledWith(tempDir);
+    expect(await readFile(join(tempDir, 'klo.yaml'), 'utf-8')).toContain('    - context');
+    await expect(readKloSetupContextState(tempDir)).resolves.toMatchObject({
+      runId: 'setup-context-local-abc123',
+      status: 'completed',
+      completedAt: '2026-05-09T10:00:00.000Z',
+    });
+    expect(io.stdout()).toContain('KLO context is ready for agents.');
+  });
+
+  it('marks context complete without prompting when initial source ingest already made agent context', async () => {
+    await writeReadyProject(tempDir);
+    await mkdir(join(tempDir, 'semantic-layer', 'dbt-main'), { recursive: true });
+    await mkdir(join(tempDir, 'knowledge', 'global'), { recursive: true });
+    await writeFile(join(tempDir, 'semantic-layer', 'dbt-main', 'mart_revenue_daily.yaml'), 'name: mart_revenue_daily\n');
+    await writeFile(join(tempDir, 'knowledge', 'global', 'metrics.md'), '# Metrics\n');
+    await writeReadyEnrichedScanReport(tempDir);
+    const io = makeIo();
+    const runContextBuildMock = vi.fn(async () => ({ exitCode: 0, detached: false }));
+
+    await expect(
+      runKloSetupContextStep(
+        { projectDir: tempDir, inputMode: 'auto' },
+        io.io,
+        {
+          prompts: {
+            select: vi.fn(async () => {
+              throw new Error('setup should not prompt when context is already ready');
+            }),
+            cancel: vi.fn(),
+          },
+          runIdFactory: () => 'setup-context-local-existing',
+          now: () => new Date('2026-05-09T10:00:00.000Z'),
+          runContextBuild: runContextBuildMock,
+        },
+      ),
+    ).resolves.toEqual({ status: 'ready', projectDir: tempDir, runId: 'setup-context-local-existing' });
+
+    expect(runContextBuildMock).not.toHaveBeenCalled();
+    expect(await readFile(join(tempDir, 'klo.yaml'), 'utf-8')).toContain('    - context');
+    await expect(readKloSetupContextState(tempDir)).resolves.toMatchObject({
+      runId: 'setup-context-local-existing',
+      status: 'completed',
+      completedAt: '2026-05-09T10:00:00.000Z',
+      contextSourceConnectionIds: ['docs'],
+    });
+    expect(io.stdout()).toContain('KLO context is ready for agents.');
+  });
+
+  it('does not mark context ready until primary scans have completed description enrichment', async () => {
+    await writeReadyProject(tempDir);
+    await mkdir(join(tempDir, 'semantic-layer', 'dbt-main'), { recursive: true });
+    await writeFile(join(tempDir, 'semantic-layer', 'dbt-main', 'mart_revenue_daily.yaml'), 'name: mart_revenue_daily\n');
+    await writeScanReport(tempDir, '2026-05-09T09:59:00.000Z', {
+      mode: 'structural',
+      tableDescriptions: 'skipped',
+      columnDescriptions: 'skipped',
+      embeddings: 'skipped',
+    });
+    const io = makeIo();
+    const runContextBuildMock = vi.fn(async () => {
+      await writeReadyEnrichedScanReport(tempDir, '2026-05-09T10:00:00.000Z');
+      return { exitCode: 0, detached: false };
+    });
+
+    await expect(
+      runKloSetupContextStep(
+        { projectDir: tempDir, inputMode: 'disabled' },
+        io.io,
+        {
+          runIdFactory: () => 'setup-context-local-enriched-scan',
+          now: () => new Date('2026-05-09T10:00:00.000Z'),
+          runContextBuild: runContextBuildMock,
+        },
+      ),
+    ).resolves.toEqual({ status: 'ready', projectDir: tempDir, runId: 'setup-context-local-enriched-scan' });
+
+    expect(runContextBuildMock).toHaveBeenCalledOnce();
+    expect(io.stdout()).not.toContain('Existing context artifacts were found from setup ingest.');
+  });
+
+  it('does not treat schema-only scan shards as completed setup context', async () => {
+    await writeReadyProject(tempDir);
+    await mkdir(join(tempDir, 'semantic-layer', 'warehouse', '_schema'), { recursive: true });
+    await writeFile(join(tempDir, 'semantic-layer', 'warehouse', '_schema', 'public.yaml'), 'tables: {}\n');
+    const io = makeIo();
+    const runContextBuildMock = vi.fn(async () => {
+      await mkdir(join(tempDir, 'knowledge', 'global'), { recursive: true });
+      await writeFile(join(tempDir, 'knowledge', 'global', 'metrics.md'), '# Metrics\n');
+      await writeReadyEnrichedScanReport(tempDir);
+      return { exitCode: 0, detached: false };
+    });
+
+    await expect(
+      runKloSetupContextStep(
+        { projectDir: tempDir, inputMode: 'disabled' },
+        io.io,
+        {
+          runIdFactory: () => 'setup-context-local-schema-only',
+          now: () => new Date('2026-05-09T10:00:00.000Z'),
+          runContextBuild: runContextBuildMock,
+        },
+      ),
+    ).resolves.toEqual({ status: 'ready', projectDir: tempDir, runId: 'setup-context-local-schema-only' });
+
+    expect(runContextBuildMock).toHaveBeenCalledOnce();
+    expect(io.stdout()).not.toContain('Existing context artifacts were found from setup ingest.');
+  });
+
+  it('refuses empty setup context builds', async () => {
+    await writeFile(
+      join(tempDir, 'klo.yaml'),
+      [
+        'project: revenue',
+        'connections: {}',
+        'llm:',
+        '  provider:',
+        '    backend: anthropic',
+        '  models:',
+        '    default: claude-sonnet-4-6',
+        'ingest:',
+        '  embeddings:',
+        '    backend: openai',
+        '    model: text-embedding-3-small',
+        '    dimensions: 1536',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+    const io = makeIo();
+
+    await expect(
+      runKloSetupContextStep(
+        { projectDir: tempDir, inputMode: 'disabled' },
+        io.io,
+        { runIdFactory: () => 'setup-context-local-empty' },
+      ),
+    ).resolves.toEqual({ status: 'failed', projectDir: tempDir });
+
+    expect(io.stderr()).toContain('No primary or context sources are configured for a KLO context build.');
+  });
+
+  it('prints JSON setup context command status with watch and resume commands', async () => {
+    await mkdir(join(tempDir, '.klo', 'setup'), { recursive: true });
+    await writeKloSetupContextState(tempDir, {
+      runId: 'setup-context-local-abc123',
+      status: 'detached',
+      startedAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:01:00.000Z',
+      primarySourceConnectionIds: ['warehouse'],
+      contextSourceConnectionIds: ['docs'],
+      reportIds: [],
+      artifactPaths: [],
+      retryableFailedTargets: [],
+      commands: contextBuildCommands(tempDir, 'setup-context-local-abc123'),
+    });
+    const io = makeIo();
+
+    await expect(
+      runKloSetupContextCommand(
+        { command: 'status', projectDir: tempDir, runId: 'setup-context-local-abc123', json: true },
+        io.io,
+      ),
+    ).resolves.toBe(0);
+
+    expect(JSON.parse(io.stdout())).toMatchObject({
+      ready: false,
+      status: 'detached',
+      runId: 'setup-context-local-abc123',
+      watchCommand: `klo setup context watch setup-context-local-abc123 --project-dir ${tempDir}`,
+      statusCommand: `klo setup context status setup-context-local-abc123 --project-dir ${tempDir}`,
+    });
+  });
+
+  it('runs direct build commands without asking for setup confirmation first', async () => {
+    await writeReadyProject(tempDir);
+    const io = makeIo();
+    const runContextBuildMock = vi.fn(async () => ({ exitCode: 0, detached: false }));
+
+    await expect(
+      runKloSetupContextCommand(
+        { command: 'build', projectDir: tempDir, inputMode: 'auto' },
+        io.io,
+        {
+          prompts: {
+            select: vi.fn(async () => {
+              throw new Error('direct build should not prompt');
+            }),
+            cancel: vi.fn(),
+          },
+          runIdFactory: () => 'setup-context-local-direct',
+          runContextBuild: runContextBuildMock,
+          verifyContextReady: vi.fn(async () => ({
+            ready: true,
+            agentContextReady: true,
+            semanticSearchReady: true,
+            details: [],
+          })),
+        },
+      ),
+    ).resolves.toBe(0);
+
+    expect(runContextBuildMock).toHaveBeenCalled();
+  });
+});

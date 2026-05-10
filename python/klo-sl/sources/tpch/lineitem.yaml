@@ -1,0 +1,69 @@
+name: lineitem
+table: public.lineitem
+grain: [l_orderkey, l_linenumber]
+columns:
+  - name: l_orderkey
+    type: number
+  - name: l_partkey
+    type: number
+  - name: l_suppkey
+    type: number
+  - name: l_linenumber
+    type: number
+  - name: l_quantity
+    type: number
+  - name: l_extendedprice
+    type: number
+  - name: l_discount
+    type: number
+  - name: l_tax
+    type: number
+  - name: l_returnflag
+    type: string
+  - name: l_linestatus
+    type: string
+  - name: l_shipdate
+    type: time
+    role: time
+  - name: l_commitdate
+    type: time
+  - name: l_receiptdate
+    type: time
+  - name: l_shipinstruct
+    type: string
+  - name: l_shipmode
+    type: string
+  - name: l_comment
+    type: string
+joins:
+  - to: orders
+    "on": l_orderkey = orders.o_orderkey
+    relationship: many_to_one
+  - to: part
+    "on": l_partkey = part.p_partkey
+    relationship: many_to_one
+  - to: supplier
+    "on": l_suppkey = supplier.s_suppkey
+    relationship: many_to_one
+measures:
+  - name: revenue
+    expr: sum(l_extendedprice * (1 - l_discount))
+    description: "Net revenue (TPC-H Q1 pricing)"
+  - name: charge
+    expr: sum(l_extendedprice * (1 - l_discount) * (1 + l_tax))
+    description: "Charge including tax"
+  - name: total_quantity
+    expr: sum(l_quantity)
+  - name: avg_quantity
+    expr: avg(l_quantity)
+  - name: avg_price
+    expr: avg(l_extendedprice)
+  - name: avg_discount
+    expr: avg(l_discount)
+  - name: line_count
+    expr: count(l_orderkey)
+    description: "Count of line items"
+  - name: returned_revenue
+    expr: sum(l_extendedprice * (1 - l_discount))
+    filter: "l_returnflag = 'R'"
+    description: "Revenue from returned items"

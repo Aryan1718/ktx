@@ -1,0 +1,8 @@
+name: regions
+table: public.regions
+grain: [id]
+columns:
+  - name: id
+    type: number
+  - name: name
+    type: string

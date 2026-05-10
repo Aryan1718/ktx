@@ -1,0 +1,290 @@
+name: churn_risk
+description: |
+  Per-account churn risk scoring for B2B SaaS customers. Combines signals from
+  subscriptions (cancellation history), support tickets (severity, SLA breaches),
+  product usage (adoption decline), contracts (renewal proximity), CSM activities
+  (engagement recency), and invoices (payment issues) into a weighted composite
+  risk_score (0-1) and risk_tier (High/Medium/Low). One row per customer account.
+sql: |
+  WITH sub_signals AS (
+    SELECT
+      account_id,
+      MAX(CASE WHEN canceled_at IS NOT NULL THEN 1 ELSE 0 END) AS has_canceled,
+      COUNT(CASE WHEN canceled_at IS NOT NULL THEN 1 END) AS canceled_count,
+      STRING_AGG(DISTINCT churn_reason, ', ') AS churn_reasons
+    FROM subscriptions
+    GROUP BY account_id
+  ),
+  ticket_signals AS (
+    SELECT
+      account_id,
+      COUNT(*) AS total_tickets,
+      COUNT(CASE WHEN status = 'Open' THEN 1 END) AS open_tickets,
+      COUNT(CASE WHEN severity = 'High' THEN 1 END) AS high_severity_tickets,
+      COUNT(CASE WHEN sla_breached = '1' OR sla_breached = 'true' THEN 1 END) AS sla_breaches
+    FROM support_tickets
+    GROUP BY account_id
+  ),
+  usage_signals AS (
+    SELECT
+      account_id,
+      AVG(CASE WHEN CURRENT_DATE - usage_date <= 90
+           THEN CAST(active_users AS NUMERIC) END) AS recent_active_users,
+      AVG(CASE WHEN CURRENT_DATE - usage_date > 90
+                AND CURRENT_DATE - usage_date <= 180
+           THEN CAST(active_users AS NUMERIC) END) AS prior_active_users,
+      AVG(CASE WHEN CURRENT_DATE - usage_date <= 90
+           THEN CAST(events_count AS NUMERIC) END) AS recent_events,
+      AVG(CASE WHEN CURRENT_DATE - usage_date > 90
+                AND CURRENT_DATE - usage_date <= 180
+           THEN CAST(events_count AS NUMERIC) END) AS prior_events
+    FROM product_usage
+    GROUP BY account_id
+  ),
+  contract_signals AS (
+    SELECT
+      account_id,
+      MAX(arr) AS current_arr,
+      MIN(CASE WHEN status = 'Active'
+           THEN end_date - CURRENT_DATE END) AS days_to_renewal,
+      COUNT(CASE WHEN status = 'Active' THEN 1 END) AS active_contracts
+    FROM contracts
+    GROUP BY account_id
+  ),
+  activity_signals AS (
+    SELECT
+      account_id,
+      COUNT(CASE WHEN CURRENT_DATE - activity_date::date <= 90
+            THEN 1 END) AS recent_activities,
+      MIN(CURRENT_DATE - activity_date::date) AS days_since_last_activity
+    FROM activities
+    GROUP BY account_id
+  ),
+  invoice_signals AS (
+    SELECT
+      account_id,
+      COUNT(CASE WHEN status = 'Partial' THEN 1 END) AS partial_invoices,
+      COUNT(CASE WHEN CURRENT_DATE > due_date
+                 AND status != 'Paid' THEN 1 END) AS overdue_invoices
+    FROM invoices
+    GROUP BY account_id
+  ),
+  scored AS (
+    SELECT
+      a.account_id,
+      COALESCE(s.has_canceled, 0) AS has_canceled,
+      COALESCE(s.canceled_count, 0) AS canceled_count,
+      s.churn_reasons,
+      COALESCE(t.open_tickets, 0) AS open_tickets,
+      COALESCE(t.high_severity_tickets, 0) AS high_severity_tickets,
+      COALESCE(t.sla_breaches, 0) AS sla_breaches,
+      COALESCE(u.recent_active_users, 0) AS recent_active_users,
+      COALESCE(u.prior_active_users, 0) AS prior_active_users,
+      COALESCE(u.recent_events, 0) AS recent_events,
+      COALESCE(c.current_arr, 0) AS current_arr,
+      COALESCE(c.days_to_renewal, 999) AS days_to_renewal,
+      COALESCE(c.active_contracts, 0) AS active_contracts,
+      COALESCE(act.recent_activities, 0) AS recent_activities,
+      COALESCE(act.days_since_last_activity, 999) AS days_since_last_activity,
+      COALESCE(inv.partial_invoices, 0) AS partial_invoices,
+      COALESCE(inv.overdue_invoices, 0) AS overdue_invoices,
+      CASE WHEN COALESCE(s.has_canceled, 0) = 1 THEN 1.0
+           WHEN COALESCE(s.canceled_count, 0) > 0 THEN 0.7
+           ELSE 0.1 END AS subscription_risk,
+      CASE WHEN COALESCE(t.high_severity_tickets, 0) >= 3 THEN 0.9
+           WHEN COALESCE(t.sla_breaches, 0) >= 2 THEN 0.8
+           WHEN COALESCE(t.open_tickets, 0) >= 3 THEN 0.7
+           WHEN COALESCE(t.open_tickets, 0) >= 1 THEN 0.4
+           ELSE 0.1 END AS support_risk,
+      CASE WHEN COALESCE(u.recent_active_users, 0) = 0 THEN 0.9
+           WHEN COALESCE(u.prior_active_users, 0) > 0
+                AND COALESCE(u.recent_active_users, 0) < COALESCE(u.prior_active_users, 0) * 0.5
+                THEN 0.8
+           WHEN COALESCE(u.prior_active_users, 0) > 0
+                AND COALESCE(u.recent_active_users, 0) < COALESCE(u.prior_active_users, 0) * 0.8
+                THEN 0.5
+           ELSE 0.1 END AS usage_risk,
+      CASE WHEN COALESCE(c.days_to_renewal, 999) <= 30 THEN 0.9
+           WHEN COALESCE(c.days_to_renewal, 999) <= 60 THEN 0.7
+           WHEN COALESCE(c.days_to_renewal, 999) <= 90 THEN 0.5
+           WHEN COALESCE(c.active_contracts, 0) = 0 THEN 0.8
+           ELSE 0.1 END AS contract_risk,
+      CASE WHEN COALESCE(act.days_since_last_activity, 999) > 90 THEN 0.9
+           WHEN COALESCE(act.days_since_last_activity, 999) > 60 THEN 0.7
+           WHEN COALESCE(act.recent_activities, 0) <= 2 THEN 0.6
+           WHEN COALESCE(act.days_since_last_activity, 999) > 30 THEN 0.4
+           ELSE 0.1 END AS engagement_risk,
+      CASE WHEN COALESCE(inv.overdue_invoices, 0) >= 2 THEN 0.9
+           WHEN COALESCE(inv.overdue_invoices, 0) >= 1 THEN 0.7
+           WHEN COALESCE(inv.partial_invoices, 0) >= 2 THEN 0.6
+           WHEN COALESCE(inv.partial_invoices, 0) >= 1 THEN 0.3
+           ELSE 0.1 END AS payment_risk
+    FROM accounts a
+    LEFT JOIN sub_signals s ON a.account_id = s.account_id
+    LEFT JOIN ticket_signals t ON a.account_id = t.account_id
+    LEFT JOIN usage_signals u ON a.account_id = u.account_id
+    LEFT JOIN contract_signals c ON a.account_id = c.account_id
+    LEFT JOIN activity_signals act ON a.account_id = act.account_id
+    LEFT JOIN invoice_signals inv ON a.account_id = inv.account_id
+    WHERE a.is_customer = '1'
+  )
+  SELECT
+    account_id,
+    has_canceled,
+    canceled_count,
+    churn_reasons,
+    open_tickets,
+    high_severity_tickets,
+    sla_breaches,
+    recent_active_users,
+    prior_active_users,
+    recent_events,
+    current_arr,
+    days_to_renewal,
+    active_contracts,
+    recent_activities,
+    days_since_last_activity,
+    partial_invoices,
+    overdue_invoices,
+    subscription_risk,
+    support_risk,
+    usage_risk,
+    contract_risk,
+    engagement_risk,
+    payment_risk,
+    ROUND(
+      subscription_risk * 0.20
+      + support_risk * 0.20
+      + usage_risk * 0.20
+      + contract_risk * 0.15
+      + engagement_risk * 0.15
+      + payment_risk * 0.10,
+      3
+    ) AS risk_score,
+    CASE
+      WHEN (subscription_risk * 0.20
+            + support_risk * 0.20
+            + usage_risk * 0.20
+            + contract_risk * 0.15
+            + engagement_risk * 0.15
+            + payment_risk * 0.10) >= 0.7 THEN 'High'
+      WHEN (subscription_risk * 0.20
+            + support_risk * 0.20
+            + usage_risk * 0.20
+            + contract_risk * 0.15
+            + engagement_risk * 0.15
+            + payment_risk * 0.10) >= 0.4 THEN 'Medium'
+      ELSE 'Low'
+    END AS risk_tier
+  FROM scored
+grain:
+  - account_id
+columns:
+  - name: account_id
+    type: number
+  - name: has_canceled
+    type: number
+    description: "1 if the account has any canceled subscription"
+  - name: canceled_count
+    type: number
+    description: "Number of canceled subscriptions"
+  - name: churn_reasons
+    type: string
+    description: "Comma-separated distinct churn reasons from subscriptions"
+  - name: open_tickets
+    type: number
+    description: "Count of currently open support tickets"
+  - name: high_severity_tickets
+    type: number
+    description: "Count of high-severity support tickets"
+  - name: sla_breaches
+    type: number
+    description: "Count of support tickets with SLA breaches"
+  - name: recent_active_users
+    type: number
+    description: "Average active users in the last 90 days"
+  - name: prior_active_users
+    type: number
+    description: "Average active users 90-180 days ago (for trend comparison)"
+  - name: recent_events
+    type: number
+    description: "Average event count in the last 90 days"
+  - name: current_arr
+    type: number
+    description: "Highest ARR from active contracts"
+  - name: days_to_renewal
+    type: number
+    description: "Days until the nearest active contract expires"
+  - name: active_contracts
+    type: number
+    description: "Count of active contracts"
+  - name: recent_activities
+    type: number
+    description: "CSM activities (calls, meetings, emails, tasks) in the last 90 days"
+  - name: days_since_last_activity
+    type: number
+    description: "Days since the most recent CSM activity"
+  - name: partial_invoices
+    type: number
+    description: "Count of invoices with Partial payment status"
+  - name: overdue_invoices
+    type: number
+    description: "Count of overdue unpaid invoices"
+  - name: subscription_risk
+    type: number
+    description: "Subscription cancellation risk sub-score (0.0-1.0)"
+  - name: support_risk
+    type: number
+    description: "Support burden risk sub-score (0.0-1.0)"
+  - name: usage_risk
+    type: number
+    description: "Product usage decline risk sub-score (0.0-1.0)"
+  - name: contract_risk
+    type: number
+    description: "Contract renewal proximity risk sub-score (0.0-1.0)"
+  - name: engagement_risk
+    type: number
+    description: "CSM engagement gap risk sub-score (0.0-1.0)"
+  - name: payment_risk
+    type: number
+    description: "Payment issues risk sub-score (0.0-1.0)"
+  - name: risk_score
+    type: number
+    description: "Weighted composite churn risk score (0.0-1.0); higher = riskier"
+  - name: risk_tier
+    type: string
+    description: "Churn risk tier: High (>=0.7), Medium (>=0.4), Low (<0.4)"
+joins:
+  - to: accounts
+    "on": account_id = accounts.account_id
+    relationship: one_to_one
+measures:
+  - name: avg_risk_score
+    expr: avg(risk_score)
+    description: "Average churn risk score across accounts"
+  - name: high_risk_accounts
+    expr: count(account_id)
+    filter: "risk_tier = 'High'"
+    description: "Number of accounts in the High risk tier"
+  - name: medium_risk_accounts
+    expr: count(account_id)
+    filter: "risk_tier = 'Medium'"
+    description: "Number of accounts in the Medium risk tier"
+  - name: low_risk_accounts
+    expr: count(account_id)
+    filter: "risk_tier = 'Low'"
+    description: "Number of accounts in the Low risk tier"
+  - name: total_arr_at_risk
+    expr: sum(current_arr)
+    filter: "risk_tier = 'High'"
+    description: "Total ARR from accounts in the High risk tier"
+  - name: avg_support_risk
+    expr: avg(support_risk)
+    description: "Average support burden risk sub-score"
+  - name: avg_usage_risk
+    expr: avg(usage_risk)
+    description: "Average usage decline risk sub-score"
+  - name: accounts_expiring_90d
+    expr: count(account_id)
+    filter: "days_to_renewal <= 90"
+    description: "Accounts with contracts expiring within 90 days"

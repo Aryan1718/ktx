@@ -1,0 +1,20 @@
+name: pricebook_entries
+table: pricebook_entries
+grain:
+- pricebook_entry_id
+columns:
+- name: pricebook_entry_id
+  type: number
+- name: list_price
+  type: number
+- name: pricebook_id
+  type: number
+- name: product_id
+  type: number
+joins:
+- to: products
+  'on': product_id = products.product_id
+  relationship: many_to_one
+- to: pricebooks
+  'on': pricebook_id = pricebooks.pricebook_id
+  relationship: many_to_one

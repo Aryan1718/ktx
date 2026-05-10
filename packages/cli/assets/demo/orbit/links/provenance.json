@@ -1,0 +1,209 @@
+[
+  {
+    "id": "link-001",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/arr-contract-first.md",
+    "sourceKind": "warehouse",
+    "sourcePath": "contracts",
+    "relationship": "describes",
+    "confidence": 1
+  },
+  {
+    "id": "link-002",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/arr-contract-first.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/arr-and-contract-reporting-notes.md",
+    "relationship": "derived_from",
+    "confidence": 0.95
+  },
+  {
+    "id": "link-003",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/revenue-gross-to-net.md",
+    "sourceKind": "warehouse",
+    "sourcePath": "invoices",
+    "relationship": "describes",
+    "confidence": 1
+  },
+  {
+    "id": "link-004",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/revenue-gross-to-net.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/revenue-reporting-policy.md",
+    "relationship": "derived_from",
+    "confidence": 0.95
+  },
+  {
+    "id": "link-005",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/discount-expiration.md",
+    "sourceKind": "warehouse",
+    "sourcePath": "arr_movements",
+    "relationship": "describes",
+    "confidence": 1
+  },
+  {
+    "id": "link-006",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/nrr-retention.md",
+    "sourceKind": "warehouse",
+    "sourcePath": "arr_movements",
+    "relationship": "describes",
+    "confidence": 1
+  },
+  {
+    "id": "link-007",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/nrr-retention.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/retention-and-nrr-definition-notes.md",
+    "relationship": "derived_from",
+    "confidence": 0.95
+  },
+  {
+    "id": "link-008",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/nrr-retention.md",
+    "sourceKind": "bi",
+    "sourcePath": "raw-sources/bi/account_retention.view.lkml",
+    "relationship": "derived_from",
+    "confidence": 0.85
+  },
+  {
+    "id": "link-009",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/segment-classification.md",
+    "sourceKind": "warehouse",
+    "sourcePath": "plans",
+    "relationship": "describes",
+    "confidence": 1
+  },
+  {
+    "id": "link-010",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/segment-classification.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/sales-ops-segmentation-guide.md",
+    "relationship": "derived_from",
+    "confidence": 0.9
+  },
+  {
+    "id": "link-011",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/activation-policy.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/activation-policy-decision-record.md",
+    "relationship": "derived_from",
+    "confidence": 0.95
+  },
+  {
+    "id": "link-012",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/procurement-workflows.md",
+    "sourceKind": "warehouse",
+    "sourcePath": "purchase_requests",
+    "relationship": "describes",
+    "confidence": 1
+  },
+  {
+    "id": "link-013",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/customer-health-scoring.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/customer-health-playbook.md",
+    "relationship": "derived_from",
+    "confidence": 0.9
+  },
+  {
+    "id": "link-014",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/customer-health-scoring.md",
+    "sourceKind": "warehouse",
+    "sourcePath": "support_tickets",
+    "relationship": "describes",
+    "confidence": 1
+  },
+  {
+    "id": "link-015",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/support-escalation.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/support-escalation-runbook.md",
+    "relationship": "derived_from",
+    "confidence": 0.9
+  },
+  {
+    "id": "link-016",
+    "artifactKind": "wiki",
+    "artifactKey": "knowledge/global/internal-test-exclusion.md",
+    "sourceKind": "notion",
+    "sourcePath": "raw-sources/notion/analyst-onboarding.md",
+    "relationship": "derived_from",
+    "confidence": 0.9
+  },
+  {
+    "id": "link-017",
+    "artifactKind": "sl",
+    "artifactKey": "orbit_demo.accounts",
+    "sourceKind": "warehouse",
+    "sourcePath": "accounts",
+    "relationship": "models",
+    "confidence": 1
+  },
+  {
+    "id": "link-018",
+    "artifactKind": "sl",
+    "artifactKey": "orbit_demo.accounts",
+    "sourceKind": "dbt",
+    "sourcePath": "raw-sources/dbt/schema.yml",
+    "relationship": "inherits_from",
+    "confidence": 0.95
+  },
+  {
+    "id": "link-019",
+    "artifactKind": "sl",
+    "artifactKey": "orbit_demo.contracts",
+    "sourceKind": "warehouse",
+    "sourcePath": "contracts",
+    "relationship": "models",
+    "confidence": 1
+  },
+  {
+    "id": "link-020",
+    "artifactKind": "sl",
+    "artifactKey": "orbit_demo.invoices",
+    "sourceKind": "warehouse",
+    "sourcePath": "invoices",
+    "relationship": "models",
+    "confidence": 1
+  },
+  {
+    "id": "link-021",
+    "artifactKind": "sl",
+    "artifactKey": "orbit_demo.arr_movements",
+    "sourceKind": "warehouse",
+    "sourcePath": "arr_movements",
+    "relationship": "models",
+    "confidence": 1
+  },
+  {
+    "id": "link-022",
+    "artifactKind": "sl",
+    "artifactKey": "orbit_demo.purchase_requests",
+    "sourceKind": "warehouse",
+    "sourcePath": "purchase_requests",
+    "relationship": "models",
+    "confidence": 1
+  },
+  {
+    "id": "link-023",
+    "artifactKind": "sl",
+    "artifactKey": "orbit_demo.support_tickets",
+    "sourceKind": "warehouse",
+    "sourcePath": "support_tickets",
+    "relationship": "models",
+    "confidence": 1
+  }
+]

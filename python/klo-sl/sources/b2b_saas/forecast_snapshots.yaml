@@ -1,0 +1,23 @@
+name: forecast_snapshots
+table: forecast_snapshots
+grain:
+- snapshot_id
+columns:
+- name: snapshot_id
+  type: number
+- name: category
+  type: string
+- name: rep_id
+  type: number
+- name: snapshot_date
+  type: time
+  role: time
+- name: team_id
+  type: number
+joins:
+- to: sales_teams
+  'on': team_id = sales_teams.team_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one

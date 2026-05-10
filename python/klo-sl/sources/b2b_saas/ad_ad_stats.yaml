@@ -1,0 +1,24 @@
+name: ad_ad_stats
+table: ad_ad_stats
+grain:
+- row_id
+columns:
+- name: ad_id
+  type: number
+- name: clicks
+  type: number
+- name: conversions
+  type: number
+- name: impressions
+  type: number
+- name: row_id
+  type: number
+- name: spend
+  type: number
+- name: stat_date
+  type: time
+  role: time
+joins:
+- to: ads
+  'on': ad_id = ads.ad_id
+  relationship: many_to_one

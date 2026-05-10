@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "releaseMode": "ci-artifact-only",
+  "npm": {
+    "publish": false,
+    "registry": null,
+    "packages": [
+      "@klo/cli",
+      "@klo/connector-bigquery",
+      "@klo/connector-clickhouse",
+      "@klo/connector-mysql",
+      "@klo/connector-postgres",
+      "@klo/connector-posthog",
+      "@klo/connector-snowflake",
+      "@klo/connector-sqlite",
+      "@klo/connector-sqlserver",
+      "@klo/context",
+      "@klo/llm"
+    ]
+  },
+  "python": {
+    "publish": false,
+    "repository": null,
+    "packages": ["klo-sl", "klo-daemon"]
+  },
+  "publishedPackageSmoke": {
+    "packageName": null,
+    "version": "latest",
+    "registry": null
+  },
+  "requiredBeforePublishing": [
+    "Choose npm registry and package visibility.",
+    "Choose Python package repository.",
+    "Choose public release versions.",
+    "Configure registry credentials outside source control.",
+    "Choose release tag and provenance policy."
+  ]
+}

@@ -1,0 +1,21 @@
+name: webinar_registrations
+table: webinar_registrations
+grain:
+- registration_id
+columns:
+- name: registration_id
+  type: number
+- name: lead_id
+  type: number
+- name: registered_at
+  type: time
+  role: time
+- name: webinar_id
+  type: number
+joins:
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one
+- to: webinars
+  'on': webinar_id = webinars.webinar_id
+  relationship: many_to_one

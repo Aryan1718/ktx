@@ -1,0 +1,23 @@
+name: ap_bills
+table: ap_bills
+grain:
+- bill_id
+columns:
+- name: bill_id
+  type: number
+- name: amount
+  type: number
+- name: bill_date
+  type: time
+  role: time
+- name: due_date
+  type: time
+  role: time
+- name: status
+  type: string
+- name: vendor_id
+  type: number
+joins:
+- to: vendors
+  'on': vendor_id = vendors.vendor_id
+  relationship: many_to_one

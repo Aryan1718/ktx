@@ -1,0 +1,19 @@
+semantic_models:
+  - name: orders
+    description: Base order fact table.
+    model: ref('orders')
+    entities:
+      - name: order_id
+        type: primary
+    dimensions:
+      - name: ordered_at
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: order_count
+        agg: count
+        expr: order_id
+      - name: gross_amount
+        agg: sum
+        expr: amount

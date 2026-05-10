@@ -1,0 +1,5 @@
+name: my_proj
+version: "1.0.0"
+config-version: 2
+profile: my_proj
+model-paths: ["models"]

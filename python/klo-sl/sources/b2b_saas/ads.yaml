@@ -1,0 +1,20 @@
+name: ads
+table: ads
+grain:
+- ad_id
+columns:
+- name: ad_id
+  type: number
+- name: ad_group_id
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: name
+  type: string
+- name: status
+  type: string
+joins:
+- to: ad_groups
+  'on': ad_group_id = ad_groups.ad_group_id
+  relationship: many_to_one

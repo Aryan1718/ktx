@@ -1,0 +1,17 @@
+name: fiscal_calendar
+table: fiscal_calendar
+grain:
+- calendar_date
+columns:
+- name: calendar_date
+  type: time
+- name: fiscal_month
+  type: string
+- name: fiscal_quarter
+  type: string
+- name: fiscal_year
+  type: string
+- name: is_month_start
+  type: string
+- name: is_quarter_start
+  type: string

@@ -1,0 +1,168 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { ToolSession } from '../../tools/index.js';
+import { createTouchedSlSources, type ToolContext } from '../../tools/index.js';
+import { WikiWriteTool } from './wiki-write.tool.js';
+
+function makeTool(overrides: any = {}) {
+  const wikiService = {
+    readPage: vi.fn().mockResolvedValue(null),
+    writePage: vi.fn().mockResolvedValue(undefined),
+    syncSinglePage: vi.fn().mockResolvedValue(undefined),
+    ...overrides.wikiService,
+  };
+  const pagesRepository = {
+    findPageByKey: vi.fn().mockResolvedValue(null),
+    getUserPageCount: vi.fn().mockResolvedValue(0),
+    ...overrides.pagesRepository,
+  };
+  const knowledgeRepository = {
+    createEvent: vi.fn().mockResolvedValue(undefined),
+    ...overrides.knowledgeRepository,
+  };
+  const tool = new WikiWriteTool(wikiService as any, pagesRepository as any, knowledgeRepository as any);
+  return { tool, wikiService, pagesRepository, knowledgeRepository };
+}
+
+describe('WikiWriteTool', () => {
+  const baseContext: ToolContext = { sourceId: 's', messageId: 'm', userId: 'u' };
+
+  it('creates a new page and indexes it when no session is present', async () => {
+    const { tool, wikiService } = makeTool();
+    const result = await tool.call(
+      { key: 'leads-source', summary: 'Lead source definitions', content: '# Leads' } as any,
+      baseContext,
+    );
+    expect(wikiService.writePage).toHaveBeenCalledTimes(1);
+    expect(wikiService.syncSinglePage).toHaveBeenCalledTimes(1);
+    expect(result.markdown).toMatch(/created/i);
+  });
+
+  it('skips syncSinglePage when session is worktree-scoped', async () => {
+    const { tool, wikiService } = makeTool();
+    const session: ToolSession = {
+      connectionId: 'conn-1',
+      isWorktreeScoped: true,
+      preHead: null,
+      touchedSlSources: createTouchedSlSources(),
+      actions: [],
+      semanticLayerService: {} as any,
+      wikiService: wikiService as any,
+      configService: {} as any,
+      gitService: {} as any,
+    };
+    const context: ToolContext = { ...baseContext, session };
+    await tool.call({ key: 'k', summary: 's', content: '# x' } as any, context);
+    expect(wikiService.writePage).toHaveBeenCalledTimes(1);
+    expect(wikiService.syncSinglePage).not.toHaveBeenCalled();
+    expect(session.actions).toContainEqual(expect.objectContaining({ target: 'wiki', type: 'created', key: 'k' }));
+  });
+
+  it('requires either content or replacements', async () => {
+    const { tool } = makeTool();
+    const result = await tool.call({ key: 'k', summary: 's' } as any, baseContext);
+    expect(result.structured.success).toBe(false);
+    expect(result.markdown).toMatch(/content.*or.*replacements/i);
+  });
+
+  it('writes historic-SQL frontmatter fields', async () => {
+    const { tool, wikiService } = makeTool();
+
+    await tool.call(
+      {
+        key: 'queries/monthly-paid-orders',
+        summary: 'Monthly paid orders',
+        tags: ['historic-sql', 'query-pattern'],
+        sl_refs: ['analytics.orders'],
+        source: 'historic-sql',
+        intent: 'Monthly paid order count',
+        tables: ['analytics.orders'],
+        representative_sql: "SELECT count(*) FROM analytics.orders WHERE status = 'paid'",
+        usage: {
+          executions: 42,
+          distinct_users: 3,
+          first_seen: '2026-02-01',
+          last_seen: '2026-05-04',
+          p50_runtime_ms: 100,
+          p95_runtime_ms: 200,
+          error_rate: 0,
+          rows_produced: 42,
+        },
+        fingerprints: ['fp_paid_orders'],
+        content: '## Monthly paid order count',
+      } as any,
+      baseContext,
+    );
+
+    expect(wikiService.writePage.mock.calls[0][3]).toEqual({
+      summary: 'Monthly paid orders',
+      usage_mode: 'auto',
+      sort_order: 0,
+      tags: ['historic-sql', 'query-pattern'],
+      refs: undefined,
+      sl_refs: ['analytics.orders'],
+      source: 'historic-sql',
+      intent: 'Monthly paid order count',
+      tables: ['analytics.orders'],
+      representative_sql: "SELECT count(*) FROM analytics.orders WHERE status = 'paid'",
+      usage: {
+        executions: 42,
+        distinct_users: 3,
+        first_seen: '2026-02-01',
+        last_seen: '2026-05-04',
+        p50_runtime_ms: 100,
+        p95_runtime_ms: 200,
+        error_rate: 0,
+        rows_produced: 42,
+      },
+      fingerprints: ['fp_paid_orders'],
+    });
+  });
+
+  it('preserves historic-SQL frontmatter fields when update omits them', async () => {
+    const existingFrontmatter = {
+      summary: 'Monthly paid orders',
+      usage_mode: 'auto' as const,
+      sort_order: 0,
+      tags: ['historic-sql'],
+      sl_refs: ['analytics.orders'],
+      source: 'historic-sql',
+      intent: 'Monthly paid order count',
+      tables: ['analytics.orders'],
+      representative_sql: "SELECT count(*) FROM analytics.orders WHERE status = 'paid'",
+      usage: {
+        executions: 42,
+        distinct_users: 3,
+        first_seen: '2026-02-01',
+        last_seen: '2026-05-04',
+        p50_runtime_ms: 100,
+        p95_runtime_ms: 200,
+        error_rate: 0,
+        rows_produced: 42,
+      },
+      fingerprints: ['fp_paid_orders'],
+    };
+    const { tool, wikiService } = makeTool({
+      wikiService: {
+        readPage: vi.fn().mockResolvedValue({
+          pageKey: 'queries/monthly-paid-orders',
+          frontmatter: existingFrontmatter,
+          content: 'old body',
+        }),
+      },
+    });
+
+    await tool.call(
+      {
+        key: 'queries/monthly-paid-orders',
+        summary: 'Monthly paid orders updated',
+        content: '## Monthly paid order count updated',
+      } as any,
+      baseContext,
+    );
+
+    expect(wikiService.writePage.mock.calls[0][3]).toEqual({
+      ...existingFrontmatter,
+      summary: 'Monthly paid orders updated',
+    });
+  });
+});

@@ -1,0 +1,22 @@
+expectedPks:
+  - table: kundenstamm
+    columns:
+      - kundennummer
+  - table: seihin
+    columns:
+      - seihin_bango
+expectedLinks:
+  - fromTable: bestellungen
+    fromColumns:
+      - kaeufer_nummer
+    toTable: kundenstamm
+    toColumns:
+      - kundennummer
+    relationship: many_to_one
+  - fromTable: uriage
+    fromColumns:
+      - hinban
+    toTable: seihin
+    toColumns:
+      - seihin_bango
+    relationship: many_to_one

@@ -1,0 +1,20 @@
+name: keyword_rankings
+table: keyword_rankings
+grain:
+- row_id
+columns:
+- name: domain
+  type: string
+- name: is_competitor
+  type: string
+- name: keyword
+  type: string
+- name: rank
+  type: string
+- name: row_id
+  type: number
+- name: search_volume
+  type: string
+- name: stat_date
+  type: time
+  role: time

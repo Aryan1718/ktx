@@ -1,0 +1,126 @@
+expectedPks:
+  - table: Address
+    columns:
+      - AddressID
+  - table: BuildVersion
+    columns:
+      - SystemInformationID
+  - table: Customer
+    columns:
+      - CustomerID
+  - table: CustomerAddress
+    columns:
+      - CustomerID
+      - AddressID
+  - table: ErrorLog
+    columns:
+      - ErrorLogID
+  - table: Product
+    columns:
+      - ProductID
+  - table: ProductCategory
+    columns:
+      - ProductCategoryID
+  - table: ProductDescription
+    columns:
+      - ProductDescriptionID
+  - table: ProductModel
+    columns:
+      - ProductModelID
+  - table: ProductModelProductDescription
+    columns:
+      - ProductModelID
+      - ProductDescriptionID
+      - Culture
+  - table: SalesOrderDetail
+    columns:
+      - SalesOrderID
+      - SalesOrderDetailID
+  - table: SalesOrderHeader
+    columns:
+      - SalesOrderID
+expectedLinks:
+  - fromTable: CustomerAddress
+    fromColumns:
+      - AddressID
+    toTable: Address
+    toColumns:
+      - AddressID
+    relationship: many_to_one
+  - fromTable: CustomerAddress
+    fromColumns:
+      - CustomerID
+    toTable: Customer
+    toColumns:
+      - CustomerID
+    relationship: many_to_one
+  - fromTable: Product
+    fromColumns:
+      - ProductCategoryID
+    toTable: ProductCategory
+    toColumns:
+      - ProductCategoryID
+    relationship: many_to_one
+  - fromTable: Product
+    fromColumns:
+      - ProductModelID
+    toTable: ProductModel
+    toColumns:
+      - ProductModelID
+    relationship: many_to_one
+  - fromTable: ProductCategory
+    fromColumns:
+      - ParentProductCategoryID
+    toTable: ProductCategory
+    toColumns:
+      - ProductCategoryID
+    relationship: many_to_one
+  - fromTable: ProductModelProductDescription
+    fromColumns:
+      - ProductDescriptionID
+    toTable: ProductDescription
+    toColumns:
+      - ProductDescriptionID
+    relationship: many_to_one
+  - fromTable: ProductModelProductDescription
+    fromColumns:
+      - ProductModelID
+    toTable: ProductModel
+    toColumns:
+      - ProductModelID
+    relationship: many_to_one
+  - fromTable: SalesOrderDetail
+    fromColumns:
+      - ProductID
+    toTable: Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: SalesOrderDetail
+    fromColumns:
+      - SalesOrderID
+    toTable: SalesOrderHeader
+    toColumns:
+      - SalesOrderID
+    relationship: many_to_one
+  - fromTable: SalesOrderHeader
+    fromColumns:
+      - BillToAddressID
+    toTable: Address
+    toColumns:
+      - AddressID
+    relationship: many_to_one
+  - fromTable: SalesOrderHeader
+    fromColumns:
+      - CustomerID
+    toTable: Customer
+    toColumns:
+      - CustomerID
+    relationship: many_to_one
+  - fromTable: SalesOrderHeader
+    fromColumns:
+      - ShipToAddressID
+    toTable: Address
+    toColumns:
+      - AddressID
+    relationship: many_to_one

@@ -1,0 +1,25 @@
+name: ga4_events
+table: ga4_events
+grain:
+- ga4_event_id
+columns:
+- name: ga4_event_id
+  type: number
+- name: account_id
+  type: number
+- name: event_name
+  type: string
+- name: event_time
+  type: time
+  role: time
+- name: session_id
+  type: number
+- name: user_id
+  type: number
+joins:
+- to: web_sessions
+  'on': session_id = web_sessions.session_id
+  relationship: many_to_one
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

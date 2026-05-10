@@ -1,0 +1,23 @@
+name: accounts
+table: accounts
+grain:
+- account_id
+columns:
+- name: account_id
+  type: number
+- name: account_name
+  type: string
+- name: csm_rep_id
+  type: number
+- name: industry
+  type: string
+- name: is_customer
+  type: string
+- name: region
+  type: string
+- name: segment
+  type: string
+joins:
+- to: sales_reps
+  'on': csm_rep_id = sales_reps.rep_id
+  relationship: many_to_one

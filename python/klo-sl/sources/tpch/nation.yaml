@@ -1,0 +1,16 @@
+name: nation
+table: public.nation
+grain: [n_nationkey]
+columns:
+  - name: n_nationkey
+    type: number
+  - name: n_name
+    type: string
+  - name: n_regionkey
+    type: number
+  - name: n_comment
+    type: string
+joins:
+  - to: region
+    "on": n_regionkey = region.r_regionkey
+    relationship: many_to_one

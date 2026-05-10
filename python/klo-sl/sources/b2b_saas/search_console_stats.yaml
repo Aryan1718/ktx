@@ -1,0 +1,20 @@
+name: search_console_stats
+table: search_console_stats
+grain:
+- row_id
+columns:
+- name: clicks
+  type: number
+- name: impressions
+  type: number
+- name: page
+  type: string
+- name: position
+  type: number
+- name: query
+  type: string
+- name: row_id
+  type: number
+- name: stat_date
+  type: time
+  role: time

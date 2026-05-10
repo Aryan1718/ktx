@@ -1,0 +1,20 @@
+name: ad_creatives
+table: ad_creatives
+grain:
+- creative_id
+columns:
+- name: creative_id
+  type: number
+- name: ad_campaign_id
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: format
+  type: string
+- name: name
+  type: string
+joins:
+- to: ad_campaigns
+  'on': ad_campaign_id = ad_campaigns.ad_campaign_id
+  relationship: many_to_one

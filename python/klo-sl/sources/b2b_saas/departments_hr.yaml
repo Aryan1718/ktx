@@ -1,0 +1,9 @@
+name: departments_hr
+table: departments_hr
+grain:
+- dept_id
+columns:
+- name: dept_id
+  type: number
+- name: dept_name
+  type: string

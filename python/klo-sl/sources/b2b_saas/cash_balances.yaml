@@ -1,0 +1,12 @@
+name: cash_balances
+table: cash_balances
+grain:
+- balance
+columns:
+- name: balance
+  type: string
+- name: balance_date
+  type: time
+  role: time
+- name: bank_account
+  type: string

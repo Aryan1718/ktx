@@ -1,0 +1,132 @@
+{
+  "connectionId": "polymorphic_partial_overlap_no_declared_constraints",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "metadata": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "activity_events",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 4,
+      "columns": [
+        {
+          "name": "event_id",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "entity_id",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "entity_type",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "action_name",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "organizations",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "organization_id",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "organization_name",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "market",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "users",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "user_id",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "email",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "lifecycle",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    }
+  ]
+}

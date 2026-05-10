@@ -1,0 +1,13 @@
+name: gl_accounts
+table: gl_accounts
+grain:
+- gl_account_id
+columns:
+- name: gl_account_id
+  type: number
+- name: account_code
+  type: string
+- name: name
+  type: string
+- name: type
+  type: string

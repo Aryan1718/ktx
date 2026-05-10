@@ -1,0 +1,40 @@
+{
+  "id": "demo-seeded-report",
+  "runId": "demo-seeded-orbit",
+  "connectionId": "orbit_demo",
+  "mode": "seeded",
+  "status": "complete",
+  "createdAt": "2026-05-06T00:00:00.000Z",
+  "summary": {
+    "sources": {
+      "warehouse": {
+        "tables": 8,
+        "rows": 11234
+      },
+      "dbt": {
+        "models": 3,
+        "sources": 8
+      },
+      "bi": {
+        "explores": 5,
+        "dashboards": 2,
+        "views": 5
+      },
+      "notion": {
+        "pages": 8
+      }
+    },
+    "generated": {
+      "semanticLayerSources": 6,
+      "knowledgePages": 10,
+      "provenanceLinks": 23
+    },
+    "metadata": {
+      "mode": "seeded",
+      "origin": "packaged",
+      "llmCalls": 0,
+      "timing": "prebuilt",
+      "source": "packaged-orbit-demo"
+    }
+  }
+}

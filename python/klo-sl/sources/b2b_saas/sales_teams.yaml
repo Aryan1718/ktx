@@ -1,0 +1,11 @@
+name: sales_teams
+table: sales_teams
+grain:
+- team_id
+columns:
+- name: team_id
+  type: number
+- name: region
+  type: string
+- name: team_name
+  type: string

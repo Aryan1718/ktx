@@ -1,0 +1,22 @@
+name: part
+table: public.part
+grain: [p_partkey]
+columns:
+  - name: p_partkey
+    type: number
+  - name: p_name
+    type: string
+  - name: p_mfgr
+    type: string
+  - name: p_brand
+    type: string
+  - name: p_type
+    type: string
+  - name: p_size
+    type: number
+  - name: p_container
+    type: string
+  - name: p_retailprice
+    type: number
+  - name: p_comment
+    type: string

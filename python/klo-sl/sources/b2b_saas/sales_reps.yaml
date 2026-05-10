@@ -1,0 +1,27 @@
+name: sales_reps
+table: sales_reps
+grain:
+- rep_id
+columns:
+- name: rep_id
+  type: number
+- name: email
+  type: string
+- name: first_name
+  type: string
+- name: last_name
+  type: string
+- name: manager_rep_id
+  type: number
+- name: region
+  type: string
+- name: role
+  type: string
+- name: segment_focus
+  type: string
+- name: team_id
+  type: number
+joins:
+- to: sales_teams
+  'on': team_id = sales_teams.team_id
+  relationship: many_to_one

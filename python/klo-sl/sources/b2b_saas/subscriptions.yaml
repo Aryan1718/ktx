@@ -1,0 +1,24 @@
+name: subscriptions
+table: subscriptions
+grain:
+- subscription_id
+columns:
+- name: subscription_id
+  type: number
+- name: account_id
+  type: number
+- name: canceled_at
+  type: time
+  role: time
+- name: churn_reason
+  type: string
+- name: end_date
+  type: time
+  role: time
+- name: start_date
+  type: time
+  role: time
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

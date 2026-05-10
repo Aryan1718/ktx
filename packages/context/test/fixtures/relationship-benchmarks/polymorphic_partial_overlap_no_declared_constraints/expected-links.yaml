@@ -1,0 +1,22 @@
+expectedPks:
+  - table: organizations
+    columns:
+      - organization_id
+  - table: users
+    columns:
+      - user_id
+expectedLinks:
+  - fromTable: activity_events
+    fromColumns:
+      - entity_id
+    toTable: organizations
+    toColumns:
+      - organization_id
+    relationship: many_to_one
+  - fromTable: activity_events
+    fromColumns:
+      - entity_id
+    toTable: users
+    toColumns:
+      - user_id
+    relationship: many_to_one

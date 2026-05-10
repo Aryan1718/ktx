@@ -1,0 +1,90 @@
+import { loadKloProject } from '@klo/context/project';
+import {
+  type LocalKnowledgeScope,
+  listLocalKnowledgePages,
+  readLocalKnowledgePage,
+  searchLocalKnowledgePages,
+  writeLocalKnowledgePage,
+} from '@klo/context/wiki';
+
+export type KloKnowledgeArgs =
+  | { command: 'list'; projectDir: string; userId: string }
+  | { command: 'read'; projectDir: string; key: string; userId: string }
+  | { command: 'search'; projectDir: string; query: string; userId: string }
+  | {
+      command: 'write';
+      projectDir: string;
+      key: string;
+      scope: LocalKnowledgeScope;
+      userId: string;
+      summary: string;
+      content: string;
+      tags: string[];
+      refs: string[];
+      slRefs: string[];
+    };
+
+interface KloKnowledgeIo {
+  stdout: { write(chunk: string): void };
+  stderr: { write(chunk: string): void };
+}
+
+export async function runKloKnowledge(args: KloKnowledgeArgs, io: KloKnowledgeIo = process): Promise<number> {
+  try {
+    const project = await loadKloProject({ projectDir: args.projectDir });
+    if (args.command === 'list') {
+      const pages = await listLocalKnowledgePages(project, { userId: args.userId });
+      for (const page of pages) {
+        io.stdout.write(`${page.scope}\t${page.key}\t${page.summary}\n`);
+      }
+      return 0;
+    }
+    if (args.command === 'read') {
+      const page = await readLocalKnowledgePage(project, { key: args.key, userId: args.userId });
+      if (!page) {
+        throw new Error(`Knowledge page "${args.key}" was not found`);
+      }
+      io.stdout.write(`# ${page.key}\n\n`);
+      io.stdout.write(`Scope: ${page.scope}\n`);
+      io.stdout.write(`Summary: ${page.summary}\n\n`);
+      io.stdout.write(`${page.content}\n`);
+      return 0;
+    }
+    if (args.command === 'search') {
+      const results = await searchLocalKnowledgePages(project, { query: args.query, userId: args.userId });
+      if (results.length === 0) {
+        const pages = await listLocalKnowledgePages(project, { userId: args.userId });
+        if (pages.length === 0) {
+          io.stderr.write(
+            `No local wiki pages found in ${project.projectDir}. Create one with \`klo wiki write <key> --summary <summary> --content <content>\` or run ingest.\n`,
+          );
+        } else {
+          io.stderr.write(
+            `No local wiki pages matched "${args.query}". Run \`klo wiki list\` to inspect available pages.\n`,
+          );
+        }
+        return 0;
+      }
+      for (const result of results) {
+        io.stdout.write(`${result.score}\t${result.scope}\t${result.key}\t${result.summary}\n`);
+      }
+      return 0;
+    }
+
+    const write = await writeLocalKnowledgePage(project, {
+      key: args.key,
+      scope: args.scope,
+      userId: args.userId,
+      summary: args.summary,
+      content: args.content,
+      tags: args.tags,
+      refs: args.refs,
+      slRefs: args.slRefs,
+    });
+    io.stdout.write(`Wrote ${write.path}\n`);
+    return 0;
+  } catch (error) {
+    io.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  }
+}

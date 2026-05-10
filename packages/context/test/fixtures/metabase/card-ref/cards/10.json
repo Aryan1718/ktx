@@ -1,0 +1,15 @@
+{
+  "metabaseId": 10,
+  "name": "Base revenue",
+  "description": null,
+  "type": "model",
+  "databaseId": 42,
+  "collectionId": 5,
+  "archived": false,
+  "resolvedSql": "SELECT day, SUM(amount_cents) AS revenue_cents FROM public.orders GROUP BY 1",
+  "templateTags": [],
+  "resultMetadata": [],
+  "collectionPath": ["Orders Team"],
+  "referencedCardIds": [],
+  "resolutionStatus": "resolved"
+}

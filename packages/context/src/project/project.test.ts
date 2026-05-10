@@ -1,0 +1,78 @@
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { initKloProject, loadKloProject } from './project.js';
+
+describe('KLO local project runtime', () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'klo-project-runtime-'));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('initializes the standalone project layout and commits it', async () => {
+    const projectDir = join(tempDir, 'warehouse');
+
+    const result = await initKloProject({
+      projectDir,
+      projectName: 'warehouse',
+      authorName: 'Agent',
+      authorEmail: 'agent@example.com',
+    });
+
+    expect(result.projectDir).toBe(projectDir);
+    expect(result.config.project).toBe('warehouse');
+    expect(result.commitHash).toMatch(/^[0-9a-f]{40}$/);
+    await expect(readFile(join(projectDir, 'klo.yaml'), 'utf-8')).resolves.toContain('project: warehouse');
+    const gitignore = await readFile(join(projectDir, '.klo/.gitignore'), 'utf-8');
+    expect(gitignore).toContain('cache/');
+    expect(gitignore).toContain('db.sqlite');
+    expect(gitignore).toContain('secrets/');
+    expect(gitignore).toContain('setup/');
+    expect(gitignore).toContain('agents/');
+    await expect(stat(join(projectDir, 'knowledge/global/.gitkeep'))).resolves.toBeDefined();
+    await expect(stat(join(projectDir, 'semantic-layer/.gitkeep'))).resolves.toBeDefined();
+    await expect(stat(join(projectDir, '_schema/.gitkeep'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(stat(join(projectDir, 'raw-sources/.gitkeep'))).resolves.toBeDefined();
+    await expect(stat(join(projectDir, '.git'))).resolves.toBeDefined();
+  });
+
+  it('loads an initialized project with a working file store', async () => {
+    const projectDir = join(tempDir, 'warehouse');
+    await initKloProject({ projectDir, projectName: 'warehouse' });
+
+    const loaded = await loadKloProject({ projectDir });
+    await loaded.fileStore.writeFile(
+      'knowledge/global/revenue.md',
+      '# Revenue\n',
+      'Agent',
+      'agent@example.com',
+      'Add revenue page',
+    );
+
+    expect(loaded.config.project).toBe('warehouse');
+    await expect(loaded.fileStore.readFile('knowledge/global/revenue.md')).resolves.toMatchObject({
+      content: '# Revenue\n',
+    });
+  });
+
+  it('rejects reinitializing an existing project unless force is set', async () => {
+    const projectDir = join(tempDir, 'warehouse');
+    await initKloProject({ projectDir, projectName: 'warehouse' });
+
+    await expect(initKloProject({ projectDir, projectName: 'warehouse' })).rejects.toThrow(
+      'Project already contains klo.yaml',
+    );
+
+    await expect(initKloProject({ projectDir, projectName: 'warehouse-v2', force: true })).resolves.toMatchObject({
+      config: {
+        project: 'warehouse-v2',
+      },
+    });
+  });
+});

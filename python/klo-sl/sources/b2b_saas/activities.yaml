@@ -1,0 +1,36 @@
+name: activities
+table: activities
+grain:
+- activity_id
+columns:
+- name: activity_id
+  type: number
+- name: account_id
+  type: number
+- name: activity_date
+  type: time
+  role: time
+- name: activity_type
+  type: string
+- name: channel
+  type: string
+- name: direction
+  type: string
+- name: duration_minutes
+  type: number
+- name: opportunity_id
+  type: number
+- name: rep_id
+  type: number
+- name: subject
+  type: string
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one

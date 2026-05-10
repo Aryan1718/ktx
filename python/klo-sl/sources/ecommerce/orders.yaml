@@ -1,0 +1,39 @@
+name: orders
+table: public.orders
+grain: [id]
+columns:
+  - name: id
+    type: number
+  - name: customer_id
+    type: number
+  - name: amount
+    type: number
+  - name: cost
+    type: number
+  - name: status
+    type: string
+  - name: created_at
+    type: time
+    role: time
+joins:
+  - to: customers
+    "on": customer_id = customers.id
+    relationship: many_to_one
+measures:
+  - name: revenue
+    expr: sum(amount)
+    filter: "status != 'refunded'"
+    description: "Net revenue excluding refunds"
+  - name: order_count
+    expr: count(id)
+  - name: total_amount
+    expr: sum(amount)
+    description: "Total order amount across all statuses"
+  - name: paid_amount
+    expr: sum(amount)
+    filter: "status = 'paid'"
+    description: "Total amount from paid orders only"
+  - name: refunded_amount
+    expr: sum(amount)
+    filter: "status = 'refunded'"
+    description: "Total amount from refunded orders"

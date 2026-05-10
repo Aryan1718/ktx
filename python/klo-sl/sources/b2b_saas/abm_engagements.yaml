@@ -1,0 +1,15 @@
+name: abm_engagements
+table: abm_engagements
+grain:
+- row_id
+columns:
+- name: account_id
+  type: number
+- name: engagement_month
+  type: string
+- name: row_id
+  type: number
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

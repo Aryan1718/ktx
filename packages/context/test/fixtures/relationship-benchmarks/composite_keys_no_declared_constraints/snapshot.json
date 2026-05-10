@@ -1,0 +1,103 @@
+{
+  "connectionId": "composite_keys_no_declared_constraints",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "metadata": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": null,
+      "name": "order_lines",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3,
+      "columns": [
+        {
+          "name": "order_id",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "line_number",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "product_sku",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "quantity",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": null,
+      "name": "order_line_allocations",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 4,
+      "columns": [
+        {
+          "name": "order_id",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "line_number",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "warehouse_code",
+          "nativeType": "TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "allocated_quantity",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    }
+  ]
+}

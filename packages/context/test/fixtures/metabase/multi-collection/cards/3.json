@@ -1,0 +1,32 @@
+{
+  "metabaseId": 3,
+  "name": "Campaign clicks",
+  "description": "Daily campaign click-through",
+  "type": "model",
+  "databaseId": 42,
+  "collectionId": 6,
+  "archived": false,
+  "resolvedSql": "SELECT date_trunc('day', click_time) AS day, COUNT(*) AS click_count FROM public.campaign_clicks GROUP BY 1",
+  "templateTags": [],
+  "resultMetadata": [
+    {
+      "name": "day",
+      "display_name": "Day",
+      "base_type": "type/DateTime",
+      "semantic_type": "type/CreationTimestamp",
+      "description": null,
+      "fk_target_field_id": null
+    },
+    {
+      "name": "click_count",
+      "display_name": "Clicks",
+      "base_type": "type/Integer",
+      "semantic_type": null,
+      "description": null,
+      "fk_target_field_id": null
+    }
+  ],
+  "collectionPath": ["Marketing"],
+  "referencedCardIds": [],
+  "resolutionStatus": "resolved"
+}

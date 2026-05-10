@@ -1,0 +1,16 @@
+name: target_accounts
+table: target_accounts
+grain:
+- account_id
+columns:
+- name: account_id
+  type: number
+- name: start_date
+  type: time
+  role: time
+- name: target_tier
+  type: string
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

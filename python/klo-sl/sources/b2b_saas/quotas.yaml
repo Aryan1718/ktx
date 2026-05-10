@@ -1,0 +1,19 @@
+name: quotas
+table: quotas
+grain:
+- quota_id
+columns:
+- name: quota_id
+  type: number
+- name: period_end
+  type: string
+- name: period_start
+  type: string
+- name: quota_arr
+  type: number
+- name: rep_id
+  type: number
+joins:
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one

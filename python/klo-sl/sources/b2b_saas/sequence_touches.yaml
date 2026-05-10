@@ -1,0 +1,25 @@
+name: sequence_touches
+table: sequence_touches
+grain:
+- touch_id
+columns:
+- name: touch_id
+  type: number
+- name: enrollment_id
+  type: number
+- name: rep_id
+  type: number
+- name: status
+  type: string
+- name: touch_date
+  type: time
+  role: time
+- name: touch_type
+  type: string
+joins:
+- to: sequence_enrollments
+  'on': enrollment_id = sequence_enrollments.enrollment_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one

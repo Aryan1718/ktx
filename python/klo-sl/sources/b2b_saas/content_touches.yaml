@@ -1,0 +1,33 @@
+name: content_touches
+table: content_touches
+grain:
+- touch_id
+columns:
+- name: touch_id
+  type: number
+- name: account_id
+  type: number
+- name: action
+  type: string
+- name: asset_id
+  type: number
+- name: lead_id
+  type: number
+- name: opportunity_id
+  type: number
+- name: touched_at
+  type: time
+  role: time
+joins:
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one
+- to: content_assets
+  'on': asset_id = content_assets.asset_id
+  relationship: many_to_one
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

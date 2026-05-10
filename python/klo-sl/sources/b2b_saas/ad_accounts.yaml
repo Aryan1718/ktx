@@ -1,0 +1,13 @@
+name: ad_accounts
+table: ad_accounts
+grain:
+- ad_account_id
+columns:
+- name: ad_account_id
+  type: number
+- name: account_name
+  type: string
+- name: currency
+  type: string
+- name: platform
+  type: string

@@ -1,0 +1,43 @@
+name: leads
+table: leads
+grain:
+- lead_id
+columns:
+- name: lead_id
+  type: number
+- name: account_id
+  type: number
+- name: converted_at
+  type: time
+  role: time
+- name: converted_opportunity_id
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: first_touch_at
+  type: time
+  role: time
+- name: last_touch_at
+  type: time
+  role: time
+- name: owner_rep_id
+  type: number
+- name: source
+  type: string
+- name: utm_campaign
+  type: string
+- name: utm_medium
+  type: string
+- name: utm_source
+  type: string
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': owner_rep_id = sales_reps.rep_id
+  relationship: many_to_one
+- to: opportunities
+  'on': converted_opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one

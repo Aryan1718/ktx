@@ -1,0 +1,80 @@
+import { Client, type ClientConfig } from 'pg';
+import type {
+  KloSqlQueryExecutionInput,
+  KloSqlQueryExecutionResult,
+  KloSqlQueryExecutorPort,
+} from './query-executor.js';
+import { limitSqlForExecution } from './read-only-sql.js';
+
+interface PgClientLike {
+  connect(): Promise<unknown>;
+  query(input: string | { text: string; rowMode: 'array' }): Promise<{
+    fields: Array<{ name: string }>;
+    rows: unknown[][];
+    command: string;
+    rowCount: number | null;
+  }>;
+  end(): Promise<void>;
+}
+
+interface PostgresQueryExecutorOptions {
+  statementTimeoutMs?: number;
+  queryTimeoutMs?: number;
+  connectionTimeoutMs?: number;
+  clientFactory?: (config: ClientConfig) => PgClientLike;
+}
+
+function connectionDriver(input: KloSqlQueryExecutionInput): string {
+  return String(input.connection?.driver ?? '').toLowerCase();
+}
+
+function createDefaultClient(config: ClientConfig): PgClientLike {
+  return new Client(config);
+}
+
+export function createPostgresQueryExecutor(options: PostgresQueryExecutorOptions = {}): KloSqlQueryExecutorPort {
+  const clientFactory = options.clientFactory ?? createDefaultClient;
+  return {
+    async execute(input: KloSqlQueryExecutionInput): Promise<KloSqlQueryExecutionResult> {
+      const driver = connectionDriver(input);
+      if (driver !== 'postgres' && driver !== 'postgresql') {
+        throw new Error(`Local Postgres execution cannot run driver "${input.connection?.driver ?? 'unknown'}".`);
+      }
+      if (input.connection?.readonly !== true) {
+        throw new Error(`Local query execution requires connections.${input.connectionId}.readonly: true.`);
+      }
+      if (typeof input.connection.url !== 'string' || input.connection.url.trim().length === 0) {
+        throw new Error(`Local Postgres execution requires connections.${input.connectionId}.url.`);
+      }
+
+      const client = clientFactory({
+        connectionString: input.connection.url,
+        statement_timeout: options.statementTimeoutMs ?? 30_000,
+        query_timeout: options.queryTimeoutMs ?? 35_000,
+        connectionTimeoutMillis: options.connectionTimeoutMs ?? 5_000,
+        application_name: 'klo-local-query',
+      });
+      await client.connect();
+      try {
+        await client.query('BEGIN READ ONLY');
+        const result = await client.query({
+          text: limitSqlForExecution(input.sql, input.maxRows),
+          rowMode: 'array',
+        });
+        await client.query('COMMIT');
+        return {
+          headers: result.fields.map((field) => field.name),
+          rows: result.rows,
+          totalRows: result.rows.length,
+          command: result.command,
+          rowCount: result.rowCount,
+        };
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => undefined);
+        throw error;
+      } finally {
+        await client.end();
+      }
+    },
+  };
+}

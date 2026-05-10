@@ -1,0 +1,34 @@
+name: touchpoints
+table: touchpoints
+grain:
+- touchpoint_id
+columns:
+- name: touchpoint_id
+  type: number
+- name: account_id
+  type: number
+- name: channel
+  type: string
+- name: lead_id
+  type: number
+- name: occurred_at
+  type: time
+  role: time
+- name: opportunity_id
+  type: number
+- name: source_id
+  type: number
+- name: source_object
+  type: string
+- name: subchannel
+  type: string
+joins:
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

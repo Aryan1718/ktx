@@ -1,0 +1,30 @@
+name: web_sessions
+table: web_sessions
+grain:
+- session_id
+columns:
+- name: session_id
+  type: number
+- name: account_id
+  type: number
+- name: landing_page
+  type: string
+- name: lead_id
+  type: number
+- name: session_start
+  type: string
+- name: utm_campaign
+  type: string
+- name: utm_medium
+  type: string
+- name: utm_source
+  type: string
+- name: visitor_id
+  type: number
+joins:
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

@@ -1,0 +1,878 @@
+expectedPks:
+  - table: dbo.AWBuildVersion
+    columns:
+      - SystemInformationID
+  - table: dbo.DatabaseLog
+    columns:
+      - DatabaseLogID
+  - table: dbo.ErrorLog
+    columns:
+      - ErrorLogID
+  - table: HumanResources.Department
+    columns:
+      - DepartmentID
+  - table: HumanResources.Employee
+    columns:
+      - BusinessEntityID
+  - table: HumanResources.EmployeeDepartmentHistory
+    columns:
+      - BusinessEntityID
+      - DepartmentID
+      - ShiftID
+      - StartDate
+  - table: HumanResources.EmployeePayHistory
+    columns:
+      - BusinessEntityID
+      - RateChangeDate
+  - table: HumanResources.JobCandidate
+    columns:
+      - JobCandidateID
+  - table: HumanResources.Shift
+    columns:
+      - ShiftID
+  - table: Person.Address
+    columns:
+      - AddressID
+  - table: Person.AddressType
+    columns:
+      - AddressTypeID
+  - table: Person.BusinessEntity
+    columns:
+      - BusinessEntityID
+  - table: Person.BusinessEntityAddress
+    columns:
+      - BusinessEntityID
+      - AddressID
+      - AddressTypeID
+  - table: Person.BusinessEntityContact
+    columns:
+      - BusinessEntityID
+      - PersonID
+      - ContactTypeID
+  - table: Person.ContactType
+    columns:
+      - ContactTypeID
+  - table: Person.CountryRegion
+    columns:
+      - CountryRegionCode
+  - table: Person.EmailAddress
+    columns:
+      - BusinessEntityID
+      - EmailAddressID
+  - table: Person.Password
+    columns:
+      - BusinessEntityID
+  - table: Person.Person
+    columns:
+      - BusinessEntityID
+  - table: Person.PersonPhone
+    columns:
+      - BusinessEntityID
+      - PhoneNumber
+      - PhoneNumberTypeID
+  - table: Person.PhoneNumberType
+    columns:
+      - PhoneNumberTypeID
+  - table: Person.StateProvince
+    columns:
+      - StateProvinceID
+  - table: Production.BillOfMaterials
+    columns:
+      - BillOfMaterialsID
+  - table: Production.Culture
+    columns:
+      - CultureID
+  - table: Production.Document
+    columns:
+      - DocumentNode
+  - table: Production.Illustration
+    columns:
+      - IllustrationID
+  - table: Production.Location
+    columns:
+      - LocationID
+  - table: Production.Product
+    columns:
+      - ProductID
+  - table: Production.ProductCategory
+    columns:
+      - ProductCategoryID
+  - table: Production.ProductCostHistory
+    columns:
+      - ProductID
+      - StartDate
+  - table: Production.ProductDescription
+    columns:
+      - ProductDescriptionID
+  - table: Production.ProductDocument
+    columns:
+      - ProductID
+      - DocumentNode
+  - table: Production.ProductInventory
+    columns:
+      - ProductID
+      - LocationID
+  - table: Production.ProductListPriceHistory
+    columns:
+      - ProductID
+      - StartDate
+  - table: Production.ProductModel
+    columns:
+      - ProductModelID
+  - table: Production.ProductModelIllustration
+    columns:
+      - ProductModelID
+      - IllustrationID
+  - table: Production.ProductModelProductDescriptionCulture
+    columns:
+      - ProductModelID
+      - ProductDescriptionID
+      - CultureID
+  - table: Production.ProductPhoto
+    columns:
+      - ProductPhotoID
+  - table: Production.ProductProductPhoto
+    columns:
+      - ProductID
+      - ProductPhotoID
+  - table: Production.ProductReview
+    columns:
+      - ProductReviewID
+  - table: Production.ProductSubcategory
+    columns:
+      - ProductSubcategoryID
+  - table: Production.ScrapReason
+    columns:
+      - ScrapReasonID
+  - table: Production.TransactionHistory
+    columns:
+      - TransactionID
+  - table: Production.TransactionHistoryArchive
+    columns:
+      - TransactionID
+  - table: Production.UnitMeasure
+    columns:
+      - UnitMeasureCode
+  - table: Production.WorkOrder
+    columns:
+      - WorkOrderID
+  - table: Production.WorkOrderRouting
+    columns:
+      - WorkOrderID
+      - ProductID
+      - OperationSequence
+  - table: Purchasing.ProductVendor
+    columns:
+      - ProductID
+      - BusinessEntityID
+  - table: Purchasing.PurchaseOrderDetail
+    columns:
+      - PurchaseOrderID
+      - PurchaseOrderDetailID
+  - table: Purchasing.PurchaseOrderHeader
+    columns:
+      - PurchaseOrderID
+  - table: Purchasing.ShipMethod
+    columns:
+      - ShipMethodID
+  - table: Purchasing.Vendor
+    columns:
+      - BusinessEntityID
+  - table: Sales.CountryRegionCurrency
+    columns:
+      - CountryRegionCode
+      - CurrencyCode
+  - table: Sales.CreditCard
+    columns:
+      - CreditCardID
+  - table: Sales.Currency
+    columns:
+      - CurrencyCode
+  - table: Sales.CurrencyRate
+    columns:
+      - CurrencyRateID
+  - table: Sales.Customer
+    columns:
+      - CustomerID
+  - table: Sales.PersonCreditCard
+    columns:
+      - BusinessEntityID
+      - CreditCardID
+  - table: Sales.SalesOrderDetail
+    columns:
+      - SalesOrderID
+      - SalesOrderDetailID
+  - table: Sales.SalesOrderHeader
+    columns:
+      - SalesOrderID
+  - table: Sales.SalesOrderHeaderSalesReason
+    columns:
+      - SalesOrderID
+      - SalesReasonID
+  - table: Sales.SalesPerson
+    columns:
+      - BusinessEntityID
+  - table: Sales.SalesPersonQuotaHistory
+    columns:
+      - BusinessEntityID
+      - QuotaDate
+  - table: Sales.SalesReason
+    columns:
+      - SalesReasonID
+  - table: Sales.SalesTaxRate
+    columns:
+      - SalesTaxRateID
+  - table: Sales.SalesTerritory
+    columns:
+      - TerritoryID
+  - table: Sales.SalesTerritoryHistory
+    columns:
+      - BusinessEntityID
+      - TerritoryID
+      - StartDate
+  - table: Sales.ShoppingCartItem
+    columns:
+      - ShoppingCartItemID
+  - table: Sales.SpecialOffer
+    columns:
+      - SpecialOfferID
+  - table: Sales.SpecialOfferProduct
+    columns:
+      - SpecialOfferID
+      - ProductID
+  - table: Sales.Store
+    columns:
+      - BusinessEntityID
+expectedLinks:
+  - fromTable: HumanResources.Employee
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.Person
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: HumanResources.EmployeeDepartmentHistory
+    fromColumns:
+      - BusinessEntityID
+    toTable: HumanResources.Employee
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: HumanResources.EmployeeDepartmentHistory
+    fromColumns:
+      - DepartmentID
+    toTable: HumanResources.Department
+    toColumns:
+      - DepartmentID
+    relationship: many_to_one
+  - fromTable: HumanResources.EmployeeDepartmentHistory
+    fromColumns:
+      - ShiftID
+    toTable: HumanResources.Shift
+    toColumns:
+      - ShiftID
+    relationship: many_to_one
+  - fromTable: HumanResources.EmployeePayHistory
+    fromColumns:
+      - BusinessEntityID
+    toTable: HumanResources.Employee
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: HumanResources.JobCandidate
+    fromColumns:
+      - BusinessEntityID
+    toTable: HumanResources.Employee
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.Address
+    fromColumns:
+      - StateProvinceID
+    toTable: Person.StateProvince
+    toColumns:
+      - StateProvinceID
+    relationship: many_to_one
+  - fromTable: Person.BusinessEntityAddress
+    fromColumns:
+      - AddressID
+    toTable: Person.Address
+    toColumns:
+      - AddressID
+    relationship: many_to_one
+  - fromTable: Person.BusinessEntityAddress
+    fromColumns:
+      - AddressTypeID
+    toTable: Person.AddressType
+    toColumns:
+      - AddressTypeID
+    relationship: many_to_one
+  - fromTable: Person.BusinessEntityAddress
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.BusinessEntity
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.BusinessEntityContact
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.BusinessEntity
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.BusinessEntityContact
+    fromColumns:
+      - ContactTypeID
+    toTable: Person.ContactType
+    toColumns:
+      - ContactTypeID
+    relationship: many_to_one
+  - fromTable: Person.BusinessEntityContact
+    fromColumns:
+      - PersonID
+    toTable: Person.Person
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.EmailAddress
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.Person
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.Password
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.Person
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.Person
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.BusinessEntity
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.PersonPhone
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.Person
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Person.PersonPhone
+    fromColumns:
+      - PhoneNumberTypeID
+    toTable: Person.PhoneNumberType
+    toColumns:
+      - PhoneNumberTypeID
+    relationship: many_to_one
+  - fromTable: Person.StateProvince
+    fromColumns:
+      - CountryRegionCode
+    toTable: Person.CountryRegion
+    toColumns:
+      - CountryRegionCode
+    relationship: many_to_one
+  - fromTable: Person.StateProvince
+    fromColumns:
+      - TerritoryID
+    toTable: Sales.SalesTerritory
+    toColumns:
+      - TerritoryID
+    relationship: many_to_one
+  - fromTable: Production.BillOfMaterials
+    fromColumns:
+      - ComponentID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.BillOfMaterials
+    fromColumns:
+      - ProductAssemblyID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.BillOfMaterials
+    fromColumns:
+      - UnitMeasureCode
+    toTable: Production.UnitMeasure
+    toColumns:
+      - UnitMeasureCode
+    relationship: many_to_one
+  - fromTable: Production.Document
+    fromColumns:
+      - Owner
+    toTable: HumanResources.Employee
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Production.Product
+    fromColumns:
+      - ProductModelID
+    toTable: Production.ProductModel
+    toColumns:
+      - ProductModelID
+    relationship: many_to_one
+  - fromTable: Production.Product
+    fromColumns:
+      - ProductSubcategoryID
+    toTable: Production.ProductSubcategory
+    toColumns:
+      - ProductSubcategoryID
+    relationship: many_to_one
+  - fromTable: Production.Product
+    fromColumns:
+      - SizeUnitMeasureCode
+    toTable: Production.UnitMeasure
+    toColumns:
+      - UnitMeasureCode
+    relationship: many_to_one
+  - fromTable: Production.Product
+    fromColumns:
+      - WeightUnitMeasureCode
+    toTable: Production.UnitMeasure
+    toColumns:
+      - UnitMeasureCode
+    relationship: many_to_one
+  - fromTable: Production.ProductCostHistory
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.ProductDocument
+    fromColumns:
+      - DocumentNode
+    toTable: Production.Document
+    toColumns:
+      - DocumentNode
+    relationship: many_to_one
+  - fromTable: Production.ProductDocument
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.ProductInventory
+    fromColumns:
+      - LocationID
+    toTable: Production.Location
+    toColumns:
+      - LocationID
+    relationship: many_to_one
+  - fromTable: Production.ProductInventory
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.ProductListPriceHistory
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.ProductModelIllustration
+    fromColumns:
+      - IllustrationID
+    toTable: Production.Illustration
+    toColumns:
+      - IllustrationID
+    relationship: many_to_one
+  - fromTable: Production.ProductModelIllustration
+    fromColumns:
+      - ProductModelID
+    toTable: Production.ProductModel
+    toColumns:
+      - ProductModelID
+    relationship: many_to_one
+  - fromTable: Production.ProductModelProductDescriptionCulture
+    fromColumns:
+      - CultureID
+    toTable: Production.Culture
+    toColumns:
+      - CultureID
+    relationship: many_to_one
+  - fromTable: Production.ProductModelProductDescriptionCulture
+    fromColumns:
+      - ProductDescriptionID
+    toTable: Production.ProductDescription
+    toColumns:
+      - ProductDescriptionID
+    relationship: many_to_one
+  - fromTable: Production.ProductModelProductDescriptionCulture
+    fromColumns:
+      - ProductModelID
+    toTable: Production.ProductModel
+    toColumns:
+      - ProductModelID
+    relationship: many_to_one
+  - fromTable: Production.ProductProductPhoto
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.ProductProductPhoto
+    fromColumns:
+      - ProductPhotoID
+    toTable: Production.ProductPhoto
+    toColumns:
+      - ProductPhotoID
+    relationship: many_to_one
+  - fromTable: Production.ProductReview
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.ProductSubcategory
+    fromColumns:
+      - ProductCategoryID
+    toTable: Production.ProductCategory
+    toColumns:
+      - ProductCategoryID
+    relationship: many_to_one
+  - fromTable: Production.TransactionHistory
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.WorkOrder
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Production.WorkOrder
+    fromColumns:
+      - ScrapReasonID
+    toTable: Production.ScrapReason
+    toColumns:
+      - ScrapReasonID
+    relationship: many_to_one
+  - fromTable: Production.WorkOrderRouting
+    fromColumns:
+      - LocationID
+    toTable: Production.Location
+    toColumns:
+      - LocationID
+    relationship: many_to_one
+  - fromTable: Production.WorkOrderRouting
+    fromColumns:
+      - WorkOrderID
+    toTable: Production.WorkOrder
+    toColumns:
+      - WorkOrderID
+    relationship: many_to_one
+  - fromTable: Purchasing.ProductVendor
+    fromColumns:
+      - BusinessEntityID
+    toTable: Purchasing.Vendor
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Purchasing.ProductVendor
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Purchasing.ProductVendor
+    fromColumns:
+      - UnitMeasureCode
+    toTable: Production.UnitMeasure
+    toColumns:
+      - UnitMeasureCode
+    relationship: many_to_one
+  - fromTable: Purchasing.PurchaseOrderDetail
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Purchasing.PurchaseOrderDetail
+    fromColumns:
+      - PurchaseOrderID
+    toTable: Purchasing.PurchaseOrderHeader
+    toColumns:
+      - PurchaseOrderID
+    relationship: many_to_one
+  - fromTable: Purchasing.PurchaseOrderHeader
+    fromColumns:
+      - EmployeeID
+    toTable: HumanResources.Employee
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Purchasing.PurchaseOrderHeader
+    fromColumns:
+      - ShipMethodID
+    toTable: Purchasing.ShipMethod
+    toColumns:
+      - ShipMethodID
+    relationship: many_to_one
+  - fromTable: Purchasing.PurchaseOrderHeader
+    fromColumns:
+      - VendorID
+    toTable: Purchasing.Vendor
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Purchasing.Vendor
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.BusinessEntity
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.CountryRegionCurrency
+    fromColumns:
+      - CountryRegionCode
+    toTable: Person.CountryRegion
+    toColumns:
+      - CountryRegionCode
+    relationship: many_to_one
+  - fromTable: Sales.CountryRegionCurrency
+    fromColumns:
+      - CurrencyCode
+    toTable: Sales.Currency
+    toColumns:
+      - CurrencyCode
+    relationship: many_to_one
+  - fromTable: Sales.CurrencyRate
+    fromColumns:
+      - FromCurrencyCode
+    toTable: Sales.Currency
+    toColumns:
+      - CurrencyCode
+    relationship: many_to_one
+  - fromTable: Sales.CurrencyRate
+    fromColumns:
+      - ToCurrencyCode
+    toTable: Sales.Currency
+    toColumns:
+      - CurrencyCode
+    relationship: many_to_one
+  - fromTable: Sales.Customer
+    fromColumns:
+      - PersonID
+    toTable: Person.Person
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.Customer
+    fromColumns:
+      - StoreID
+    toTable: Sales.Store
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.Customer
+    fromColumns:
+      - TerritoryID
+    toTable: Sales.SalesTerritory
+    toColumns:
+      - TerritoryID
+    relationship: many_to_one
+  - fromTable: Sales.PersonCreditCard
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.Person
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.PersonCreditCard
+    fromColumns:
+      - CreditCardID
+    toTable: Sales.CreditCard
+    toColumns:
+      - CreditCardID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderDetail
+    fromColumns:
+      - ProductID
+      - SpecialOfferID
+    toTable: Sales.SpecialOfferProduct
+    toColumns:
+      - ProductID
+      - SpecialOfferID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderDetail
+    fromColumns:
+      - SalesOrderID
+    toTable: Sales.SalesOrderHeader
+    toColumns:
+      - SalesOrderID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - BillToAddressID
+    toTable: Person.Address
+    toColumns:
+      - AddressID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - CreditCardID
+    toTable: Sales.CreditCard
+    toColumns:
+      - CreditCardID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - CurrencyRateID
+    toTable: Sales.CurrencyRate
+    toColumns:
+      - CurrencyRateID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - CustomerID
+    toTable: Sales.Customer
+    toColumns:
+      - CustomerID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - SalesPersonID
+    toTable: Sales.SalesPerson
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - ShipMethodID
+    toTable: Purchasing.ShipMethod
+    toColumns:
+      - ShipMethodID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - ShipToAddressID
+    toTable: Person.Address
+    toColumns:
+      - AddressID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeader
+    fromColumns:
+      - TerritoryID
+    toTable: Sales.SalesTerritory
+    toColumns:
+      - TerritoryID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeaderSalesReason
+    fromColumns:
+      - SalesOrderID
+    toTable: Sales.SalesOrderHeader
+    toColumns:
+      - SalesOrderID
+    relationship: many_to_one
+  - fromTable: Sales.SalesOrderHeaderSalesReason
+    fromColumns:
+      - SalesReasonID
+    toTable: Sales.SalesReason
+    toColumns:
+      - SalesReasonID
+    relationship: many_to_one
+  - fromTable: Sales.SalesPerson
+    fromColumns:
+      - BusinessEntityID
+    toTable: HumanResources.Employee
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.SalesPerson
+    fromColumns:
+      - TerritoryID
+    toTable: Sales.SalesTerritory
+    toColumns:
+      - TerritoryID
+    relationship: many_to_one
+  - fromTable: Sales.SalesPersonQuotaHistory
+    fromColumns:
+      - BusinessEntityID
+    toTable: Sales.SalesPerson
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.SalesTaxRate
+    fromColumns:
+      - StateProvinceID
+    toTable: Person.StateProvince
+    toColumns:
+      - StateProvinceID
+    relationship: many_to_one
+  - fromTable: Sales.SalesTerritory
+    fromColumns:
+      - CountryRegionCode
+    toTable: Person.CountryRegion
+    toColumns:
+      - CountryRegionCode
+    relationship: many_to_one
+  - fromTable: Sales.SalesTerritoryHistory
+    fromColumns:
+      - BusinessEntityID
+    toTable: Sales.SalesPerson
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.SalesTerritoryHistory
+    fromColumns:
+      - TerritoryID
+    toTable: Sales.SalesTerritory
+    toColumns:
+      - TerritoryID
+    relationship: many_to_one
+  - fromTable: Sales.ShoppingCartItem
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Sales.SpecialOfferProduct
+    fromColumns:
+      - ProductID
+    toTable: Production.Product
+    toColumns:
+      - ProductID
+    relationship: many_to_one
+  - fromTable: Sales.SpecialOfferProduct
+    fromColumns:
+      - SpecialOfferID
+    toTable: Sales.SpecialOffer
+    toColumns:
+      - SpecialOfferID
+    relationship: many_to_one
+  - fromTable: Sales.Store
+    fromColumns:
+      - BusinessEntityID
+    toTable: Person.BusinessEntity
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one
+  - fromTable: Sales.Store
+    fromColumns:
+      - SalesPersonID
+    toTable: Sales.SalesPerson
+    toColumns:
+      - BusinessEntityID
+    relationship: many_to_one

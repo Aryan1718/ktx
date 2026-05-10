@@ -1,0 +1,16 @@
+name: content_assets
+table: content_assets
+grain:
+- asset_id
+columns:
+- name: asset_id
+  type: number
+- name: content_type
+  type: string
+- name: publish_date
+  type: time
+  role: time
+- name: title
+  type: string
+- name: url
+  type: string

@@ -1,0 +1,11 @@
+expectedPks:
+  - table: order_lines
+    columns: [order_id, line_number]
+  - table: order_line_allocations
+    columns: [order_id, line_number, warehouse_code]
+expectedLinks:
+  - fromTable: order_line_allocations
+    fromColumns: [order_id, line_number]
+    toTable: order_lines
+    toColumns: [order_id, line_number]
+    relationship: many_to_one

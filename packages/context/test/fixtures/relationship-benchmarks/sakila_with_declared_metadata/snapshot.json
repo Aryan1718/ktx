@@ -1,0 +1,1173 @@
+{
+  "connectionId": "sakila_with_declared_metadata",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "metadata": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "actor",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 200,
+      "columns": [
+        {
+          "name": "actor_id",
+          "nativeType": "numeric",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "first_name",
+          "nativeType": "VARCHAR(45)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_name",
+          "nativeType": "VARCHAR(45)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "address",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 603,
+      "columns": [
+        {
+          "name": "address_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "address",
+          "nativeType": "VARCHAR(50)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "address2",
+          "nativeType": "VARCHAR(50)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "district",
+          "nativeType": "VARCHAR(20)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "city_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "postal_code",
+          "nativeType": "VARCHAR(10)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "phone",
+          "nativeType": "VARCHAR(20)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "city_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "city",
+          "toColumn": "city_id",
+          "constraintName": "address_city_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "category",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 16,
+      "columns": [
+        {
+          "name": "category_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "name",
+          "nativeType": "VARCHAR(25)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "city",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 600,
+      "columns": [
+        {
+          "name": "city_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "city",
+          "nativeType": "VARCHAR(50)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "country_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "country_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "country",
+          "toColumn": "country_id",
+          "constraintName": "city_country_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "country",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 109,
+      "columns": [
+        {
+          "name": "country_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "country",
+          "nativeType": "VARCHAR(50)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "customer",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 599,
+      "columns": [
+        {
+          "name": "customer_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "store_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "first_name",
+          "nativeType": "VARCHAR(45)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_name",
+          "nativeType": "VARCHAR(45)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "email",
+          "nativeType": "VARCHAR(50)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "address_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "active",
+          "nativeType": "CHAR(1)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "create_date",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "address_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "address",
+          "toColumn": "address_id",
+          "constraintName": "customer_address_id_fkey"
+        },
+        {
+          "fromColumn": "store_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "store",
+          "toColumn": "store_id",
+          "constraintName": "customer_store_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "film",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 1000,
+      "columns": [
+        {
+          "name": "film_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "title",
+          "nativeType": "VARCHAR(255)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "description",
+          "nativeType": "BLOB SUB_TYPE TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "release_year",
+          "nativeType": "VARCHAR(4)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "language_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "original_language_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "rental_duration",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "rental_rate",
+          "nativeType": "DECIMAL(4,2)",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "length",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "replacement_cost",
+          "nativeType": "DECIMAL(5,2)",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "rating",
+          "nativeType": "VARCHAR(10)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "special_features",
+          "nativeType": "VARCHAR(100)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "original_language_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "language",
+          "toColumn": "language_id",
+          "constraintName": "film_original_language_id_fkey"
+        },
+        {
+          "fromColumn": "language_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "language",
+          "toColumn": "language_id",
+          "constraintName": "film_language_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "film_actor",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 5462,
+      "columns": [
+        {
+          "name": "actor_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "film_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "film_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "film",
+          "toColumn": "film_id",
+          "constraintName": "film_actor_film_id_fkey"
+        },
+        {
+          "fromColumn": "actor_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "actor",
+          "toColumn": "actor_id",
+          "constraintName": "film_actor_actor_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "film_category",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 1000,
+      "columns": [
+        {
+          "name": "film_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "category_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "category_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "category",
+          "toColumn": "category_id",
+          "constraintName": "film_category_category_id_fkey"
+        },
+        {
+          "fromColumn": "film_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "film",
+          "toColumn": "film_id",
+          "constraintName": "film_category_film_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "film_text",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 0,
+      "columns": [
+        {
+          "name": "film_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "title",
+          "nativeType": "VARCHAR(255)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "description",
+          "nativeType": "BLOB SUB_TYPE TEXT",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "inventory",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 4581,
+      "columns": [
+        {
+          "name": "inventory_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "film_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "store_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "film_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "film",
+          "toColumn": "film_id",
+          "constraintName": "inventory_film_id_fkey"
+        },
+        {
+          "fromColumn": "store_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "store",
+          "toColumn": "store_id",
+          "constraintName": "inventory_store_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "language",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 6,
+      "columns": [
+        {
+          "name": "language_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "name",
+          "nativeType": "CHAR(20)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "payment",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 16049,
+      "columns": [
+        {
+          "name": "payment_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "customer_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "staff_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "rental_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "amount",
+          "nativeType": "DECIMAL(5,2)",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "payment_date",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "staff_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "staff",
+          "toColumn": "staff_id",
+          "constraintName": "payment_staff_id_fkey"
+        },
+        {
+          "fromColumn": "customer_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "customer",
+          "toColumn": "customer_id",
+          "constraintName": "payment_customer_id_fkey"
+        },
+        {
+          "fromColumn": "rental_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "rental",
+          "toColumn": "rental_id",
+          "constraintName": "payment_rental_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "rental",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 16044,
+      "columns": [
+        {
+          "name": "rental_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "rental_date",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "inventory_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "customer_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "return_date",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "staff_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "customer_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "customer",
+          "toColumn": "customer_id",
+          "constraintName": "rental_customer_id_fkey"
+        },
+        {
+          "fromColumn": "inventory_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "inventory",
+          "toColumn": "inventory_id",
+          "constraintName": "rental_inventory_id_fkey"
+        },
+        {
+          "fromColumn": "staff_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "staff",
+          "toColumn": "staff_id",
+          "constraintName": "rental_staff_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "staff",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 2,
+      "columns": [
+        {
+          "name": "staff_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "first_name",
+          "nativeType": "VARCHAR(45)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_name",
+          "nativeType": "VARCHAR(45)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "address_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "picture",
+          "nativeType": "BLOB",
+          "normalizedType": "blob",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "email",
+          "nativeType": "VARCHAR(50)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "store_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "active",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "username",
+          "nativeType": "VARCHAR(16)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "password",
+          "nativeType": "VARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "address_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "address",
+          "toColumn": "address_id",
+          "constraintName": "staff_address_id_fkey"
+        },
+        {
+          "fromColumn": "store_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "store",
+          "toColumn": "store_id",
+          "constraintName": "staff_store_id_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "store",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 2,
+      "columns": [
+        {
+          "name": "store_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "manager_staff_id",
+          "nativeType": "SMALLINT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "address_id",
+          "nativeType": "INT",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "last_update",
+          "nativeType": "TIMESTAMP",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "address_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "address",
+          "toColumn": "address_id",
+          "constraintName": "store_address_id_fkey"
+        },
+        {
+          "fromColumn": "manager_staff_id",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "staff",
+          "toColumn": "staff_id",
+          "constraintName": "store_manager_staff_id_fkey"
+        }
+      ]
+    }
+  ]
+}

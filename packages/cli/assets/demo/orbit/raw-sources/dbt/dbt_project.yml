@@ -1,0 +1,10 @@
+name: ktx_demo
+version: "1.0.0"
+config-version: 2
+profile: ktx_demo
+
+model-paths: ["models"]
+
+models:
+  ktx_demo:
+    +materialized: view

@@ -1,0 +1,765 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { access, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { cancel, isCancel, select } from '@clack/prompts';
+import {
+  type KloLocalProject,
+  loadKloProject,
+  markKloSetupStepComplete,
+  serializeKloProjectConfig,
+} from '@klo/context/project';
+import type { KloCliIo } from './cli-runtime.js';
+import { buildPublicIngestPlan } from './public-ingest.js';
+import { runContextBuild } from './context-build-view.js';
+import { withMenuOptionsSpacing } from './prompt-navigation.js';
+import { withSetupInterruptConfirmation } from './setup-interrupt.js';
+
+export type KloSetupContextBuildStatus =
+  | 'not_started'
+  | 'running'
+  | 'detached'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'interrupted'
+  | 'stale';
+
+export interface KloSetupContextCommands {
+  build: string;
+  watch: string;
+  status: string;
+  stop: string;
+  resume: string;
+}
+
+export interface KloSetupContextState {
+  runId?: string;
+  status: KloSetupContextBuildStatus;
+  startedAt?: string;
+  updatedAt?: string;
+  completedAt?: string;
+  primarySourceConnectionIds: string[];
+  contextSourceConnectionIds: string[];
+  reportIds: string[];
+  artifactPaths: string[];
+  retryableFailedTargets: string[];
+  commands: KloSetupContextCommands;
+  failureReason?: string;
+}
+
+export interface KloSetupContextStatusSummary {
+  ready: boolean;
+  status: KloSetupContextBuildStatus;
+  runId?: string;
+  watchCommand?: string;
+  statusCommand?: string;
+  retryCommand?: string;
+  detail?: string;
+}
+
+export interface KloSetupContextReadiness {
+  ready: boolean;
+  agentContextReady: boolean;
+  semanticSearchReady: boolean;
+  details: string[];
+  failedTargets?: string[];
+}
+
+export type KloSetupContextResult =
+  | { status: 'ready'; projectDir: string; runId: string }
+  | { status: 'skipped'; projectDir: string }
+  | { status: 'detached'; projectDir: string; runId: string }
+  | { status: 'paused'; projectDir: string; runId: string }
+  | { status: 'back'; projectDir: string }
+  | { status: 'missing-input'; projectDir: string }
+  | { status: 'failed'; projectDir: string };
+
+export interface KloSetupContextStepArgs {
+  projectDir: string;
+  inputMode: 'auto' | 'disabled';
+  forcePrompt?: boolean;
+  allowEmpty?: boolean;
+  prompt?: boolean;
+}
+
+export type KloSetupContextCommandArgs =
+  | { command: 'build'; projectDir: string; inputMode: 'auto' | 'disabled' }
+  | { command: 'watch'; projectDir: string; runId?: string; inputMode: 'auto' | 'disabled' }
+  | { command: 'status'; projectDir: string; runId?: string; json: boolean }
+  | { command: 'stop'; projectDir: string; runId?: string };
+
+export interface KloSetupContextPromptAdapter {
+  select(options: { message: string; options: Array<{ value: string; label: string }> }): Promise<string>;
+  cancel(message: string): void;
+}
+
+export interface KloSetupContextDeps {
+  prompts?: KloSetupContextPromptAdapter;
+  runIdFactory?: () => string;
+  now?: () => Date;
+  runContextBuild?: typeof runContextBuild;
+  verifyContextReady?: (projectDir: string) => Promise<KloSetupContextReadiness>;
+}
+
+interface KloSetupContextTargets {
+  primarySourceConnectionIds: string[];
+  contextSourceConnectionIds: string[];
+}
+
+const SETUP_CONTEXT_STATE_PATH = ['.klo', 'setup', 'context-build.json'] as const;
+const LIVE_DATABASE_ADAPTER = 'live-database';
+const SCAN_REPORT_FILE = 'scan-report.json';
+
+function createPromptAdapter(): KloSetupContextPromptAdapter {
+  return {
+    async select(options) {
+      const value = await withSetupInterruptConfirmation(() => select(withMenuOptionsSpacing(options)));
+      if (isCancel(value)) {
+        cancel('Setup cancelled.');
+        return 'back';
+      }
+      return String(value);
+    },
+    cancel(message) {
+      cancel(message);
+    },
+  };
+}
+
+function statePath(projectDir: string): string {
+  return join(resolve(projectDir), ...SETUP_CONTEXT_STATE_PATH);
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function contextBuildCommands(projectDir: string, runId?: string): KloSetupContextCommands {
+  const resolvedProjectDir = resolve(projectDir);
+  const runIdArg = runId ? ` ${runId}` : '';
+  return {
+    build: `klo setup context build --project-dir ${resolvedProjectDir}`,
+    watch: `klo setup context watch${runIdArg} --project-dir ${resolvedProjectDir}`,
+    status: `klo setup context status${runIdArg} --project-dir ${resolvedProjectDir}`,
+    stop: `klo setup context stop${runIdArg} --project-dir ${resolvedProjectDir}`,
+    resume: `klo setup --project-dir ${resolvedProjectDir}`,
+  };
+}
+
+function notStartedState(projectDir: string): KloSetupContextState {
+  return {
+    status: 'not_started',
+    primarySourceConnectionIds: [],
+    contextSourceConnectionIds: [],
+    reportIds: [],
+    artifactPaths: [],
+    retryableFailedTargets: [],
+    commands: contextBuildCommands(projectDir),
+  };
+}
+
+function normalizeState(projectDir: string, value: unknown): KloSetupContextState {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return notStartedState(projectDir);
+  }
+  const record = value as Partial<KloSetupContextState>;
+  const status = record.status ?? 'not_started';
+  const runId = typeof record.runId === 'string' && record.runId.length > 0 ? record.runId : undefined;
+  return {
+    ...(runId ? { runId } : {}),
+    status,
+    ...(typeof record.startedAt === 'string' ? { startedAt: record.startedAt } : {}),
+    ...(typeof record.updatedAt === 'string' ? { updatedAt: record.updatedAt } : {}),
+    ...(typeof record.completedAt === 'string' ? { completedAt: record.completedAt } : {}),
+    primarySourceConnectionIds: Array.isArray(record.primarySourceConnectionIds)
+      ? record.primarySourceConnectionIds.filter((item): item is string => typeof item === 'string')
+      : [],
+    contextSourceConnectionIds: Array.isArray(record.contextSourceConnectionIds)
+      ? record.contextSourceConnectionIds.filter((item): item is string => typeof item === 'string')
+      : [],
+    reportIds: Array.isArray(record.reportIds)
+      ? record.reportIds.filter((item): item is string => typeof item === 'string')
+      : [],
+    artifactPaths: Array.isArray(record.artifactPaths)
+      ? record.artifactPaths.filter((item): item is string => typeof item === 'string')
+      : [],
+    retryableFailedTargets: Array.isArray(record.retryableFailedTargets)
+      ? record.retryableFailedTargets.filter((item): item is string => typeof item === 'string')
+      : [],
+    commands: contextBuildCommands(projectDir, runId),
+    ...(typeof record.failureReason === 'string' ? { failureReason: record.failureReason } : {}),
+  };
+}
+
+export async function readKloSetupContextState(projectDir: string): Promise<KloSetupContextState> {
+  const filePath = statePath(projectDir);
+  if (!(await pathExists(filePath))) {
+    return notStartedState(projectDir);
+  }
+  return normalizeState(projectDir, JSON.parse(await readFile(filePath, 'utf-8')) as unknown);
+}
+
+export async function writeKloSetupContextState(projectDir: string, state: KloSetupContextState): Promise<void> {
+  const resolvedProjectDir = resolve(projectDir);
+  await mkdir(join(resolvedProjectDir, '.klo', 'setup'), { recursive: true });
+  const normalized = normalizeState(resolvedProjectDir, {
+    ...state,
+    commands: contextBuildCommands(resolvedProjectDir, state.runId),
+  });
+  await writeFile(statePath(resolvedProjectDir), `${JSON.stringify(normalized, null, 2)}\n`, 'utf-8');
+}
+
+export function setupContextStatusFromState(
+  state: KloSetupContextState,
+  options: { completedStep: boolean } = { completedStep: false },
+): KloSetupContextStatusSummary {
+  const status = options.completedStep && state.status === 'not_started' ? 'completed' : state.status;
+  const ready = options.completedStep && status === 'completed';
+  return {
+    ready,
+    status,
+    ...(state.runId ? { runId: state.runId } : {}),
+    ...(state.runId ? { watchCommand: state.commands.watch, statusCommand: state.commands.status } : {}),
+    retryCommand: state.commands.build,
+    ...(state.failureReason ? { detail: state.failureReason } : {}),
+  };
+}
+
+function runIdFactory(): string {
+  return `setup-context-local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function listContextTargets(project: KloLocalProject): KloSetupContextTargets {
+  if (Object.keys(project.config.connections).length === 0) {
+    return { primarySourceConnectionIds: [], contextSourceConnectionIds: [] };
+  }
+  const plan = buildPublicIngestPlan(project, { projectDir: project.projectDir, all: true });
+  return {
+    primarySourceConnectionIds: plan.targets
+      .filter((target) => target.operation === 'scan')
+      .map((target) => target.connectionId),
+    contextSourceConnectionIds: plan.targets
+      .filter((target) => target.operation === 'source-ingest')
+      .map((target) => target.connectionId),
+  };
+}
+
+function missingCapabilities(project: KloLocalProject): string[] {
+  const missing: string[] = [];
+  const llm = project.config.llm;
+  if (llm.provider.backend === 'none' || !llm.models.default) {
+    missing.push('Models are not ready.');
+  }
+  const embeddings = project.config.ingest.embeddings;
+  if (
+    embeddings.backend === 'none' ||
+    embeddings.backend === 'deterministic' ||
+    !embeddings.model ||
+    embeddings.dimensions <= 0
+  ) {
+    missing.push('Embeddings are not ready.');
+  }
+  if (project.config.scan.enrichment.mode === 'none') {
+    missing.push('Scan enrichment is not configured.');
+  }
+  return missing;
+}
+
+async function hasFileWithExtension(
+  root: string,
+  extensions: Set<string>,
+  options: { ignoredDirectoryNames?: Set<string> } = {},
+): Promise<boolean> {
+  if (!(await pathExists(root))) {
+    return false;
+  }
+  const entries = await readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const entryPath = join(root, entry.name);
+    if (entry.isDirectory()) {
+      if (options.ignoredDirectoryNames?.has(entry.name)) {
+        continue;
+      }
+      if (await hasFileWithExtension(entryPath, extensions, options)) {
+        return true;
+      }
+      continue;
+    }
+    if (extensions.has(entry.name.slice(entry.name.lastIndexOf('.')))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function stringArrayValue(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+async function readJsonFile(path: string): Promise<unknown | null> {
+  try {
+    return JSON.parse(await readFile(path, 'utf-8')) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+async function readLatestScanReport(projectDir: string, connectionId: string): Promise<unknown | null> {
+  const scanRoot = join(projectDir, 'raw-sources', connectionId, LIVE_DATABASE_ADAPTER);
+  if (!(await pathExists(scanRoot))) {
+    return null;
+  }
+
+  const reports: Array<{ sortKey: string; report: unknown }> = [];
+  for (const entry of await readdir(scanRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const report = await readJsonFile(join(scanRoot, entry.name, SCAN_REPORT_FILE));
+    if (!isRecord(report)) {
+      continue;
+    }
+    reports.push({ sortKey: stringValue(report.createdAt) ?? entry.name, report });
+  }
+
+  reports.sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+  return reports.at(-1)?.report ?? null;
+}
+
+function scanReportHasCompletedDescriptionEnrichment(report: unknown, connectionId: string): boolean {
+  if (!isRecord(report)) {
+    return false;
+  }
+  if (report.connectionId !== connectionId || report.mode !== 'enriched' || report.dryRun === true) {
+    return false;
+  }
+  if (!isRecord(report.enrichment) || !isRecord(report.enrichmentState) || !isRecord(report.artifactPaths)) {
+    return false;
+  }
+  const completedStages = stringArrayValue(report.enrichmentState.completedStages);
+  return (
+    report.enrichment.tableDescriptions === 'completed' &&
+    report.enrichment.columnDescriptions === 'completed' &&
+    report.enrichment.embeddings === 'completed' &&
+    completedStages.includes('descriptions') &&
+    completedStages.includes('embeddings') &&
+    stringArrayValue(report.artifactPaths.manifestShards).length > 0
+  );
+}
+
+async function verifyPrimarySourceScans(
+  projectDir: string,
+  connectionIds: string[],
+): Promise<{ ready: boolean; details: string[] }> {
+  const details: string[] = [];
+  for (const connectionId of connectionIds) {
+    const report = await readLatestScanReport(projectDir, connectionId);
+    if (!scanReportHasCompletedDescriptionEnrichment(report, connectionId)) {
+      details.push(`${connectionId}: enriched database scan with AI descriptions has not completed.`);
+    }
+  }
+  return { ready: details.length === 0, details };
+}
+
+async function defaultVerifyContextReady(projectDir: string): Promise<KloSetupContextReadiness> {
+  const project = await loadKloProject({ projectDir });
+  const targets = listContextTargets(project);
+  const primarySourceScans = await verifyPrimarySourceScans(projectDir, targets.primarySourceConnectionIds);
+  const semanticLayerContextReady = await hasFileWithExtension(
+    join(projectDir, 'semantic-layer'),
+    new Set(['.yaml', '.yml']),
+    {
+      ignoredDirectoryNames: new Set(['_schema']),
+    },
+  );
+  const wikiReady = await hasFileWithExtension(join(projectDir, 'knowledge'), new Set(['.md']));
+  const contextSourceReady =
+    targets.contextSourceConnectionIds.length === 0 || semanticLayerContextReady || wikiReady;
+  const ready = primarySourceScans.ready && contextSourceReady;
+  const semanticSearchReady = semanticLayerContextReady || primarySourceScans.ready;
+  const details: string[] = [];
+  if (!primarySourceScans.ready) {
+    details.push(...primarySourceScans.details);
+  }
+  if (!contextSourceReady) {
+    details.push('No semantic-layer or wiki assets were found after the context build.');
+  }
+  return {
+    ready,
+    agentContextReady: ready,
+    semanticSearchReady,
+    details: ready
+      ? [
+          `Agent context: ${ready ? 'ready' : 'not ready'}`,
+          `Semantic search: ${semanticSearchReady ? 'ready' : 'not ready'}`,
+        ]
+      : details,
+  };
+}
+
+async function markContextComplete(projectDir: string): Promise<void> {
+  const project = await loadKloProject({ projectDir });
+  await writeFile(
+    project.configPath,
+    serializeKloProjectConfig(markKloSetupStepComplete(project.config, 'context')),
+    'utf-8',
+  );
+}
+
+function writeBuildHeader(projectDir: string, runId: string, io: KloCliIo): void {
+  const commands = contextBuildCommands(projectDir, runId);
+  io.stdout.write('\nKLO context build\n');
+  io.stdout.write(`Run: ${runId}\n`);
+  io.stdout.write(`Project: ${resolve(projectDir)}\n\n`);
+  io.stdout.write('Detach: press d to leave this running.\n');
+  io.stdout.write(`Resume: ${commands.watch}\n`);
+  io.stdout.write(`Status: ${commands.status}\n\n`);
+}
+
+function writeMissingCapabilities(missing: string[], io: KloCliIo): void {
+  io.stderr.write('KLO cannot build agent-ready context yet.\n\n');
+  io.stderr.write('Missing:\n');
+  for (const item of missing) {
+    io.stderr.write(`  ${item}\n`);
+  }
+  io.stderr.write('\nFix this in setup before building context.\n');
+}
+
+function writeSkippedContext(projectDir: string, io: KloCliIo): void {
+  io.stdout.write('\nKLO is configured, but context has not been built yet.\n\n');
+  io.stdout.write('Agents were not connected because KLO has not prepared searchable context for them.\n\n');
+  io.stdout.write(`Resume setup:\n  klo setup --project-dir ${resolve(projectDir)}\n\n`);
+  io.stdout.write(`Build context directly:\n  klo setup context build --project-dir ${resolve(projectDir)}\n\n`);
+  io.stdout.write(`Check status:\n  klo status --project-dir ${resolve(projectDir)}\n`);
+}
+
+function writeSuccess(readiness: KloSetupContextReadiness, targets: KloSetupContextTargets, io: KloCliIo): void {
+  io.stdout.write('\nKLO context is ready for agents.\n\n');
+  io.stdout.write('Primary sources:\n');
+  if (targets.primarySourceConnectionIds.length === 0) {
+    io.stdout.write('  none\n');
+  } else {
+    for (const connectionId of targets.primarySourceConnectionIds) {
+      io.stdout.write(`  ${connectionId}: enriched scan complete\n`);
+    }
+  }
+  io.stdout.write('\nContext sources:\n');
+  if (targets.contextSourceConnectionIds.length === 0) {
+    io.stdout.write('  none\n');
+  } else {
+    for (const connectionId of targets.contextSourceConnectionIds) {
+      io.stdout.write(`  ${connectionId}: memory update complete\n`);
+    }
+  }
+  io.stdout.write('\nVerification:\n');
+  io.stdout.write(`  Agent context: ${readiness.agentContextReady ? 'ready' : 'not ready'}\n`);
+  io.stdout.write(`  Semantic search: ${readiness.semanticSearchReady ? 'ready' : 'not ready'}\n`);
+}
+
+function writeExistingContextSuccess(readiness: KloSetupContextReadiness, io: KloCliIo): void {
+  io.stdout.write('\nKLO context is ready for agents.\n\n');
+  io.stdout.write('Existing context artifacts were found from setup ingest.\n\n');
+  io.stdout.write('Verification:\n');
+  io.stdout.write(`  Agent context: ${readiness.agentContextReady ? 'ready' : 'not ready'}\n`);
+  io.stdout.write(`  Semantic search: ${readiness.semanticSearchReady ? 'ready' : 'not ready'}\n`);
+}
+
+async function promptForBuild(prompts: KloSetupContextPromptAdapter): Promise<'build' | 'skip' | 'back'> {
+  return (await prompts.select({
+    message:
+      'Build KLO context for agents?\n\n' +
+      'KLO is fully configured and ready to build context. This may take a few minutes to a few hours.',
+    options: [
+      { value: 'build', label: 'Build context now (recommended)' },
+      { value: 'skip', label: 'Leave context unbuilt and exit setup' },
+      { value: 'back', label: 'Back' },
+    ],
+  })) as 'build' | 'skip' | 'back';
+}
+
+async function runBuild(
+  args: KloSetupContextStepArgs,
+  io: KloCliIo,
+  deps: KloSetupContextDeps,
+  project: KloLocalProject,
+  targets: KloSetupContextTargets,
+): Promise<KloSetupContextResult> {
+  const now = deps.now ?? (() => new Date());
+  const runId = deps.runIdFactory?.() ?? runIdFactory();
+  const startedAt = now().toISOString();
+  const runningState: KloSetupContextState = {
+    runId,
+    status: 'running',
+    startedAt,
+    updatedAt: startedAt,
+    primarySourceConnectionIds: targets.primarySourceConnectionIds,
+    contextSourceConnectionIds: targets.contextSourceConnectionIds,
+    reportIds: [],
+    artifactPaths: [],
+    retryableFailedTargets: [],
+    commands: contextBuildCommands(args.projectDir, runId),
+  };
+  await writeKloSetupContextState(args.projectDir, runningState);
+
+  const contextBuild = deps.runContextBuild ?? runContextBuild;
+  const buildResult = await contextBuild(
+    project,
+    {
+      projectDir: args.projectDir,
+      inputMode: args.inputMode,
+      scanMode: 'enriched',
+      detectRelationships: true,
+    },
+    io,
+    {
+      onDetach: () => {
+        const resolvedDir = resolve(args.projectDir);
+        mkdirSync(join(resolvedDir, '.klo', 'setup'), { recursive: true });
+        const detachedState = normalizeState(resolvedDir, {
+          ...runningState,
+          status: 'detached',
+          updatedAt: new Date().toISOString(),
+        });
+        writeFileSync(statePath(resolvedDir), `${JSON.stringify(detachedState, null, 2)}\n`);
+      },
+    },
+  );
+  if (buildResult.detached) {
+    const updatedAt = now().toISOString();
+    await writeKloSetupContextState(args.projectDir, { ...runningState, status: 'detached', updatedAt });
+    return { status: 'detached', projectDir: args.projectDir, runId };
+  }
+  if (buildResult.exitCode !== 0) {
+    const updatedAt = now().toISOString();
+    await writeKloSetupContextState(args.projectDir, {
+      ...runningState,
+      status: 'failed',
+      updatedAt,
+      retryableFailedTargets: [...targets.primarySourceConnectionIds, ...targets.contextSourceConnectionIds],
+      failureReason: 'Context build failed.',
+    });
+    return { status: 'failed', projectDir: args.projectDir };
+  }
+
+  const readiness = await (deps.verifyContextReady ?? defaultVerifyContextReady)(args.projectDir);
+  if (!readiness.ready) {
+    const updatedAt = now().toISOString();
+    await writeKloSetupContextState(args.projectDir, {
+      ...runningState,
+      status: 'failed',
+      updatedAt,
+      retryableFailedTargets: readiness.failedTargets ?? [],
+      failureReason: readiness.details.join(' '),
+    });
+    io.stderr.write('KLO context build did not pass agent-readiness verification.\n');
+    for (const detail of readiness.details) {
+      io.stderr.write(`  ${detail}\n`);
+    }
+    return { status: 'failed', projectDir: args.projectDir };
+  }
+
+  await markContextComplete(project.projectDir);
+  const completedAt = now().toISOString();
+  await writeKloSetupContextState(args.projectDir, {
+    ...runningState,
+    status: 'completed',
+    updatedAt: completedAt,
+    completedAt,
+    retryableFailedTargets: [],
+  });
+  writeSuccess(readiness, targets, io);
+  return { status: 'ready', projectDir: args.projectDir, runId };
+}
+
+async function completeExistingContext(
+  args: KloSetupContextStepArgs,
+  io: KloCliIo,
+  deps: KloSetupContextDeps,
+  targets: KloSetupContextTargets,
+): Promise<KloSetupContextResult | null> {
+  const readiness = await (deps.verifyContextReady ?? defaultVerifyContextReady)(args.projectDir);
+  if (!readiness.ready) {
+    return null;
+  }
+
+  const now = deps.now ?? (() => new Date());
+  const completedAt = now().toISOString();
+  const runId = deps.runIdFactory?.() ?? runIdFactory();
+  await markContextComplete(args.projectDir);
+  await writeKloSetupContextState(args.projectDir, {
+    runId,
+    status: 'completed',
+    startedAt: completedAt,
+    updatedAt: completedAt,
+    completedAt,
+    primarySourceConnectionIds: targets.primarySourceConnectionIds,
+    contextSourceConnectionIds: targets.contextSourceConnectionIds,
+    reportIds: [],
+    artifactPaths: [],
+    retryableFailedTargets: [],
+    commands: contextBuildCommands(args.projectDir, runId),
+  });
+  writeExistingContextSuccess(readiness, io);
+  return { status: 'ready', projectDir: args.projectDir, runId };
+}
+
+export async function runKloSetupContextStep(
+  args: KloSetupContextStepArgs,
+  io: KloCliIo,
+  deps: KloSetupContextDeps = {},
+): Promise<KloSetupContextResult> {
+  try {
+    const project = await loadKloProject({ projectDir: args.projectDir });
+    const existingState = await readKloSetupContextState(args.projectDir);
+    if (project.config.setup?.completed_steps.includes('context') === true && existingState.status === 'completed') {
+      return { status: 'ready', projectDir: args.projectDir, runId: existingState.runId ?? 'setup-context-completed' };
+    }
+
+    if (
+      (existingState.status === 'running' || existingState.status === 'detached') &&
+      args.inputMode !== 'disabled'
+    ) {
+      const prompts = deps.prompts ?? createPromptAdapter();
+      const choice = await prompts.select({
+        message:
+          'A context build is running in the background.\n\n' +
+          'You can wait for it to finish, check its status, or start a fresh build.',
+        options: [
+          { value: 'status', label: 'Check status' },
+          { value: 'rebuild', label: 'Start a fresh context build' },
+          { value: 'back', label: 'Back' },
+        ],
+      });
+      if (choice === 'status') {
+        const commands = contextBuildCommands(args.projectDir, existingState.runId);
+        io.stdout.write(`\nRun: ${commands.status}\n`);
+        io.stdout.write(`Log: ${join(resolve(args.projectDir), '.klo', 'setup', 'context-build.log')}\n`);
+        return { status: 'detached', projectDir: args.projectDir, runId: existingState.runId ?? '' };
+      }
+      if (choice === 'back') {
+        return { status: 'back', projectDir: args.projectDir };
+      }
+    }
+
+    const targets = listContextTargets(project);
+    if (targets.primarySourceConnectionIds.length === 0 && targets.contextSourceConnectionIds.length === 0) {
+      if (args.allowEmpty === true) {
+        return { status: 'skipped', projectDir: args.projectDir };
+      }
+      io.stderr.write('No primary or context sources are configured for a KLO context build.\n');
+      return { status: 'failed', projectDir: args.projectDir };
+    }
+
+    const missing = missingCapabilities(project);
+    if (missing.length > 0) {
+      writeMissingCapabilities(missing, io);
+      return { status: 'missing-input', projectDir: args.projectDir };
+    }
+
+    if (args.forcePrompt !== true && args.prompt !== false && deps.verifyContextReady === undefined) {
+      const existingContextResult = await completeExistingContext(args, io, deps, targets);
+      if (existingContextResult) {
+        return existingContextResult;
+      }
+    }
+
+    if (args.inputMode !== 'disabled' && args.prompt !== false) {
+      const choice = await promptForBuild(deps.prompts ?? createPromptAdapter());
+      if (choice === 'back') {
+        return { status: 'back', projectDir: args.projectDir };
+      }
+      if (choice === 'skip') {
+        writeSkippedContext(args.projectDir, io);
+        return { status: 'skipped', projectDir: args.projectDir };
+      }
+    }
+
+    return await runBuild(args, io, deps, project, targets);
+  } catch (error) {
+    io.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return { status: 'failed', projectDir: args.projectDir };
+  }
+}
+
+function stateMatchesRunId(state: KloSetupContextState, runId: string | undefined): boolean {
+  return !runId || state.runId === runId;
+}
+
+function statusPayload(state: KloSetupContextState): KloSetupContextStatusSummary {
+  return setupContextStatusFromState(state, { completedStep: state.status === 'completed' });
+}
+
+function writeContextStatus(state: KloSetupContextState, io: KloCliIo): void {
+  io.stdout.write(`KLO context built: ${state.status === 'completed' ? 'yes' : state.status.replaceAll('_', ' ')}\n`);
+  if (state.runId) {
+    io.stdout.write(`Run: ${state.runId}\n`);
+    io.stdout.write(`Watch: ${state.commands.watch}\n`);
+    io.stdout.write(`Status: ${state.commands.status}\n`);
+  }
+  if (state.failureReason) {
+    io.stdout.write(`Detail: ${state.failureReason}\n`);
+  }
+}
+
+export async function runKloSetupContextCommand(
+  args: KloSetupContextCommandArgs,
+  io: KloCliIo,
+  deps: KloSetupContextDeps = {},
+): Promise<number> {
+  if (args.command === 'build') {
+    const result = await runKloSetupContextStep(
+      { projectDir: args.projectDir, inputMode: args.inputMode, prompt: false },
+      io,
+      deps,
+    );
+    return result.status === 'ready' || result.status === 'skipped' ? 0 : 1;
+  }
+
+  const state = await readKloSetupContextState(args.projectDir);
+  if (!stateMatchesRunId(state, args.runId)) {
+    io.stderr.write(`KLO setup context run "${args.runId}" was not found.\n`);
+    return 1;
+  }
+
+  if (args.command === 'status') {
+    if (args.json) {
+      io.stdout.write(`${JSON.stringify(statusPayload(state), null, 2)}\n`);
+    } else {
+      writeContextStatus(state, io);
+    }
+    return 0;
+  }
+
+  if (args.command === 'watch') {
+    io.stdout.write('KLO context build\n');
+    writeContextStatus(state, io);
+    return 0;
+  }
+
+  const updatedAt = new Date().toISOString();
+  const nextState: KloSetupContextState = {
+    ...state,
+    status: state.status === 'completed' ? 'completed' : 'paused',
+    updatedAt,
+  };
+  await writeKloSetupContextState(args.projectDir, nextState);
+  io.stdout.write(
+    state.status === 'completed'
+      ? 'KLO context build already completed.\n'
+      : 'KLO context build pause requested. Resume with setup when ready.\n',
+  );
+  return 0;
+}

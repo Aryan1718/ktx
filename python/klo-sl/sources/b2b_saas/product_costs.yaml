@@ -1,0 +1,15 @@
+name: product_costs
+table: product_costs
+grain:
+- cogs_per_unit
+columns:
+- name: cogs_per_unit
+  type: number
+- name: product_id
+  type: number
+- name: region
+  type: string
+joins:
+- to: products
+  'on': product_id = products.product_id
+  relationship: many_to_one

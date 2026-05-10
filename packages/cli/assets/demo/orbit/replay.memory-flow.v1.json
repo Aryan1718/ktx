@@ -1,0 +1,707 @@
+{
+  "memoryFlowReplaySchemaVersion": 1,
+  "replay": {
+    "runId": "demo-seeded-orbit",
+    "connectionId": "orbit_demo",
+    "adapter": "live-database",
+    "status": "done",
+    "sourceDir": null,
+    "syncId": "demo-seeded-sync",
+    "reportId": "demo-seeded-report",
+    "reportPath": "reports/seeded-demo-report.json",
+    "errors": [],
+    "metadata": {
+      "schemaVersion": 1,
+      "mode": "seeded",
+      "origin": "packaged",
+      "timing": "prebuilt",
+      "capturedAt": "2026-05-06T00:00:00.000Z",
+      "sourceReportId": "demo-seeded-report",
+      "sourceReportPath": "reports/seeded-demo-report.json",
+      "fallbackReason": null
+    },
+    "events": [
+      {
+        "type": "source_acquired",
+        "adapter": "live-database",
+        "trigger": "demo_seeded",
+        "fileCount": 8
+      },
+      {
+        "type": "source_acquired",
+        "adapter": "dbt_descriptions",
+        "trigger": "demo_seeded",
+        "fileCount": 6
+      },
+      {
+        "type": "source_acquired",
+        "adapter": "looker",
+        "trigger": "demo_seeded",
+        "fileCount": 7
+      },
+      {
+        "type": "source_acquired",
+        "adapter": "notion",
+        "trigger": "demo_seeded",
+        "fileCount": 8
+      },
+      {
+        "type": "scope_detected",
+        "fingerprint": "sqlite:orbit-demo"
+      },
+      {
+        "type": "raw_snapshot_written",
+        "syncId": "demo-seeded-sync",
+        "rawFileCount": 29
+      },
+      {
+        "type": "diff_computed",
+        "added": 29,
+        "modified": 0,
+        "deleted": 0,
+        "unchanged": 0
+      },
+      {
+        "type": "chunks_planned",
+        "chunkCount": 5,
+        "workUnitCount": 5,
+        "evictionCount": 0
+      },
+      {
+        "type": "work_unit_started",
+        "unitKey": "revenue-and-contracts",
+        "skills": [
+          "knowledge_capture",
+          "sl_capture"
+        ],
+        "stepBudget": 40
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "revenue-and-contracts",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/arr-contract-first.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "revenue-and-contracts",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/revenue-gross-to-net.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "revenue-and-contracts",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/discount-expiration.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "revenue-and-contracts",
+        "target": "sl",
+        "action": "created",
+        "key": "orbit_demo.contracts"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "revenue-and-contracts",
+        "target": "sl",
+        "action": "created",
+        "key": "orbit_demo.invoices"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "revenue-and-contracts",
+        "target": "sl",
+        "action": "created",
+        "key": "orbit_demo.arr_movements"
+      },
+      {
+        "type": "work_unit_finished",
+        "unitKey": "revenue-and-contracts",
+        "status": "success"
+      },
+      {
+        "type": "work_unit_started",
+        "unitKey": "retention-and-segments",
+        "skills": [
+          "knowledge_capture",
+          "sl_capture"
+        ],
+        "stepBudget": 40
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "retention-and-segments",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/nrr-retention.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "retention-and-segments",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/segment-classification.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "retention-and-segments",
+        "target": "sl",
+        "action": "created",
+        "key": "orbit_demo.accounts"
+      },
+      {
+        "type": "work_unit_finished",
+        "unitKey": "retention-and-segments",
+        "status": "success"
+      },
+      {
+        "type": "work_unit_started",
+        "unitKey": "procurement-and-activation",
+        "skills": [
+          "knowledge_capture",
+          "sl_capture"
+        ],
+        "stepBudget": 40
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "procurement-and-activation",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/activation-policy.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "procurement-and-activation",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/procurement-workflows.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "procurement-and-activation",
+        "target": "sl",
+        "action": "created",
+        "key": "orbit_demo.purchase_requests"
+      },
+      {
+        "type": "work_unit_finished",
+        "unitKey": "procurement-and-activation",
+        "status": "success"
+      },
+      {
+        "type": "work_unit_started",
+        "unitKey": "support-and-health",
+        "skills": [
+          "knowledge_capture",
+          "sl_capture"
+        ],
+        "stepBudget": 40
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "support-and-health",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/customer-health-scoring.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "support-and-health",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/support-escalation.md"
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "support-and-health",
+        "target": "sl",
+        "action": "created",
+        "key": "orbit_demo.support_tickets"
+      },
+      {
+        "type": "work_unit_finished",
+        "unitKey": "support-and-health",
+        "status": "success"
+      },
+      {
+        "type": "work_unit_started",
+        "unitKey": "governance-and-exclusions",
+        "skills": [
+          "knowledge_capture"
+        ],
+        "stepBudget": 40
+      },
+      {
+        "type": "candidate_action",
+        "unitKey": "governance-and-exclusions",
+        "target": "wiki",
+        "action": "created",
+        "key": "knowledge/global/internal-test-exclusion.md"
+      },
+      {
+        "type": "work_unit_finished",
+        "unitKey": "governance-and-exclusions",
+        "status": "success"
+      },
+      {
+        "type": "reconciliation_finished",
+        "conflictCount": 0,
+        "fallbackCount": 0
+      },
+      {
+        "type": "saved",
+        "commitSha": "demo-seeded",
+        "wikiCount": 10,
+        "slCount": 6
+      },
+      {
+        "type": "provenance_recorded",
+        "rowCount": 23
+      },
+      {
+        "type": "report_created",
+        "runId": "demo-seeded-orbit",
+        "reportPath": "reports/seeded-demo-report.json"
+      }
+    ],
+    "plannedWorkUnits": [
+      {
+        "unitKey": "revenue-and-contracts",
+        "rawFiles": [
+          "contracts",
+          "invoices",
+          "arr_movements"
+        ],
+        "peerFileCount": 3,
+        "dependencyCount": 3
+      },
+      {
+        "unitKey": "retention-and-segments",
+        "rawFiles": [
+          "accounts",
+          "plans"
+        ],
+        "peerFileCount": 2,
+        "dependencyCount": 2
+      },
+      {
+        "unitKey": "procurement-and-activation",
+        "rawFiles": [
+          "purchase_requests",
+          "users"
+        ],
+        "peerFileCount": 2,
+        "dependencyCount": 2
+      },
+      {
+        "unitKey": "support-and-health",
+        "rawFiles": [
+          "support_tickets"
+        ],
+        "peerFileCount": 1,
+        "dependencyCount": 1
+      },
+      {
+        "unitKey": "governance-and-exclusions",
+        "rawFiles": [
+          "notion/export/pages/analyst-onboarding.md"
+        ],
+        "peerFileCount": 1,
+        "dependencyCount": 0
+      }
+    ],
+    "details": {
+      "actions": [
+        {
+          "unitKey": "revenue-and-contracts",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/arr-contract-first.md",
+          "summary": "ARR follows contract precedence with cancellation and discount caveats.",
+          "rawFiles": [
+            "contracts",
+            "arr_movements",
+            "raw-sources/notion/arr-and-contract-reporting-notes.md"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "revenue-and-contracts",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/revenue-gross-to-net.md",
+          "summary": "Invoice, refund, and revenue dashboard evidence reconcile gross to net revenue.",
+          "rawFiles": [
+            "invoices",
+            "raw-sources/bi/revenue_exec.dashboard.lookml"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "revenue-and-contracts",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/discount-expiration.md",
+          "summary": "Discount expiration is separated from organic contraction for retention reporting.",
+          "rawFiles": [
+            "contracts",
+            "arr_movements"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "revenue-and-contracts",
+          "target": "sl",
+          "action": "created",
+          "key": "orbit_demo.contracts",
+          "summary": "Contract grain with active ARR measures and account joins.",
+          "rawFiles": [
+            "contracts",
+            "raw-sources/dbt/schema.yml"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "revenue-and-contracts",
+          "target": "sl",
+          "action": "created",
+          "key": "orbit_demo.invoices",
+          "summary": "Invoice status measures tied to gross and net revenue reporting.",
+          "rawFiles": [
+            "invoices",
+            "raw-sources/bi/revenue_daily.view.lkml"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "revenue-and-contracts",
+          "target": "sl",
+          "action": "created",
+          "key": "orbit_demo.arr_movements",
+          "summary": "ARR movement ledger for expansion, contraction, churn, and NRR.",
+          "rawFiles": [
+            "arr_movements",
+            "raw-sources/bi/account_retention.view.lkml"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "retention-and-segments",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/nrr-retention.md",
+          "summary": "NRR uses parent-account rollups and quarterly ARR movement windows.",
+          "rawFiles": [
+            "accounts",
+            "arr_movements",
+            "raw-sources/notion/retention-and-nrr-definition-notes.md"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "retention-and-segments",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/segment-classification.md",
+          "summary": "Segment labels come from plan mapping and sales-ops policy notes.",
+          "rawFiles": [
+            "accounts",
+            "plans",
+            "raw-sources/notion/sales-ops-segmentation-guide.md"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "retention-and-segments",
+          "target": "sl",
+          "action": "created",
+          "key": "orbit_demo.accounts",
+          "summary": "Account dimensions with lifecycle, segment, and internal-test exclusions.",
+          "rawFiles": [
+            "accounts",
+            "plans"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "procurement-and-activation",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/activation-policy.md",
+          "summary": "Activation policy changed on January 15, 2026 and is encoded for agents.",
+          "rawFiles": [
+            "purchase_requests",
+            "users",
+            "raw-sources/notion/activation-policy-decision-record.md"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "procurement-and-activation",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/procurement-workflows.md",
+          "summary": "Procurement requester activity and approval events explain product usage.",
+          "rawFiles": [
+            "purchase_requests",
+            "raw-sources/bi/procurement_activity.view.lkml"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "procurement-and-activation",
+          "target": "sl",
+          "action": "created",
+          "key": "orbit_demo.purchase_requests",
+          "summary": "Procurement request facts with requester and approval-state measures.",
+          "rawFiles": [
+            "purchase_requests"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "support-and-health",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/customer-health-scoring.md",
+          "summary": "Customer health combines support severity, ARR exposure, and product usage.",
+          "rawFiles": [
+            "support_tickets",
+            "raw-sources/notion/customer-health-playbook.md"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "support-and-health",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/support-escalation.md",
+          "summary": "Escalation tiers map ticket severity to SLA expectations.",
+          "rawFiles": [
+            "support_tickets",
+            "raw-sources/notion/support-escalation-runbook.md"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "support-and-health",
+          "target": "sl",
+          "action": "created",
+          "key": "orbit_demo.support_tickets",
+          "summary": "Support ticket facts with severity, status, and resolution-hour measures.",
+          "rawFiles": [
+            "support_tickets"
+          ],
+          "status": "success"
+        },
+        {
+          "unitKey": "governance-and-exclusions",
+          "target": "wiki",
+          "action": "created",
+          "key": "knowledge/global/internal-test-exclusion.md",
+          "summary": "Canonical metrics exclude internal and test accounts across source families.",
+          "rawFiles": [
+            "raw-sources/notion/analyst-onboarding.md"
+          ],
+          "status": "success"
+        }
+      ],
+      "provenance": [
+        {
+          "rawPath": "contracts",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/arr-contract-first.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/arr-and-contract-reporting-notes.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/arr-contract-first.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "invoices",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/revenue-gross-to-net.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/revenue-reporting-policy.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/revenue-gross-to-net.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "arr_movements",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/discount-expiration.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "arr_movements",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/nrr-retention.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/retention-and-nrr-definition-notes.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/nrr-retention.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/bi/account_retention.view.lkml",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/nrr-retention.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "plans",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/segment-classification.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/sales-ops-segmentation-guide.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/segment-classification.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/activation-policy-decision-record.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/activation-policy.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "purchase_requests",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/procurement-workflows.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/customer-health-playbook.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/customer-health-scoring.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "support_tickets",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/customer-health-scoring.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/support-escalation-runbook.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/support-escalation.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "raw-sources/notion/analyst-onboarding.md",
+          "artifactKind": "wiki",
+          "artifactKey": "knowledge/global/internal-test-exclusion.md",
+          "actionType": "wiki_written"
+        },
+        {
+          "rawPath": "accounts",
+          "artifactKind": "sl",
+          "artifactKey": "orbit_demo.accounts",
+          "actionType": "sl_written"
+        },
+        {
+          "rawPath": "raw-sources/dbt/schema.yml",
+          "artifactKind": "sl",
+          "artifactKey": "orbit_demo.accounts",
+          "actionType": "sl_written"
+        },
+        {
+          "rawPath": "contracts",
+          "artifactKind": "sl",
+          "artifactKey": "orbit_demo.contracts",
+          "actionType": "sl_written"
+        },
+        {
+          "rawPath": "invoices",
+          "artifactKind": "sl",
+          "artifactKey": "orbit_demo.invoices",
+          "actionType": "sl_written"
+        },
+        {
+          "rawPath": "arr_movements",
+          "artifactKind": "sl",
+          "artifactKey": "orbit_demo.arr_movements",
+          "actionType": "sl_written"
+        },
+        {
+          "rawPath": "purchase_requests",
+          "artifactKind": "sl",
+          "artifactKey": "orbit_demo.purchase_requests",
+          "actionType": "sl_written"
+        },
+        {
+          "rawPath": "support_tickets",
+          "artifactKind": "sl",
+          "artifactKey": "orbit_demo.support_tickets",
+          "actionType": "sl_written"
+        }
+      ],
+      "transcripts": [
+        {
+          "unitKey": "revenue-and-contracts",
+          "path": "transcripts/revenue-and-contracts.jsonl",
+          "toolCallCount": 5,
+          "errorCount": 0,
+          "toolNames": [
+            "wiki_write",
+            "sl_write_source"
+          ]
+        },
+        {
+          "unitKey": "retention-and-segments",
+          "path": "transcripts/retention-and-segments.jsonl",
+          "toolCallCount": 5,
+          "errorCount": 0,
+          "toolNames": [
+            "wiki_write",
+            "sl_write_source"
+          ]
+        },
+        {
+          "unitKey": "procurement-and-activation",
+          "path": "transcripts/procurement-and-activation.jsonl",
+          "toolCallCount": 5,
+          "errorCount": 0,
+          "toolNames": [
+            "wiki_write",
+            "sl_write_source"
+          ]
+        },
+        {
+          "unitKey": "support-and-health",
+          "path": "transcripts/support-and-health.jsonl",
+          "toolCallCount": 5,
+          "errorCount": 0,
+          "toolNames": [
+            "wiki_write",
+            "sl_write_source"
+          ]
+        },
+        {
+          "unitKey": "governance-and-exclusions",
+          "path": "transcripts/governance-and-exclusions.jsonl",
+          "toolCallCount": 2,
+          "errorCount": 0,
+          "toolNames": [
+            "wiki_write"
+          ]
+        }
+      ]
+    }
+  }
+}

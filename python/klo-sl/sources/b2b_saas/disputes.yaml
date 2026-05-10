@@ -1,0 +1,23 @@
+name: disputes
+table: disputes
+grain:
+- dispute_id
+columns:
+- name: dispute_id
+  type: number
+- name: charge_id
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: reason
+  type: string
+- name: resolved_at
+  type: time
+  role: time
+- name: status
+  type: string
+joins:
+- to: charges
+  'on': charge_id = charges.charge_id
+  relationship: many_to_one

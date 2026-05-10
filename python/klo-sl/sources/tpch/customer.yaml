@@ -1,0 +1,27 @@
+name: customer
+table: public.customer
+grain: [c_custkey]
+columns:
+  - name: c_custkey
+    type: number
+  - name: c_name
+    type: string
+  - name: c_address
+    type: string
+  - name: c_nationkey
+    type: number
+  - name: c_phone
+    type: string
+  - name: c_acctbal
+    type: number
+  - name: c_mktsegment
+    type: string
+  - name: c_comment
+    type: string
+joins:
+  - to: nation
+    "on": c_nationkey = nation.n_nationkey
+    relationship: many_to_one
+measures:
+  - name: customer_count
+    expr: count(c_custkey)

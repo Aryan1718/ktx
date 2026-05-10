@@ -1,0 +1,23 @@
+name: campaign_members
+table: campaign_members
+grain:
+- campaign_member_id
+columns:
+- name: campaign_member_id
+  type: number
+- name: campaign_id
+  type: number
+- name: lead_id
+  type: number
+- name: responded_at
+  type: time
+  role: time
+- name: status
+  type: string
+joins:
+- to: campaigns
+  'on': campaign_id = campaigns.campaign_id
+  relationship: many_to_one
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one

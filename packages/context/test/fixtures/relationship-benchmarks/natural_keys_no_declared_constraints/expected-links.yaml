@@ -1,0 +1,11 @@
+expectedPks:
+  - table: dim_countries
+    columns: [iso_code]
+  - table: fct_accounts
+    columns: [id]
+expectedLinks:
+  - fromTable: fct_accounts
+    fromColumns: [country_code]
+    toTable: dim_countries
+    toColumns: [iso_code]
+    relationship: many_to_one

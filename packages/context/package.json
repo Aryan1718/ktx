@@ -1,0 +1,166 @@
+{
+  "name": "@klo/context",
+  "version": "0.0.0-private",
+  "description": "Core context library for database agents",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./agent": {
+      "types": "./dist/agent/index.d.ts",
+      "import": "./dist/agent/index.js",
+      "default": "./dist/agent/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js",
+      "default": "./dist/core/index.js"
+    },
+    "./connections": {
+      "types": "./dist/connections/index.d.ts",
+      "import": "./dist/connections/index.js",
+      "default": "./dist/connections/index.js"
+    },
+    "./daemon": {
+      "types": "./dist/daemon/index.d.ts",
+      "import": "./dist/daemon/index.js",
+      "default": "./dist/daemon/index.js"
+    },
+    "./ingest": {
+      "types": "./dist/ingest/index.d.ts",
+      "import": "./dist/ingest/index.js",
+      "default": "./dist/ingest/index.js"
+    },
+    "./ingest/memory-flow": {
+      "types": "./dist/ingest/memory-flow/index.d.ts",
+      "import": "./dist/ingest/memory-flow/index.js",
+      "default": "./dist/ingest/memory-flow/index.js"
+    },
+    "./ingest/metabase-mapping": {
+      "types": "./dist/ingest/metabase-mapping.d.ts",
+      "import": "./dist/ingest/metabase-mapping.js",
+      "default": "./dist/ingest/metabase-mapping.js"
+    },
+    "./scan": {
+      "types": "./dist/scan/index.d.ts",
+      "import": "./dist/scan/index.js",
+      "default": "./dist/scan/index.js"
+    },
+    "./search": {
+      "types": "./dist/search/index.d.ts",
+      "import": "./dist/search/index.js",
+      "default": "./dist/search/index.js"
+    },
+    "./sql-analysis": {
+      "types": "./dist/sql-analysis/index.d.ts",
+      "import": "./dist/sql-analysis/index.js",
+      "default": "./dist/sql-analysis/index.js"
+    },
+    "./memory": {
+      "types": "./dist/memory/index.d.ts",
+      "import": "./dist/memory/index.js",
+      "default": "./dist/memory/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "import": "./dist/mcp/index.js",
+      "default": "./dist/mcp/index.js"
+    },
+    "./project": {
+      "types": "./dist/project/index.d.ts",
+      "import": "./dist/project/index.js",
+      "default": "./dist/project/index.js"
+    },
+    "./prompts": {
+      "types": "./dist/prompts/index.d.ts",
+      "import": "./dist/prompts/index.js",
+      "default": "./dist/prompts/index.js"
+    },
+    "./skills": {
+      "types": "./dist/skills/index.d.ts",
+      "import": "./dist/skills/index.js",
+      "default": "./dist/skills/index.js"
+    },
+    "./sl": {
+      "types": "./dist/sl/index.d.ts",
+      "import": "./dist/sl/index.js",
+      "default": "./dist/sl/index.js"
+    },
+    "./sl/descriptions": {
+      "types": "./dist/sl/descriptions.d.ts",
+      "import": "./dist/sl/descriptions.js",
+      "default": "./dist/sl/descriptions.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "import": "./dist/tools/index.js",
+      "default": "./dist/tools/index.js"
+    },
+    "./wiki": {
+      "types": "./dist/wiki/index.d.ts",
+      "import": "./dist/wiki/index.js",
+      "default": "./dist/wiki/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "prompts",
+    "skills"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "relationships:benchmarks": "pnpm --silent run build && node scripts/relationship-benchmark-report.mjs",
+    "search:pglite-spike": "node scripts/pglite-hybrid-search-spike.mjs",
+    "search:pglite-owner-prototype": "node scripts/pglite-owner-process-prototype.mjs",
+    "search:pglite-sl-prototype": "node scripts/pglite-sl-search-prototype.mjs",
+    "test": "vitest run",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@klo/llm": "workspace:*",
+    "@looker/sdk": "^26.6.1",
+    "@looker/sdk-node": "^26.6.1",
+    "@looker/sdk-rtl": "^21.6.5",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@notionhq/client": "^5.20.0",
+    "ai": "^6.0.168",
+    "better-sqlite3": "^12.6.2",
+    "handlebars": "^4.7.8",
+    "lookml-parser": "7.1.0",
+    "minimatch": "^10.2.4",
+    "p-limit": "^7.3.0",
+    "pg": "^8.19.0",
+    "simple-git": "3.32.2",
+    "yaml": "^2.8.2",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.4.5",
+    "@electric-sql/pglite-socket": "^0.1.5",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.16.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaelio/ktx.git",
+    "directory": "packages/context"
+  },
+  "bugs": {
+    "url": "https://github.com/kaelio/ktx/issues"
+  },
+  "homepage": "https://github.com/kaelio/ktx#readme"
+}

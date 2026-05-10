@@ -1,0 +1,417 @@
+import YAML from 'yaml';
+import {
+  buildLiveDatabaseManifestShards,
+  type LiveDatabaseManifestExistingDescriptions,
+  type LiveDatabaseManifestJoinData,
+  type LiveDatabaseManifestJoinEntry,
+  type LiveDatabaseManifestShard,
+  type LiveDatabaseManifestTableData,
+} from '../ingest/index.js';
+import type { KloScanRelationshipConfig } from '../project/config.js';
+import type { KloLocalProject } from '../project/index.js';
+import type { KloLocalScanEnrichmentResult } from './local-enrichment.js';
+import {
+  buildKloRelationshipArtifacts,
+  buildKloRelationshipDiagnostics,
+  emptyKloRelationshipProfileArtifact,
+} from './relationship-diagnostics.js';
+import type { KloConnectionDriver, KloSchemaColumn, KloSchemaSnapshot, KloSchemaTable } from './types.js';
+
+const LIVE_DATABASE_ADAPTER = 'live-database';
+const LOCAL_AUTHOR = 'klo';
+const LOCAL_AUTHOR_EMAIL = 'klo@example.com';
+const SCHEMA_DIR = '_schema';
+const SL_DIR_PREFIX = 'semantic-layer';
+
+export interface WriteLocalScanManifestShardsInput {
+  project: KloLocalProject;
+  connectionId: string;
+  syncId: string;
+  driver: KloConnectionDriver;
+  snapshot: KloSchemaSnapshot;
+  dryRun: boolean;
+  descriptionUpdates?: KloLocalScanEnrichmentResult['descriptionUpdates'];
+  relationshipUpdate?: KloLocalScanEnrichmentResult['relationshipUpdate'];
+}
+
+export interface WriteLocalScanManifestShardsResult {
+  manifestShards: string[];
+  manifestShardsWritten: number;
+}
+
+export interface WriteLocalScanEnrichmentArtifactsInput {
+  project: KloLocalProject;
+  connectionId: string;
+  syncId: string;
+  driver: KloConnectionDriver;
+  enrichment: KloLocalScanEnrichmentResult;
+  dryRun: boolean;
+  relationshipSettings?: KloScanRelationshipConfig;
+}
+
+export interface WriteLocalScanEnrichmentArtifactsResult extends WriteLocalScanManifestShardsResult {
+  enrichmentArtifacts: string[];
+}
+
+interface ExistingManifestState {
+  descriptions: Map<string, LiveDatabaseManifestExistingDescriptions>;
+  preservedJoins: Map<string, LiveDatabaseManifestJoinEntry[]>;
+}
+
+type LocalDescriptionUpdates = KloLocalScanEnrichmentResult['descriptionUpdates'];
+
+function artifactDir(connectionId: string, syncId: string): string {
+  return `raw-sources/${connectionId}/${LIVE_DATABASE_ADAPTER}/${syncId}/enrichment`;
+}
+
+function schemaDir(connectionId: string): string {
+  return `${SL_DIR_PREFIX}/${connectionId}/${SCHEMA_DIR}`;
+}
+
+function tableDescription(
+  table: KloSchemaTable,
+  descriptionUpdates: LocalDescriptionUpdates = [],
+): Record<string, string> | undefined {
+  const update = descriptionUpdates.find((candidate) => candidate.table.name === table.name);
+  const descriptions: Record<string, string> = {};
+  if (table.comment) {
+    descriptions.db = table.comment;
+  }
+  if (update?.tableDescription) {
+    descriptions.ai = update.tableDescription;
+  }
+  return Object.keys(descriptions).length > 0 ? descriptions : undefined;
+}
+
+function columnDescription(
+  table: KloSchemaTable,
+  column: KloSchemaColumn,
+  descriptionUpdates: LocalDescriptionUpdates = [],
+): Record<string, string> | undefined {
+  const update = descriptionUpdates.find((candidate) => candidate.table.name === table.name);
+  const aiDescription = update?.columnDescriptions[column.name] ?? null;
+  const descriptions: Record<string, string> = {};
+  if (column.comment) {
+    descriptions.db = column.comment;
+  }
+  if (aiDescription) {
+    descriptions.ai = aiDescription;
+  }
+  return Object.keys(descriptions).length > 0 ? descriptions : undefined;
+}
+
+function snapshotTablesToManifestData(
+  snapshot: KloSchemaSnapshot,
+  descriptionUpdates: LocalDescriptionUpdates = [],
+): LiveDatabaseManifestTableData[] {
+  return snapshot.tables.map((table) => ({
+    name: table.name,
+    catalog: table.catalog,
+    db: table.db,
+    descriptions: tableDescription(table, descriptionUpdates),
+    columns: table.columns.map((column) => ({
+      name: column.name,
+      type: column.dimensionType,
+      ...(column.primaryKey ? { pk: true } : {}),
+      ...(column.nullable === false ? { nullable: false } : {}),
+      descriptions: columnDescription(table, column, descriptionUpdates),
+    })),
+  }));
+}
+
+function formalJoins(snapshot: KloSchemaSnapshot): LiveDatabaseManifestJoinData[] {
+  const joins: LiveDatabaseManifestJoinData[] = [];
+  for (const table of snapshot.tables) {
+    for (const foreignKey of table.foreignKeys) {
+      joins.push({
+        fromTable: table.name,
+        fromColumns: [foreignKey.fromColumn],
+        toTable: foreignKey.toTable,
+        toColumns: [foreignKey.toColumn],
+        relationship: 'many_to_one',
+        source: 'formal',
+      });
+    }
+  }
+  return joins;
+}
+
+function acceptedRelationshipJoins(
+  relationshipUpdate: KloLocalScanEnrichmentResult['relationshipUpdate'] | undefined,
+): LiveDatabaseManifestJoinData[] {
+  return (relationshipUpdate?.accepted ?? []).map((relationship) => ({
+    fromTable: relationship.from.table.name,
+    fromColumns: relationship.from.columns,
+    toTable: relationship.to.table.name,
+    toColumns: relationship.to.columns,
+    relationship: relationship.relationshipType,
+    source: relationship.source,
+  }));
+}
+
+function relationshipJoins(
+  snapshot: KloSchemaSnapshot,
+  relationshipUpdate: KloLocalScanEnrichmentResult['relationshipUpdate'] | undefined,
+): LiveDatabaseManifestJoinData[] {
+  const accepted = acceptedRelationshipJoins(relationshipUpdate);
+  const manual = accepted.filter((relationship) => relationship.source === 'manual');
+  const generated = accepted.filter((relationship) => relationship.source !== 'manual');
+  return [...manual, ...formalJoins(snapshot), ...generated];
+}
+
+function validColumns(snapshot: KloSchemaSnapshot): Map<string, Set<string>> {
+  return new Map(snapshot.tables.map((table) => [table.name, new Set(table.columns.map((column) => column.name))]));
+}
+
+function joinReferencesExistingColumns(
+  join: LiveDatabaseManifestJoinEntry,
+  columnsByTable: Map<string, Set<string>>,
+): boolean {
+  const terms = join.on.split(/\s+AND\s+/iu);
+  for (const term of terms) {
+    const match = term.match(/^(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)$/u);
+    if (!match) {
+      return true;
+    }
+    const leftTable = match[1];
+    const leftColumn = match[2];
+    const rightTable = match[3];
+    const rightColumn = match[4];
+    if (!leftTable || !leftColumn || !rightTable || !rightColumn) {
+      return true;
+    }
+    const leftColumns = columnsByTable.get(leftTable);
+    const rightColumns = columnsByTable.get(rightTable);
+    if ((leftColumns && !leftColumns.has(leftColumn)) || (rightColumns && !rightColumns.has(rightColumn))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function loadExistingManifestState(
+  project: KloLocalProject,
+  connectionId: string,
+  snapshot: KloSchemaSnapshot,
+): Promise<ExistingManifestState> {
+  const descriptions = new Map<string, LiveDatabaseManifestExistingDescriptions>();
+  const preservedJoins = new Map<string, LiveDatabaseManifestJoinEntry[]>();
+  const validTableNames = new Set(snapshot.tables.map((table) => table.name));
+  const columnsByTable = validColumns(snapshot);
+
+  let files: string[];
+  try {
+    files = (await project.fileStore.listFiles(schemaDir(connectionId))).files.filter((file) => file.endsWith('.yaml'));
+  } catch {
+    return { descriptions, preservedJoins };
+  }
+
+  for (const file of files) {
+    try {
+      const { content } = await project.fileStore.readFile(file);
+      const shard = YAML.parse(content) as LiveDatabaseManifestShard | null;
+      if (!shard?.tables) {
+        continue;
+      }
+      for (const [tableName, entry] of Object.entries(shard.tables)) {
+        if (!validTableNames.has(tableName)) {
+          continue;
+        }
+        descriptions.set(tableName, {
+          table: entry.descriptions ? { ...entry.descriptions } : undefined,
+          columns: new Map(
+            (entry.columns ?? []).flatMap((column) =>
+              column.descriptions ? ([[column.name, { ...column.descriptions }]] as const) : [],
+            ),
+          ),
+        });
+        const joins = (entry.joins ?? []).filter((join) => {
+          return (
+            (join.source === 'manual' || join.source === 'inferred') &&
+            validTableNames.has(join.to) &&
+            joinReferencesExistingColumns(join, columnsByTable)
+          );
+        });
+        if (joins.length > 0) {
+          preservedJoins.set(tableName, joins);
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return { descriptions, preservedJoins };
+}
+
+async function writeJsonArtifact(
+  project: KloLocalProject,
+  path: string,
+  value: unknown,
+  commitMessage: string,
+): Promise<void> {
+  await project.fileStore.writeFile(
+    path,
+    `${JSON.stringify(value, null, 2)}\n`,
+    LOCAL_AUTHOR,
+    LOCAL_AUTHOR_EMAIL,
+    commitMessage,
+  );
+}
+
+export async function writeLocalScanManifestShards(
+  input: WriteLocalScanManifestShardsInput,
+): Promise<WriteLocalScanManifestShardsResult> {
+  if (input.dryRun) {
+    return {
+      manifestShards: [],
+      manifestShardsWritten: 0,
+    };
+  }
+
+  const existing = await loadExistingManifestState(input.project, input.connectionId, input.snapshot);
+  const { shards } = buildLiveDatabaseManifestShards({
+    connectionType: input.driver.toUpperCase(),
+    tables: snapshotTablesToManifestData(input.snapshot, input.descriptionUpdates),
+    joins: relationshipJoins(input.snapshot, input.relationshipUpdate),
+    existingDescriptions: existing.descriptions,
+    existingPreservedJoins: existing.preservedJoins,
+    mapColumnType: (dimensionType) => dimensionType,
+  });
+
+  const manifestShards: string[] = [];
+  for (const [shardKey, shard] of [...shards.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    const path = `${schemaDir(input.connectionId)}/${shardKey}.yaml`;
+    await input.project.fileStore.writeFile(
+      path,
+      YAML.stringify(shard, { indent: 2, lineWidth: 0 }),
+      LOCAL_AUTHOR,
+      LOCAL_AUTHOR_EMAIL,
+      `scan(${LIVE_DATABASE_ADAPTER}): write manifest shard ${shardKey} syncId=${input.syncId}`,
+    );
+    manifestShards.push(path);
+  }
+
+  return {
+    manifestShards,
+    manifestShardsWritten: manifestShards.length,
+  };
+}
+
+export async function writeLocalScanEnrichmentArtifacts(
+  input: WriteLocalScanEnrichmentArtifactsInput,
+): Promise<WriteLocalScanEnrichmentArtifactsResult> {
+  if (input.dryRun) {
+    return {
+      enrichmentArtifacts: [],
+      manifestShards: [],
+      manifestShardsWritten: 0,
+    };
+  }
+
+  const enrichmentRoot = artifactDir(input.connectionId, input.syncId);
+  const descriptionsArtifact = `${enrichmentRoot}/descriptions.json`;
+  const embeddingsArtifact = `${enrichmentRoot}/embeddings.json`;
+  const relationshipsArtifact = `${enrichmentRoot}/relationships.json`;
+  const relationshipProfileArtifact = `${enrichmentRoot}/relationship-profile.json`;
+  const relationshipDiagnosticsArtifact = `${enrichmentRoot}/relationship-diagnostics.json`;
+  const enrichmentArtifacts: string[] = [];
+
+  if (
+    input.enrichment.summary.tableDescriptions === 'completed' ||
+    input.enrichment.summary.columnDescriptions === 'completed'
+  ) {
+    enrichmentArtifacts.push(descriptionsArtifact);
+    await writeJsonArtifact(
+      input.project,
+      descriptionsArtifact,
+      input.enrichment.descriptionUpdates,
+      `scan(${LIVE_DATABASE_ADAPTER}): write enrichment descriptions syncId=${input.syncId}`,
+    );
+  }
+  if (input.enrichment.summary.embeddings === 'completed') {
+    enrichmentArtifacts.push(embeddingsArtifact);
+    await writeJsonArtifact(
+      input.project,
+      embeddingsArtifact,
+      input.enrichment.embeddingUpdates,
+      `scan(${LIVE_DATABASE_ADAPTER}): write enrichment embeddings syncId=${input.syncId}`,
+    );
+  }
+  enrichmentArtifacts.push(relationshipsArtifact, relationshipProfileArtifact, relationshipDiagnosticsArtifact);
+  const hasResolvedRelationships = input.enrichment.resolvedRelationships !== null;
+  const relationshipArtifacts = buildKloRelationshipArtifacts({
+    connectionId: input.connectionId,
+    resolvedRelationships: hasResolvedRelationships ? (input.enrichment.resolvedRelationships ?? []) : undefined,
+    compositeRelationships: input.enrichment.compositeRelationships ?? undefined,
+    relationshipUpdate: input.enrichment.relationshipUpdate ?? {
+      connectionId: input.connectionId,
+      accepted: [],
+      rejected: [],
+      skipped: [],
+    },
+  });
+  const relationshipProfile =
+    input.enrichment.relationshipProfile ??
+    emptyKloRelationshipProfileArtifact({
+      connectionId: input.connectionId,
+      driver: input.driver,
+      reason: 'relationship_profiling_not_run',
+    });
+  const relationshipDiagnostics = buildKloRelationshipDiagnostics({
+    connectionId: input.connectionId,
+    artifacts: relationshipArtifacts,
+    profile: relationshipProfile,
+    warnings: input.enrichment.warnings,
+    thresholds: input.relationshipSettings
+      ? {
+          acceptThreshold: input.relationshipSettings.acceptThreshold,
+          reviewThreshold: input.relationshipSettings.reviewThreshold,
+        }
+      : undefined,
+    policy: input.relationshipSettings
+      ? {
+          validationRequiredForManifest: input.relationshipSettings.validationRequiredForManifest,
+          maxCandidatesPerColumn: input.relationshipSettings.maxCandidatesPerColumn,
+          profileSampleRows: input.relationshipSettings.profileSampleRows,
+          validationConcurrency: input.relationshipSettings.validationConcurrency,
+        }
+      : undefined,
+  });
+
+  await writeJsonArtifact(
+    input.project,
+    relationshipsArtifact,
+    relationshipArtifacts,
+    `scan(${LIVE_DATABASE_ADAPTER}): write enrichment relationships syncId=${input.syncId}`,
+  );
+  await writeJsonArtifact(
+    input.project,
+    relationshipProfileArtifact,
+    relationshipProfile,
+    `scan(${LIVE_DATABASE_ADAPTER}): write relationship profile syncId=${input.syncId}`,
+  );
+  await writeJsonArtifact(
+    input.project,
+    relationshipDiagnosticsArtifact,
+    relationshipDiagnostics,
+    `scan(${LIVE_DATABASE_ADAPTER}): write relationship diagnostics syncId=${input.syncId}`,
+  );
+
+  const manifestResult = await writeLocalScanManifestShards({
+    project: input.project,
+    connectionId: input.connectionId,
+    syncId: input.syncId,
+    driver: input.driver,
+    snapshot: input.enrichment.snapshot,
+    descriptionUpdates: input.enrichment.descriptionUpdates,
+    relationshipUpdate: input.enrichment.relationshipUpdate,
+    dryRun: false,
+  });
+
+  return {
+    enrichmentArtifacts,
+    manifestShards: manifestResult.manifestShards,
+    manifestShardsWritten: manifestResult.manifestShardsWritten,
+  };
+}

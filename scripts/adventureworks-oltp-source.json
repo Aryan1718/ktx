@@ -1,0 +1,13 @@
+{
+  "id": "adventureworks_oltp_with_declared_metadata",
+  "displayName": "AdventureWorks OLTP (SQL Server 2022, declared metadata)",
+  "installScriptUrl": "https://github.com/microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks-oltp-install-script.zip",
+  "installScriptSha256": "58962e94ea386ef7cd3d8a08211bfd42a79d9b81bdd68fd4b6b0051de6c5bd42", "_allowlist": "// pragma: allowlist secret",
+  "source": "https://github.com/microsoft/sql-server-samples/tree/master/samples/databases/adventure-works",
+  "license": "MIT",
+  "expectedTables": 71,
+  "expectedPrimaryKeys": 71,
+  "expectedForeignKeys": 90,
+  "expectedCsvFiles": 69,
+  "notes": "Full OLTP AdventureWorks corpus. Do not replace with AdventureWorksLT; the LT SQLite source is already covered by adventureworkslt_with_declared_metadata."
+}

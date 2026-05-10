@@ -1,0 +1,18 @@
+name: email_events
+table: email_events
+grain:
+- event_id
+columns:
+- name: event_id
+  type: number
+- name: event_at
+  type: time
+  role: time
+- name: event_type
+  type: string
+- name: send_id
+  type: number
+joins:
+- to: email_sends
+  'on': send_id = email_sends.send_id
+  relationship: many_to_one

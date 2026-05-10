@@ -1,0 +1,9 @@
+name: currencies
+table: currencies
+grain:
+- currency_code
+columns:
+- name: currency_code
+  type: string
+- name: currency_name
+  type: string

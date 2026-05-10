@@ -1,0 +1,20 @@
+name: opportunity_contact_roles
+table: opportunity_contact_roles
+grain:
+- contact_id
+columns:
+- name: contact_id
+  type: number
+- name: ocr_id
+  type: number
+- name: opportunity_id
+  type: number
+- name: role
+  type: string
+joins:
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one
+- to: contacts
+  'on': contact_id = contacts.contact_id
+  relationship: many_to_one

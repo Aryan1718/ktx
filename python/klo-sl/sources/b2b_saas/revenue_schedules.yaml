@@ -1,0 +1,28 @@
+name: revenue_schedules
+table: revenue_schedules
+grain:
+- schedule_id
+columns:
+- name: schedule_id
+  type: number
+- name: account_id
+  type: number
+- name: amount
+  type: number
+- name: contract_id
+  type: number
+- name: end_date
+  type: time
+  role: time
+- name: recognition_rule
+  type: string
+- name: start_date
+  type: time
+  role: time
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one
+- to: contracts
+  'on': contract_id = contracts.contract_id
+  relationship: many_to_one

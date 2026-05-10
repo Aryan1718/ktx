@@ -1,0 +1,256 @@
+import { spawn } from 'node:child_process';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { URL } from 'node:url';
+import type { KloProjectConnectionConfig } from '../../../project/config.js';
+import type { KloSchemaColumn, KloSchemaForeignKey, KloSchemaSnapshot, KloSchemaTable } from '../../../scan/types.js';
+import { inferKloDimensionType, normalizeKloNativeType } from '../../../scan/type-normalization.js';
+import type { LiveDatabaseIntrospectionPort } from './types.js';
+
+export type KloDaemonDatabaseIntrospectionCommand = 'database-introspect';
+
+export type KloDaemonDatabaseJsonRunner = (
+  subcommand: KloDaemonDatabaseIntrospectionCommand,
+  payload: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;
+
+export type KloDaemonDatabaseHttpJsonRunner = (
+  path: string,
+  payload: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;
+
+export interface DaemonLiveDatabaseIntrospectionOptions {
+  connections: Record<string, KloProjectConnectionConfig>;
+  schemas?: string[];
+  statementTimeoutMs?: number;
+  connectionTimeoutSeconds?: number;
+  command?: string;
+  args?: string[];
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  baseUrl?: string;
+  runJson?: KloDaemonDatabaseJsonRunner;
+  requestJson?: KloDaemonDatabaseHttpJsonRunner;
+  now?: () => Date;
+}
+
+const DEFAULT_SCHEMAS = ['public'];
+
+function parseJsonObject(raw: string, subcommand: string): Record<string, unknown> {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`klo-daemon ${subcommand} returned non-object JSON`);
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function runProcessJson(
+  options: Required<Pick<DaemonLiveDatabaseIntrospectionOptions, 'command' | 'args'>> &
+    Pick<DaemonLiveDatabaseIntrospectionOptions, 'cwd' | 'env'>,
+): KloDaemonDatabaseJsonRunner {
+  return async (subcommand, payload) =>
+    new Promise((resolve, reject) => {
+      const child = spawn(options.command, [...options.args, subcommand], {
+        cwd: options.cwd,
+        env: { ...process.env, ...options.env },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      const stdout: Buffer[] = [];
+      const stderr: Buffer[] = [];
+
+      child.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
+      child.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
+      child.on('error', reject);
+      child.on('close', (code) => {
+        const stdoutText = Buffer.concat(stdout).toString('utf8').trim();
+        const stderrText = Buffer.concat(stderr).toString('utf8').trim();
+        if (code !== 0) {
+          reject(new Error(`klo-daemon ${subcommand} failed: ${stderrText || `exit code ${code}`}`));
+          return;
+        }
+        try {
+          resolve(parseJsonObject(stdoutText, subcommand));
+        } catch (error) {
+          reject(error);
+        }
+      });
+      child.stdin.end(`${JSON.stringify(payload)}\n`);
+    });
+}
+
+function normalizedBaseUrl(baseUrl: string): string {
+  return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+}
+
+function postJson(baseUrl: string): KloDaemonDatabaseHttpJsonRunner {
+  return async (path, payload) =>
+    new Promise((resolve, reject) => {
+      const target = new URL(path.replace(/^\//, ''), normalizedBaseUrl(baseUrl));
+      const body = JSON.stringify(payload);
+      const client = target.protocol === 'https:' ? httpsRequest : httpRequest;
+      const request = client(
+        target,
+        {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            'content-length': Buffer.byteLength(body),
+          },
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          response.on('data', (chunk: Buffer) => chunks.push(chunk));
+          response.on('end', () => {
+            const text = Buffer.concat(chunks).toString('utf8');
+            const statusCode = response.statusCode ?? 0;
+            if (statusCode < 200 || statusCode >= 300) {
+              reject(new Error(`klo-daemon HTTP ${path} failed with ${statusCode}: ${text}`));
+              return;
+            }
+            try {
+              resolve(parseJsonObject(text, path));
+            } catch (error) {
+              reject(error);
+            }
+          });
+        },
+      );
+      request.on('error', reject);
+      request.end(body);
+    });
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function recordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item),
+      )
+    : [];
+}
+
+function requiredString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`klo-daemon database introspection response is missing string field ${field}`);
+  }
+  return value;
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function normalizeDriver(driver: unknown): string {
+  const normalized = String(driver ?? '').trim().toLowerCase();
+  return normalized === 'postgresql' ? 'postgres' : normalized;
+}
+
+function requirePostgresConnection(
+  connections: Record<string, KloProjectConnectionConfig>,
+  connectionId: string,
+): KloProjectConnectionConfig & { url: string } {
+  const connection = connections[connectionId];
+  const driver = normalizeDriver(connection?.driver);
+  if (driver !== 'postgres') {
+    throw new Error(`Local live-database ingest cannot run driver "${connection?.driver ?? 'unknown'}".`);
+  }
+  if (connection?.readonly !== true) {
+    throw new Error(`Local live-database ingest requires connections.${connectionId}.readonly: true.`);
+  }
+  if (typeof connection.url !== 'string' || connection.url.trim().length === 0) {
+    throw new Error(`Local live-database ingest requires connections.${connectionId}.url.`);
+  }
+  return connection as KloProjectConnectionConfig & { url: string };
+}
+
+function mapColumn(raw: Record<string, unknown>): KloSchemaColumn {
+  const nativeType = requiredString(raw.type, 'tables[].columns[].type');
+  return {
+    name: requiredString(raw.name, 'tables[].columns[].name'),
+    nativeType,
+    normalizedType: normalizeKloNativeType(nativeType),
+    dimensionType: inferKloDimensionType(nativeType),
+    nullable: raw.nullable !== false ? true : false,
+    primaryKey: raw.primary_key === true,
+    comment: nullableString(raw.comment),
+  };
+}
+
+function mapForeignKey(raw: Record<string, unknown>): KloSchemaForeignKey {
+  return {
+    fromColumn: requiredString(raw.from_column, 'tables[].foreign_keys[].from_column'),
+    toCatalog: null,
+    toDb: null,
+    toTable: requiredString(raw.to_table, 'tables[].foreign_keys[].to_table'),
+    toColumn: requiredString(raw.to_column, 'tables[].foreign_keys[].to_column'),
+    constraintName: nullableString(raw.constraint_name),
+  };
+}
+
+function mapTable(raw: Record<string, unknown>): KloSchemaTable {
+  return {
+    catalog: nullableString(raw.catalog),
+    db: nullableString(raw.db),
+    name: requiredString(raw.name, 'tables[].name'),
+    kind: 'table',
+    comment: nullableString(raw.comment),
+    estimatedRows: null,
+    columns: recordArray(raw.columns).map(mapColumn),
+    foreignKeys: recordArray(raw.foreign_keys).map(mapForeignKey),
+  };
+}
+
+function mapDaemonSnapshot(
+  raw: Record<string, unknown>,
+  input: { connectionId: string; extractedAt: string; schemas: string[] },
+): KloSchemaSnapshot {
+  return {
+    connectionId: requiredString(raw.connection_id, 'connection_id') || input.connectionId,
+    driver: 'postgres',
+    extractedAt: optionalString(raw.extracted_at) ?? input.extractedAt,
+    scope: { schemas: input.schemas },
+    metadata: recordValue(raw.metadata),
+    tables: recordArray(raw.tables).map(mapTable),
+  };
+}
+
+export function createDaemonLiveDatabaseIntrospection(
+  options: DaemonLiveDatabaseIntrospectionOptions,
+): LiveDatabaseIntrospectionPort {
+  const schemas = options.schemas ?? DEFAULT_SCHEMAS;
+  const command = options.command ?? 'python';
+  const args = options.args ?? ['-m', 'klo_daemon'];
+  const runJson = options.runJson ?? runProcessJson({ command, args, cwd: options.cwd, env: options.env });
+  const requestJson = options.requestJson ?? (options.baseUrl ? postJson(options.baseUrl) : undefined);
+  const now = options.now ?? (() => new Date());
+
+  return {
+    async extractSchema(connectionId: string): Promise<KloSchemaSnapshot> {
+      const connection = requirePostgresConnection(options.connections, connectionId);
+      const payload = {
+        connection_id: connectionId,
+        driver: normalizeDriver(connection.driver),
+        url: connection.url,
+        schemas,
+        statement_timeout_ms: options.statementTimeoutMs ?? 30_000,
+        connection_timeout_seconds: options.connectionTimeoutSeconds ?? 5,
+      };
+      const raw = requestJson
+        ? await requestJson('/database/introspect', payload)
+        : await runJson('database-introspect', payload);
+      return mapDaemonSnapshot(raw, {
+        connectionId,
+        extractedAt: now().toISOString(),
+        schemas,
+      });
+    },
+  };
+}

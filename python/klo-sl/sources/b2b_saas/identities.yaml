@@ -1,0 +1,22 @@
+name: identities
+table: identities
+grain:
+- identity_id
+columns:
+- name: identity_id
+  type: number
+- name: account_id
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: device_id
+  type: number
+- name: email
+  type: string
+- name: user_id
+  type: number
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one

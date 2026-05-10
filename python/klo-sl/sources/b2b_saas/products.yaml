@@ -1,0 +1,13 @@
+name: products
+table: products
+grain:
+- product_id
+columns:
+- name: product_id
+  type: number
+- name: list_price
+  type: number
+- name: product_name
+  type: string
+- name: sku
+  type: string

@@ -1,0 +1,25 @@
+name: identity_links
+table: identity_links
+grain:
+- link_id
+columns:
+- name: link_id
+  type: number
+- name: child_identity_id
+  type: number
+- name: linked_at
+  type: time
+  role: time
+- name: link_source
+  type: string
+- name: parent_identity_id
+  type: number
+joins:
+- to: identities
+  'on': child_identity_id = identities.identity_id
+  relationship: many_to_one
+  alias: identities_1
+- to: identities
+  'on': parent_identity_id = identities.identity_id
+  relationship: many_to_one
+  alias: identities_2

@@ -1,0 +1,28 @@
+name: calls
+table: calls
+grain:
+- call_id
+columns:
+- name: call_id
+  type: number
+- name: call_date
+  type: time
+  role: time
+- name: duration_minutes
+  type: number
+- name: opportunity_id
+  type: number
+- name: rep_id
+  type: number
+- name: sentiment
+  type: time
+  role: time
+- name: transcript_url
+  type: string
+joins:
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one

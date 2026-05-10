@@ -1,0 +1,11 @@
+name: vendors
+table: vendors
+grain:
+- vendor_id
+columns:
+- name: vendor_id
+  type: number
+- name: category
+  type: string
+- name: vendor_name
+  type: string

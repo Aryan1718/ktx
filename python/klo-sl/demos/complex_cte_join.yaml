@@ -1,0 +1,222 @@
+# Complex CTE Runtime Join Demo
+#
+# Demonstrates:
+#   1. Two SQL sources with internal CTEs (customer_lifetime_value, churn_risk)
+#   2. Both join to `customers` at the source level (many_to_one)
+#   3. `customers` joins to `regions` (many_to_one)
+#   4. A query requesting measures from BOTH SQL sources + dimensions from `regions`
+#      triggers chasm trap detection and aggregate locality
+#
+# Join graph:
+#   customer_lifetime_value --m2o--> customers --m2o--> regions
+#   churn_risk             --m2o--> customers --m2o--> regions
+
+# --- Table sources ---
+
+- name: regions
+  table: public.regions
+  grain: [id]
+  columns:
+    - name: id
+      type: number
+    - name: name
+      type: string
+    - name: continent
+      type: string
+
+- name: customers
+  table: public.customers
+  grain: [id]
+  columns:
+    - name: id
+      type: number
+    - name: name
+      type: string
+    - name: segment
+      type: string
+    - name: region_id
+      type: number
+    - name: signed_at
+      type: time
+      role: time
+    - name: arr
+      type: number
+  joins:
+    - to: regions
+      "on": region_id = regions.id
+      relationship: many_to_one
+
+- name: orders
+  table: public.orders
+  grain: [id]
+  columns:
+    - name: id
+      type: number
+    - name: customer_id
+      type: number
+    - name: amount
+      type: number
+    - name: created_at
+      type: time
+      role: time
+  joins:
+    - to: customers
+      "on": customer_id = customers.id
+      relationship: many_to_one
+
+- name: order_items
+  table: public.order_items
+  grain: [id]
+  columns:
+    - name: id
+      type: number
+    - name: order_id
+      type: number
+    - name: quantity
+      type: number
+    - name: unit_price
+      type: number
+  joins:
+    - to: orders
+      "on": order_id = orders.id
+      relationship: many_to_one
+
+# --- SQL source: Customer Lifetime Value (uses internal CTEs) ---
+
+- name: customer_lifetime_value
+  description: |
+    Customer lifetime value estimate using monthly revenue cohort analysis.
+    Internal CTEs aggregate orders+order_items by month, then compute
+    active_months and avg_mrr per customer before estimating LTV.
+  sql: |
+    WITH monthly_revenue AS (
+      SELECT
+        o.customer_id,
+        DATE_TRUNC('month', o.created_at) AS month,
+        SUM(oi.quantity * oi.unit_price) AS mrr
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      GROUP BY o.customer_id, DATE_TRUNC('month', o.created_at)
+    ),
+    cohort_stats AS (
+      SELECT
+        customer_id,
+        MIN(month) AS first_month,
+        COUNT(DISTINCT month) AS active_months,
+        AVG(mrr) AS avg_mrr
+      FROM monthly_revenue
+      GROUP BY customer_id
+    )
+    SELECT
+      cs.customer_id,
+      cs.first_month,
+      cs.active_months,
+      cs.avg_mrr,
+      cs.avg_mrr * cs.active_months * 1.2 AS ltv_estimate
+    FROM cohort_stats cs
+  grain: [customer_id]
+  columns:
+    - name: customer_id
+      type: number
+    - name: first_month
+      type: time
+    - name: active_months
+      type: number
+    - name: avg_mrr
+      type: number
+    - name: ltv_estimate
+      type: number
+  joins:
+    - to: customers
+      "on": customer_id = customers.id
+      relationship: many_to_one
+  measures:
+    - name: avg_ltv
+      expr: avg(ltv_estimate)
+      description: "Average customer lifetime value"
+    - name: total_ltv
+      expr: sum(ltv_estimate)
+      description: "Total lifetime value across customers"
+    - name: avg_active_months
+      expr: avg(active_months)
+      description: "Average number of active months per customer"
+
+# --- SQL source: Churn Risk (uses internal CTEs) ---
+
+- name: churn_risk
+  description: |
+    Customer churn risk score combining recency, frequency, and support burden.
+    Internal CTEs compute rfm_scores from orders and ticket_counts from a
+    support table before producing a weighted composite score.
+  sql: |
+    WITH rfm_scores AS (
+      SELECT
+        customer_id,
+        EXTRACT(DAY FROM NOW() - MAX(created_at)) AS days_since_last_order,
+        COUNT(*) AS order_frequency,
+        AVG(amount) AS avg_order_value
+      FROM orders
+      GROUP BY customer_id
+    ),
+    ticket_counts AS (
+      SELECT
+        customer_id,
+        COUNT(*) AS open_tickets,
+        AVG(EXTRACT(DAY FROM resolved_at - created_at)) AS avg_resolution_days
+      FROM support_tickets
+      WHERE status = 'open'
+      GROUP BY customer_id
+    )
+    SELECT
+      r.customer_id,
+      r.days_since_last_order,
+      r.order_frequency,
+      COALESCE(t.open_tickets, 0) AS open_tickets,
+      CASE
+        WHEN r.days_since_last_order > 180 THEN 0.9
+        WHEN r.days_since_last_order > 90 THEN 0.6
+        ELSE 0.2
+      END * 0.4
+      + CASE
+        WHEN r.order_frequency < 2 THEN 0.8
+        WHEN r.order_frequency < 5 THEN 0.4
+        ELSE 0.1
+      END * 0.3
+      + CASE
+        WHEN COALESCE(t.open_tickets, 0) > 3 THEN 0.9
+        WHEN COALESCE(t.open_tickets, 0) > 1 THEN 0.5
+        ELSE 0.1
+      END * 0.3 AS score,
+      CASE
+        WHEN r.avg_order_value < 100 THEN 'SMB'
+        WHEN r.avg_order_value < 1000 THEN 'Mid-Market'
+        ELSE 'Enterprise'
+      END AS customer_type
+    FROM rfm_scores r
+    LEFT JOIN ticket_counts t ON r.customer_id = t.customer_id
+  grain: [customer_id]
+  columns:
+    - name: customer_id
+      type: number
+    - name: days_since_last_order
+      type: number
+    - name: order_frequency
+      type: number
+    - name: open_tickets
+      type: number
+    - name: score
+      type: number
+    - name: customer_type
+      type: string
+  joins:
+    - to: customers
+      "on": customer_id = customers.id
+      relationship: many_to_one
+  measures:
+    - name: avg_risk
+      expr: avg(score)
+      description: "Average churn risk score"
+    - name: high_risk_count
+      expr: count(customer_id)
+      filter: "score > 0.7"
+      description: "Number of high-risk customers"

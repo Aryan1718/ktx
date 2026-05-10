@@ -1,0 +1,35 @@
+name: churn_risk
+description: |
+  Customer churn risk score combining tenure,
+  usage trends, and support burden.
+sql: |
+  SELECT
+    c.id AS customer_id,
+    c.name AS customer_name,
+    calculate_churn_score(c.id) AS score,
+    CASE
+      WHEN c.arr < 50000 THEN 'SMB'
+      WHEN c.arr < 500000 THEN 'Mid-Market'
+      ELSE 'Enterprise'
+    END AS customer_type
+  FROM customers c
+  JOIN usage_summary u ON c.id = u.customer_id
+  JOIN ticket_summary t ON c.id = t.customer_id
+grain: [customer_id]
+columns:
+  - name: customer_id
+    type: number
+  - name: customer_name
+    type: string
+  - name: score
+    type: number
+  - name: customer_type
+    type: string
+joins:
+  - to: customers
+    "on": customer_id = customers.id
+    relationship: many_to_one
+measures:
+  - name: avg_risk
+    expr: avg(score)
+    description: "Average churn risk score"

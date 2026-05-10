@@ -1,0 +1,58 @@
+{
+  "demoAssetSchemaVersion": 2,
+  "name": "orbit",
+  "displayName": "Orbit Demo",
+  "mode": "seeded",
+  "sqliteDatabase": "demo.db",
+  "replay": "replay.memory-flow.v1.json",
+  "report": "reports/seeded-demo-report.json",
+  "source": "packaged-orbit-demo",
+  "sources": {
+    "warehouse": {
+      "label": "Warehouse",
+      "path": "demo.db",
+      "tables": 8,
+      "rowCounts": {
+        "accounts": 210,
+        "contracts": 320,
+        "users": 1260,
+        "invoices": 3000,
+        "arr_movements": 720,
+        "support_tickets": 520,
+        "purchase_requests": 5200,
+        "plans": 4
+      }
+    },
+    "dbt": {
+      "label": "dbt",
+      "path": "raw-sources/dbt",
+      "models": 3,
+      "sourceTables": 8
+    },
+    "bi": {
+      "label": "BI",
+      "path": "raw-sources/bi",
+      "explores": 5,
+      "dashboards": 2
+    },
+    "notion": {
+      "label": "Notion",
+      "path": "raw-sources/notion",
+      "pages": 8
+    }
+  },
+  "generated": {
+    "semanticLayer": {
+      "path": "semantic-layer/orbit_demo",
+      "sourceCount": 6
+    },
+    "knowledge": {
+      "path": "knowledge/global",
+      "pageCount": 10
+    },
+    "links": {
+      "path": "links",
+      "linkCount": 23
+    }
+  }
+}

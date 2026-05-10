@@ -1,0 +1,21 @@
+name: sequence_steps
+table: sequence_steps
+grain:
+- step_id
+columns:
+- name: step_id
+  type: number
+- name: content
+  type: string
+- name: offset_days
+  type: string
+- name: sequence_id
+  type: number
+- name: step_order
+  type: string
+- name: step_type
+  type: string
+joins:
+- to: sequences
+  'on': sequence_id = sequences.sequence_id
+  relationship: many_to_one

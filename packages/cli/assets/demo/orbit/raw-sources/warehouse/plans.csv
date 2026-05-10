@@ -1,0 +1,5 @@
+plan_id,plan_code,plan_name,canonical_plan_code,is_retired,retired_at
+plan_001,starter,Starter,starter,false,2099-12-31T00:00:00Z
+plan_002,growth,Growth,growth,false,2099-12-31T00:00:00Z
+plan_003,enterprise,Enterprise,enterprise,false,2099-12-31T00:00:00Z
+plan_004,pro_plus,Pro Plus,growth,true,2025-10-01T00:00:00Z

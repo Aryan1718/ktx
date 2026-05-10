@@ -1,0 +1,19 @@
+name: campaigns
+table: campaigns
+grain:
+- campaign_id
+columns:
+- name: campaign_id
+  type: number
+- name: budget
+  type: string
+- name: campaign_name
+  type: string
+- name: end_date
+  type: time
+  role: time
+- name: start_date
+  type: time
+  role: time
+- name: type
+  type: string

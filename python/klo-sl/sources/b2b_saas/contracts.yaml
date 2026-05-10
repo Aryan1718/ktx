@@ -1,0 +1,30 @@
+name: contracts
+table: contracts
+grain:
+- contract_id
+columns:
+- name: contract_id
+  type: number
+- name: account_id
+  type: number
+- name: arr
+  type: number
+- name: contract_number
+  type: string
+- name: end_date
+  type: time
+  role: time
+- name: opportunity_id
+  type: number
+- name: start_date
+  type: time
+  role: time
+- name: status
+  type: string
+joins:
+- to: accounts
+  'on': account_id = accounts.account_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one

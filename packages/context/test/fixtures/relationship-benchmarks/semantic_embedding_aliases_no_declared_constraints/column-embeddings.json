@@ -1,0 +1,6 @@
+{
+  "customers.id": [1, 0, 0],
+  "customers.name": [0, 1, 0],
+  "orders.id": [0, 0, 1],
+  "orders.buyer_ref": [0.995, 0.005, 0]
+}

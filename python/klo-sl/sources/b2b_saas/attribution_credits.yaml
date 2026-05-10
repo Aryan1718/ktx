@@ -1,0 +1,22 @@
+name: attribution_credits
+table: attribution_credits
+grain:
+- credit_id
+columns:
+- name: credit_id
+  type: number
+- name: credit
+  type: string
+- name: model
+  type: string
+- name: opportunity_id
+  type: number
+- name: touchpoint_id
+  type: number
+joins:
+- to: touchpoints
+  'on': touchpoint_id = touchpoints.touchpoint_id
+  relationship: many_to_one
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one

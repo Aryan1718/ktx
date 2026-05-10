@@ -1,0 +1,26 @@
+name: approvals
+table: approvals
+grain:
+- approval_id
+columns:
+- name: approval_id
+  type: number
+- name: approved_at
+  type: time
+  role: time
+- name: approver_rep_id
+  type: number
+- name: quote_id
+  type: number
+- name: requested_at
+  type: time
+  role: time
+- name: status
+  type: string
+joins:
+- to: sales_reps
+  'on': approver_rep_id = sales_reps.rep_id
+  relationship: many_to_one
+- to: quotes
+  'on': quote_id = quotes.quote_id
+  relationship: many_to_one

@@ -1,0 +1,66 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
+const kloRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+
+function readKloFile(relativePath: string): string {
+  return readFileSync(join(kloRoot, relativePath), 'utf8');
+}
+
+function readContextPackageJson(): {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  exports?: Record<string, unknown>;
+  files?: string[];
+} {
+  return JSON.parse(readKloFile('packages/context/package.json'));
+}
+
+describe('PGlite hybrid search runtime boundary', () => {
+  it('keeps PGlite packages as dev-only prototype dependencies', () => {
+    const pkg = readContextPackageJson();
+
+    expect(pkg.dependencies?.['@electric-sql/pglite']).toBeUndefined();
+    expect(pkg.dependencies?.['@electric-sql/pglite-socket']).toBeUndefined();
+    expect(pkg.devDependencies?.['@electric-sql/pglite']).toBeDefined();
+    expect(pkg.devDependencies?.['@electric-sql/pglite-socket']).toBeDefined();
+    expect(pkg.files).toEqual(['dist', 'prompts', 'skills']);
+  });
+
+  it('keeps PGlite prototypes out of public exports and production routing', () => {
+    const pkg = readContextPackageJson();
+    const packageExportKeys = Object.keys(pkg.exports ?? {});
+
+    expect(packageExportKeys.filter((key) => key.toLowerCase().includes('pglite'))).toEqual([]);
+
+    const publicExportFiles = [
+      'packages/context/src/index.ts',
+      'packages/context/src/search/index.ts',
+      'packages/context/src/sl/index.ts',
+    ];
+
+    for (const relativePath of publicExportFiles) {
+      expect(readKloFile(relativePath), relativePath).not.toMatch(/pglite/i);
+    }
+
+    const productionRoutingFiles = [
+      'packages/cli/src/agent.ts',
+      'packages/context/src/mcp/local-project-ports.ts',
+      'packages/context/src/wiki/local-knowledge.ts',
+      'packages/context/src/ingest/context-evidence/sqlite-context-evidence-store.ts',
+    ];
+
+    for (const relativePath of productionRoutingFiles) {
+      expect(readKloFile(relativePath), relativePath).not.toMatch(
+        /pglite-owner-prototype|pglite-sl-search-prototype|@electric-sql\/pglite/i,
+      );
+    }
+
+    const localSlSource = readKloFile('packages/context/src/sl/local-sl.ts');
+    expect(localSlSource).toContain("input.backend === 'pglite-owner-prototype'");
+    expect(localSlSource).toContain('PGlite semantic-layer search prototype requires pglite owner-process options.');
+    expect(localSlSource).toContain("await import('./pglite-sl-search-prototype.js')");
+  });
+});

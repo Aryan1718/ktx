@@ -1,0 +1,28 @@
+name: sequence_enrollments
+table: sequence_enrollments
+grain:
+- enrollment_id
+columns:
+- name: enrollment_id
+  type: number
+- name: enrolled_at
+  type: time
+  role: time
+- name: lead_id
+  type: number
+- name: rep_id
+  type: number
+- name: sequence_id
+  type: number
+- name: status
+  type: string
+joins:
+- to: sequences
+  'on': sequence_id = sequences.sequence_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one
+- to: leads
+  'on': lead_id = leads.lead_id
+  relationship: many_to_one

@@ -1,0 +1,9 @@
+name: stage_weights
+table: stage_weights
+grain:
+- stage
+columns:
+- name: stage
+  type: string
+- name: weight
+  type: string

@@ -1,0 +1,16 @@
+name: reverse_etl_jobs
+table: reverse_etl_jobs
+grain:
+- job_id
+columns:
+- name: job_id
+  type: number
+- name: last_run_at
+  type: time
+  role: time
+- name: last_status
+  type: string
+- name: name
+  type: string
+- name: target_system
+  type: string

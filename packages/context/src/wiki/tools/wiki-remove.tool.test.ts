@@ -1,0 +1,59 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { ToolSession } from '../../tools/index.js';
+import { createTouchedSlSources, type ToolContext } from '../../tools/index.js';
+import { WikiRemoveTool } from './wiki-remove.tool.js';
+
+describe('WikiRemoveTool', () => {
+  const baseContext: ToolContext = { sourceId: 's', messageId: 'm', userId: 'u' };
+
+  it('removes an existing page when no session is present', async () => {
+    const wikiService = {
+      deletePage: vi.fn().mockResolvedValue(undefined),
+      deleteFromIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    const pagesRepository = {
+      findPageByKey: vi.fn().mockResolvedValue({ page_key: 'old' }),
+    };
+    const knowledgeRepository = { createEvent: vi.fn().mockResolvedValue(undefined) };
+    const tool = new WikiRemoveTool(wikiService as any, pagesRepository as any, knowledgeRepository as any);
+    const result = await tool.call({ key: 'old' } as any, baseContext);
+    expect(wikiService.deletePage).toHaveBeenCalledTimes(1);
+    expect(wikiService.deleteFromIndex).toHaveBeenCalledTimes(1);
+    expect(result.markdown).toMatch(/removed/i);
+  });
+
+  it('skips deleteFromIndex when session is worktree-scoped', async () => {
+    const wikiService = {
+      deletePage: vi.fn().mockResolvedValue(undefined),
+      deleteFromIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    const pagesRepository = { findPageByKey: vi.fn().mockResolvedValue({ page_key: 'old' }) };
+    const knowledgeRepository = { createEvent: vi.fn().mockResolvedValue(undefined) };
+    const tool = new WikiRemoveTool(wikiService as any, pagesRepository as any, knowledgeRepository as any);
+    const session: ToolSession = {
+      connectionId: 'c',
+      isWorktreeScoped: true,
+      preHead: null,
+      touchedSlSources: createTouchedSlSources(),
+      actions: [],
+      semanticLayerService: {} as any,
+      wikiService: wikiService as any,
+      configService: {} as any,
+      gitService: {} as any,
+    };
+    await tool.call({ key: 'old' } as any, { ...baseContext, session });
+    expect(wikiService.deletePage).toHaveBeenCalledTimes(1);
+    expect(wikiService.deleteFromIndex).not.toHaveBeenCalled();
+    expect(session.actions).toContainEqual(expect.objectContaining({ target: 'wiki', type: 'removed', key: 'old' }));
+  });
+
+  it('returns a friendly message when the page does not exist', async () => {
+    const wikiService = { deletePage: vi.fn(), deleteFromIndex: vi.fn() };
+    const pagesRepository = { findPageByKey: vi.fn().mockResolvedValue(null) };
+    const knowledgeRepository = { createEvent: vi.fn() };
+    const tool = new WikiRemoveTool(wikiService as any, pagesRepository as any, knowledgeRepository as any);
+    const result = await tool.call({ key: 'missing' } as any, baseContext);
+    expect(result.structured.success).toBe(false);
+    expect(result.markdown).toMatch(/not found/i);
+  });
+});

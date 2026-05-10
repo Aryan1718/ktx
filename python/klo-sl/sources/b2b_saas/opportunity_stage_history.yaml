@@ -1,0 +1,21 @@
+name: opportunity_stage_history
+table: opportunity_stage_history
+grain:
+- history_id
+columns:
+- name: history_id
+  type: number
+- name: entered_at
+  type: time
+  role: time
+- name: exited_at
+  type: time
+  role: time
+- name: opportunity_id
+  type: number
+- name: stage
+  type: string
+joins:
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one

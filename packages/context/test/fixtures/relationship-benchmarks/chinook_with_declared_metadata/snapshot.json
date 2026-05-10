@@ -1,0 +1,801 @@
+{
+  "connectionId": "chinook_with_declared_metadata",
+  "driver": "sqlite",
+  "extractedAt": "2026-05-07T00:00:00.000Z",
+  "scope": {},
+  "metadata": {},
+  "tables": [
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Album",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 347,
+      "columns": [
+        {
+          "name": "AlbumId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "Title",
+          "nativeType": "NVARCHAR(160)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ArtistId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "ArtistId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Artist",
+          "toColumn": "ArtistId",
+          "constraintName": "Album_ArtistId_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Artist",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 275,
+      "columns": [
+        {
+          "name": "ArtistId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "Name",
+          "nativeType": "NVARCHAR(120)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Customer",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 59,
+      "columns": [
+        {
+          "name": "CustomerId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "FirstName",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "LastName",
+          "nativeType": "NVARCHAR(20)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Company",
+          "nativeType": "NVARCHAR(80)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Address",
+          "nativeType": "NVARCHAR(70)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "City",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "State",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Country",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "PostalCode",
+          "nativeType": "NVARCHAR(10)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Phone",
+          "nativeType": "NVARCHAR(24)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Fax",
+          "nativeType": "NVARCHAR(24)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Email",
+          "nativeType": "NVARCHAR(60)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "SupportRepId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "SupportRepId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Employee",
+          "toColumn": "EmployeeId",
+          "constraintName": "Customer_SupportRepId_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Employee",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 8,
+      "columns": [
+        {
+          "name": "EmployeeId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "LastName",
+          "nativeType": "NVARCHAR(20)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "FirstName",
+          "nativeType": "NVARCHAR(20)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Title",
+          "nativeType": "NVARCHAR(30)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "ReportsTo",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "BirthDate",
+          "nativeType": "DATETIME",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "HireDate",
+          "nativeType": "DATETIME",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Address",
+          "nativeType": "NVARCHAR(70)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "City",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "State",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Country",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "PostalCode",
+          "nativeType": "NVARCHAR(10)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Phone",
+          "nativeType": "NVARCHAR(24)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Fax",
+          "nativeType": "NVARCHAR(24)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Email",
+          "nativeType": "NVARCHAR(60)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "ReportsTo",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Employee",
+          "toColumn": "EmployeeId",
+          "constraintName": "Employee_ReportsTo_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Genre",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 25,
+      "columns": [
+        {
+          "name": "GenreId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "Name",
+          "nativeType": "NVARCHAR(120)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Invoice",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 412,
+      "columns": [
+        {
+          "name": "InvoiceId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "CustomerId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "InvoiceDate",
+          "nativeType": "DATETIME",
+          "normalizedType": "text",
+          "dimensionType": "time",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "BillingAddress",
+          "nativeType": "NVARCHAR(70)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "BillingCity",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "BillingState",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "BillingCountry",
+          "nativeType": "NVARCHAR(40)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "BillingPostalCode",
+          "nativeType": "NVARCHAR(10)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Total",
+          "nativeType": "NUMERIC(10,2)",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "CustomerId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Customer",
+          "toColumn": "CustomerId",
+          "constraintName": "Invoice_CustomerId_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "InvoiceLine",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 2240,
+      "columns": [
+        {
+          "name": "InvoiceLineId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "InvoiceId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "TrackId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "UnitPrice",
+          "nativeType": "NUMERIC(10,2)",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Quantity",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "TrackId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Track",
+          "toColumn": "TrackId",
+          "constraintName": "InvoiceLine_TrackId_fkey"
+        },
+        {
+          "fromColumn": "InvoiceId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Invoice",
+          "toColumn": "InvoiceId",
+          "constraintName": "InvoiceLine_InvoiceId_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "MediaType",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 5,
+      "columns": [
+        {
+          "name": "MediaTypeId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "Name",
+          "nativeType": "NVARCHAR(120)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Playlist",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 18,
+      "columns": [
+        {
+          "name": "PlaylistId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "Name",
+          "nativeType": "NVARCHAR(120)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "PlaylistTrack",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 8715,
+      "columns": [
+        {
+          "name": "PlaylistId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "TrackId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "TrackId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Track",
+          "toColumn": "TrackId",
+          "constraintName": "PlaylistTrack_TrackId_fkey"
+        },
+        {
+          "fromColumn": "PlaylistId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Playlist",
+          "toColumn": "PlaylistId",
+          "constraintName": "PlaylistTrack_PlaylistId_fkey"
+        }
+      ]
+    },
+    {
+      "catalog": null,
+      "db": "main",
+      "name": "Track",
+      "kind": "table",
+      "comment": null,
+      "estimatedRows": 3503,
+      "columns": [
+        {
+          "name": "TrackId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": true,
+          "comment": null
+        },
+        {
+          "name": "Name",
+          "nativeType": "NVARCHAR(200)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "AlbumId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "MediaTypeId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "GenreId",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Composer",
+          "nativeType": "NVARCHAR(220)",
+          "normalizedType": "text",
+          "dimensionType": "string",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Milliseconds",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "Bytes",
+          "nativeType": "INTEGER",
+          "normalizedType": "integer",
+          "dimensionType": "number",
+          "nullable": true,
+          "primaryKey": false,
+          "comment": null
+        },
+        {
+          "name": "UnitPrice",
+          "nativeType": "NUMERIC(10,2)",
+          "normalizedType": "real",
+          "dimensionType": "number",
+          "nullable": false,
+          "primaryKey": false,
+          "comment": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fromColumn": "MediaTypeId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "MediaType",
+          "toColumn": "MediaTypeId",
+          "constraintName": "Track_MediaTypeId_fkey"
+        },
+        {
+          "fromColumn": "GenreId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Genre",
+          "toColumn": "GenreId",
+          "constraintName": "Track_GenreId_fkey"
+        },
+        {
+          "fromColumn": "AlbumId",
+          "toCatalog": null,
+          "toDb": "main",
+          "toTable": "Album",
+          "toColumn": "AlbumId",
+          "constraintName": "Track_AlbumId_fkey"
+        }
+      ]
+    }
+  ]
+}

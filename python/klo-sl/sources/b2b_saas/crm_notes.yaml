@@ -1,0 +1,23 @@
+name: crm_notes
+table: crm_notes
+grain:
+- note_id
+columns:
+- name: note_id
+  type: number
+- name: created_at
+  type: time
+  role: time
+- name: note_text
+  type: string
+- name: opportunity_id
+  type: number
+- name: rep_id
+  type: number
+joins:
+- to: opportunities
+  'on': opportunity_id = opportunities.opportunity_id
+  relationship: many_to_one
+- to: sales_reps
+  'on': rep_id = sales_reps.rep_id
+  relationship: many_to_one

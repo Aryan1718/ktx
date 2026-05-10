@@ -1,0 +1,36 @@
+name: orders
+table: public.orders
+grain: [o_orderkey]
+columns:
+  - name: o_orderkey
+    type: number
+  - name: o_custkey
+    type: number
+  - name: o_orderstatus
+    type: string
+  - name: o_totalprice
+    type: number
+  - name: o_orderdate
+    type: time
+    role: time
+  - name: o_orderpriority
+    type: string
+  - name: o_clerk
+    type: string
+  - name: o_shippriority
+    type: number
+  - name: o_comment
+    type: string
+joins:
+  - to: customer
+    "on": o_custkey = customer.c_custkey
+    relationship: many_to_one
+measures:
+  - name: order_count
+    expr: count(o_orderkey)
+  - name: total_price
+    expr: sum(o_totalprice)
+    description: "Total order value"
+  - name: avg_order_value
+    expr: avg(o_totalprice)
+    description: "Average order value"

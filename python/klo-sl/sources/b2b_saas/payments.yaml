@@ -1,0 +1,20 @@
+name: payments
+table: payments
+grain:
+- payment_id
+columns:
+- name: payment_id
+  type: number
+- name: amount
+  type: number
+- name: invoice_id
+  type: number
+- name: method
+  type: string
+- name: payment_date
+  type: time
+  role: time
+joins:
+- to: invoices
+  'on': invoice_id = invoices.invoice_id
+  relationship: many_to_one

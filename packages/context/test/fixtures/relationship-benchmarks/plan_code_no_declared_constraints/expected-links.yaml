@@ -1,0 +1,24 @@
+expectedPks:
+  - table: stg_plans
+    columns: [plan_code]
+expectedLinks:
+  - fromTable: mart_account_segments
+    fromColumns: [current_plan_code]
+    toTable: stg_plans
+    toColumns: [plan_code]
+    relationship: many_to_one
+  - fromTable: mart_account_segments
+    fromColumns: [normalized_plan_code]
+    toTable: stg_plans
+    toColumns: [plan_code]
+    relationship: many_to_one
+  - fromTable: stg_plan_segment_mapping
+    fromColumns: [canonical_plan_code]
+    toTable: stg_plans
+    toColumns: [plan_code]
+    relationship: many_to_one
+  - fromTable: stg_plans
+    fromColumns: [canonical_plan_code]
+    toTable: stg_plans
+    toColumns: [plan_code]
+    relationship: many_to_one

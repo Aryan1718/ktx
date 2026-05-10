@@ -1,0 +1,33 @@
+name: employees
+table: employees
+grain:
+- employee_id
+columns:
+- name: employee_id
+  type: number
+- name: base_salary
+  type: number
+- name: benefits_cost
+  type: number
+- name: dept_id
+  type: number
+- name: email
+  type: string
+- name: first_name
+  type: string
+- name: hire_date
+  type: time
+  role: time
+- name: last_name
+  type: string
+- name: region
+  type: string
+- name: role
+  type: string
+- name: termination_date
+  type: time
+  role: time
+joins:
+- to: departments_hr
+  'on': dept_id = departments_hr.dept_id
+  relationship: many_to_one

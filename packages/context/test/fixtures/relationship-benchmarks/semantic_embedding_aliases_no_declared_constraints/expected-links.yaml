@@ -1,0 +1,11 @@
+expectedPks:
+  - table: customers
+    columns: [id]
+  - table: orders
+    columns: [id]
+expectedLinks:
+  - fromTable: orders
+    fromColumns: [buyer_ref]
+    toTable: customers
+    toColumns: [id]
+    relationship: many_to_one
