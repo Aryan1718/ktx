@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   historicSqlEvidenceEnvelopeSchema,
   historicSqlEvidencePath,
+  historicSqlPatternEvidenceSchema,
   historicSqlTableUsageEvidenceSchema,
 } from './evidence.js';
 
@@ -27,20 +28,22 @@ describe('historic-sql evidence contracts', () => {
   });
 
   it('validates pattern evidence emitted by the patterns WorkUnit', () => {
-    const parsed = historicSqlEvidenceEnvelopeSchema.parse({
-      kind: 'pattern',
-      connectionId: 'warehouse',
-      rawPath: 'patterns-input.json',
-      pattern: {
-        slug: 'order-lifecycle-analysis',
-        title: 'Order Lifecycle Analysis',
-        narrative: 'Analysts compare order status changes by customer segment.',
-        definitionSql: 'select status, count(*) from public.orders group by status',
-        tablesInvolved: ['public.orders', 'public.customers'],
-        slRefs: ['orders', 'customers'],
-        constituentTemplateIds: ['pg:1', 'pg:2'],
-      },
-    });
+    const parsed = historicSqlPatternEvidenceSchema.parse(
+      historicSqlEvidenceEnvelopeSchema.parse({
+        kind: 'pattern',
+        connectionId: 'warehouse',
+        rawPath: 'patterns-input.json',
+        pattern: {
+          slug: 'order-lifecycle-analysis',
+          title: 'Order Lifecycle Analysis',
+          narrative: 'Analysts compare order status changes by customer segment.',
+          definitionSql: 'select status, count(*) from public.orders group by status',
+          tablesInvolved: ['public.orders', 'public.customers'],
+          slRefs: ['orders', 'customers'],
+          constituentTemplateIds: ['pg:1', 'pg:2'],
+        },
+      }),
+    );
 
     expect(parsed.kind).toBe('pattern');
     expect(parsed.pattern.slug).toBe('order-lifecycle-analysis');

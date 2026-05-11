@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { SqlAnalysisPort } from '../../../sql-analysis/index.js';
+import type { SourceAdapter } from '../../types.js';
 import { HistoricSqlSourceAdapter } from './historic-sql.adapter.js';
 import type { HistoricSqlReader } from './types.js';
 
@@ -33,7 +34,7 @@ describe('HistoricSqlSourceAdapter', () => {
     expect(adapter.source).toBe('historic-sql');
     expect(adapter.skillNames).toEqual(['historic_sql_table_digest', 'historic_sql_patterns']);
     expect(adapter.reconcileSkillNames).toEqual([]);
-    expect(adapter.evidenceIndexing).toBeUndefined();
+    expect((adapter as SourceAdapter).evidenceIndexing).toBeUndefined();
     expect(adapter.triageSupported).toBe(false);
   });
 

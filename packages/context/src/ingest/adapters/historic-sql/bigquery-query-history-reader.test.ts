@@ -63,122 +63,6 @@ describe('BigQueryHistoricSqlQueryHistoryReader', () => {
     await expect(reader.probe(client)).rejects.toBeInstanceOf(HistoricSqlGrantsMissingError);
   });
 
-  it('fetches BigQuery jobs with cursor and maps them into RawQueryRow shape without rowsProduced', async () => {
-    const client = queryClient([
-      {
-        headers: [
-          'job_id',
-          'query',
-          'user_email',
-          'creation_time',
-          'end_time',
-          'runtime_ms',
-          'total_slot_ms',
-          'total_bytes_processed',
-          'state',
-          'error_reason',
-          'error_message',
-          'statement_type',
-        ],
-        rows: [
-          [
-            'bquxjob_1',
-            "SELECT COUNT(*) FROM `project-1.analytics.orders` WHERE status = 'paid'",
-            'analyst-a@example.test',
-            '2026-05-04T10:00:00.000Z',
-            '2026-05-04T10:00:01.250Z',
-            1250,
-            3106,
-            161164718,
-            'DONE',
-            null,
-            null,
-            'SELECT',
-          ],
-          [
-            'bquxjob_2',
-            'SELECT * FROM `project-1.analytics.missing_table`',
-            'analyst-b@example.test',
-            new Date('2026-05-04T10:05:00.000Z'),
-            null,
-            null,
-            0,
-            0,
-            'DONE',
-            'notFound',
-            'Not found: Table project-1.analytics.missing_table',
-            'SELECT',
-          ],
-        ],
-        totalRows: 2,
-      },
-    ]);
-    const reader = new BigQueryHistoricSqlQueryHistoryReader({ projectId: 'project-1', region: 'US' });
-
-    const rows = [];
-    for await (const row of reader.fetch(
-      client,
-      {
-        start: new Date('2026-05-01T00:00:00.000Z'),
-        end: new Date('2026-05-04T12:00:00.000Z'),
-      },
-      '2026-05-03T00:00:00.000Z',
-    )) {
-      rows.push(row);
-    }
-
-    expect(client.executeQuery).toHaveBeenCalledTimes(1);
-    const sql = firstQuery(client);
-    expect(sql).toContain('FROM `project-1.region-us.INFORMATION_SCHEMA.JOBS_BY_PROJECT`');
-    expect(sql).toContain("creation_time >= TIMESTAMP('2026-05-03T00:00:00.000Z')");
-    expect(sql).toContain("creation_time < TIMESTAMP('2026-05-04T12:00:00.000Z')");
-    expect(sql).toContain("job_type = 'QUERY'");
-    expect(sql).toContain("(statement_type IS NULL OR statement_type != 'SCRIPT')");
-    expect(sql).toContain('ORDER BY creation_time ASC, job_id ASC');
-    expect(sql).toContain('total_slot_ms');
-    expect(sql).toContain('total_bytes_processed');
-    expect(sql).not.toMatch(/total_rows/i);
-
-    expect(rows).toEqual([
-      {
-        id: 'bquxjob_1',
-        sql: "SELECT COUNT(*) FROM `project-1.analytics.orders` WHERE status = 'paid'",
-        user: 'analyst-a@example.test',
-        startedAt: '2026-05-04T10:00:00.000Z',
-        endedAt: '2026-05-04T10:00:01.250Z',
-        runtimeMs: 1250,
-        success: true,
-        errorMessage: null,
-      },
-      {
-        id: 'bquxjob_2',
-        sql: 'SELECT * FROM `project-1.analytics.missing_table`',
-        user: 'analyst-b@example.test',
-        startedAt: '2026-05-04T10:05:00.000Z',
-        endedAt: null,
-        runtimeMs: null,
-        success: false,
-        errorMessage: 'notFound: Not found: Table project-1.analytics.missing_table',
-      },
-    ]);
-  });
-
-  it('uses the window start when no cursor is available', async () => {
-    const client = queryClient([{ headers: ['job_id'], rows: [], totalRows: 0 }]);
-    const reader = new BigQueryHistoricSqlQueryHistoryReader({ projectId: 'project-1', region: 'EU' });
-
-    for await (const _row of reader.fetch(client, {
-      start: new Date('2026-02-03T12:00:00.000Z'),
-      end: new Date('2026-05-04T12:00:00.000Z'),
-    })) {
-      throw new Error('empty result should not yield rows');
-    }
-
-    const sql = firstQuery(client);
-    expect(sql).toContain('FROM `project-1.region-eu.INFORMATION_SCHEMA.JOBS_BY_PROJECT`');
-    expect(sql).toContain("creation_time >= TIMESTAMP('2026-02-03T12:00:00.000Z')");
-  });
-
   it('fetches aggregated BigQuery query templates', async () => {
     const client = queryClient([
       {
@@ -245,7 +129,19 @@ describe('BigQueryHistoricSqlQueryHistoryReader', () => {
     const reader = new BigQueryHistoricSqlQueryHistoryReader({ projectId: 'project-1', region: 'US' });
 
     await expect(async () => {
-      for await (const _row of reader.fetch({}, { start: new Date(), end: new Date() })) {
+      for await (const _row of reader.fetchAggregated(
+        {},
+        { start: new Date(), end: new Date() },
+        {
+          dialect: 'bigquery',
+          minExecutions: 5,
+          windowDays: 90,
+          concurrency: 12,
+          filters: { dropTrivialProbes: true },
+          redactionPatterns: [],
+          staleArchiveAfterDays: 90,
+        },
+      )) {
         throw new Error('unreachable');
       }
     }).rejects.toThrow('Historic SQL BigQuery reader requires a query client with executeQuery(query)');

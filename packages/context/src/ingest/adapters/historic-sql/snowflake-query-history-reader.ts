@@ -2,8 +2,6 @@ import { HistoricSqlGrantsMissingError } from './errors.js';
 import {
   aggregatedTemplateSchema,
   type AggregatedTemplate,
-  type HistoricSqlQueryHistoryReader,
-  type HistoricSqlRawQueryRow,
   type HistoricSqlTimeWindow,
   type HistoricSqlUnifiedPullConfig,
 } from './types.js';
@@ -57,32 +55,6 @@ function timestampLiteral(value: Date | string): string {
     throw new Error(`Invalid Snowflake query-history timestamp: ${String(value)}`);
   }
   return `'${date.toISOString().replace(/'/g, "''")}'::TIMESTAMP_TZ`;
-}
-
-function queryHistorySql(window: HistoricSqlTimeWindow, cursor?: string | null): string {
-  const start = timestampLiteral(cursor ?? window.start);
-  const end = timestampLiteral(window.end);
-  return `
-SELECT
-  QUERY_ID,
-  QUERY_TEXT,
-  USER_NAME,
-  ROLE_NAME,
-  WAREHOUSE_NAME,
-  DATABASE_NAME,
-  SCHEMA_NAME,
-  START_TIME,
-  END_TIME,
-  TOTAL_ELAPSED_TIME,
-  ROWS_PRODUCED,
-  EXECUTION_STATUS,
-  ERROR_CODE,
-  ERROR_MESSAGE
-FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
-WHERE START_TIME >= ${start}
-  AND START_TIME < ${end}
-  AND QUERY_TEXT IS NOT NULL
-ORDER BY START_TIME ASC, QUERY_ID ASC`.trim();
 }
 
 function indexByHeader(headers: string[]): Map<string, number> {
@@ -154,44 +126,6 @@ function isoTimestamp(raw: unknown, field: string): string {
   return date.toISOString();
 }
 
-function nullableIsoTimestamp(raw: unknown): string | null {
-  if (raw === null || raw === undefined || raw === '') {
-    return null;
-  }
-  return isoTimestamp(raw, 'END_TIME');
-}
-
-function executionSucceeded(status: string | null, errorCode: string | null, errorMessage: string | null): boolean {
-  if (errorCode || errorMessage) {
-    return false;
-  }
-  return status === null || status.toUpperCase().startsWith('SUCCESS');
-}
-
-function combinedErrorMessage(errorCode: string | null, errorMessage: string | null): string | null {
-  if (errorCode && errorMessage) {
-    return `${errorCode}: ${errorMessage}`;
-  }
-  return errorMessage ?? errorCode;
-}
-
-function mapRow(row: unknown[], indexes: Map<string, number>): HistoricSqlRawQueryRow {
-  const errorCode = nullableString(value(row, indexes, 'ERROR_CODE'));
-  const errorMessage = nullableString(value(row, indexes, 'ERROR_MESSAGE'));
-  const rowsProduced = nullableInteger(value(row, indexes, 'ROWS_PRODUCED'));
-  return {
-    id: requiredString(value(row, indexes, 'QUERY_ID'), 'QUERY_ID'),
-    sql: requiredString(value(row, indexes, 'QUERY_TEXT'), 'QUERY_TEXT'),
-    user: nullableString(value(row, indexes, 'USER_NAME')),
-    startedAt: isoTimestamp(value(row, indexes, 'START_TIME'), 'START_TIME'),
-    endedAt: nullableIsoTimestamp(value(row, indexes, 'END_TIME')),
-    runtimeMs: nullableNumber(value(row, indexes, 'TOTAL_ELAPSED_TIME')),
-    rowsProduced,
-    success: executionSucceeded(nullableString(value(row, indexes, 'EXECUTION_STATUS')), errorCode, errorMessage),
-    errorMessage: combinedErrorMessage(errorCode, errorMessage),
-  };
-}
-
 function parseTopUsers(raw: unknown): Array<{ user: string | null; executions: number }> {
   const text = nullableString(raw);
   if (!text) {
@@ -234,7 +168,7 @@ function mapAggregatedRow(row: unknown[], indexes: Map<string, number>): Aggrega
   });
 }
 
-export class SnowflakeHistoricSqlQueryHistoryReader implements HistoricSqlQueryHistoryReader {
+export class SnowflakeHistoricSqlQueryHistoryReader {
   async probe(client: unknown): Promise<void> {
     let result: QueryResultLike;
     try {
@@ -244,21 +178,6 @@ export class SnowflakeHistoricSqlQueryHistoryReader implements HistoricSqlQueryH
     }
     if (result.error) {
       throw grantsError(result.error);
-    }
-  }
-
-  async *fetch(
-    client: unknown,
-    window: HistoricSqlTimeWindow,
-    cursor?: string | null,
-  ): AsyncIterable<HistoricSqlRawQueryRow> {
-    const result = await queryClient(client).executeQuery(queryHistorySql(window, cursor));
-    if (result.error) {
-      throw grantsError(result.error);
-    }
-    const indexes = indexByHeader(result.headers);
-    for (const row of result.rows) {
-      yield mapRow(row, indexes);
     }
   }
 

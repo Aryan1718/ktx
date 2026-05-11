@@ -2,8 +2,6 @@ import { HistoricSqlGrantsMissingError } from './errors.js';
 import {
   aggregatedTemplateSchema,
   type AggregatedTemplate,
-  type HistoricSqlQueryHistoryReader,
-  type HistoricSqlRawQueryRow,
   type HistoricSqlTimeWindow,
   type HistoricSqlUnifiedPullConfig,
 } from './types.js';
@@ -146,42 +144,6 @@ function isoTimestamp(raw: unknown, field: string): string {
   return date.toISOString();
 }
 
-function nullableIsoTimestamp(raw: unknown): string | null {
-  if (raw === null || raw === undefined || raw === '') {
-    return null;
-  }
-  return isoTimestamp(raw, 'end_time');
-}
-
-function executionSucceeded(state: string | null, errorReason: string | null, errorMessage: string | null): boolean {
-  if (errorReason || errorMessage) {
-    return false;
-  }
-  return state === null || state.toUpperCase() === 'DONE';
-}
-
-function combinedErrorMessage(errorReason: string | null, errorMessage: string | null): string | null {
-  if (errorReason && errorMessage) {
-    return `${errorReason}: ${errorMessage}`;
-  }
-  return errorMessage ?? errorReason;
-}
-
-function mapRow(row: unknown[], indexes: Map<string, number>): HistoricSqlRawQueryRow {
-  const errorReason = nullableString(value(row, indexes, 'error_reason'));
-  const errorMessage = nullableString(value(row, indexes, 'error_message'));
-  return {
-    id: requiredString(value(row, indexes, 'job_id'), 'job_id'),
-    sql: requiredString(value(row, indexes, 'query'), 'query'),
-    user: nullableString(value(row, indexes, 'user_email')),
-    startedAt: isoTimestamp(value(row, indexes, 'creation_time'), 'creation_time'),
-    endedAt: nullableIsoTimestamp(value(row, indexes, 'end_time')),
-    runtimeMs: nullableNumber(value(row, indexes, 'runtime_ms')),
-    success: executionSucceeded(nullableString(value(row, indexes, 'state')), errorReason, errorMessage),
-    errorMessage: combinedErrorMessage(errorReason, errorMessage),
-  };
-}
-
 function parseTopUsers(raw: unknown): Array<{ user: string | null; executions: number }> {
   const text = nullableString(raw);
   if (!text) {
@@ -224,7 +186,7 @@ function mapAggregatedRow(row: unknown[], indexes: Map<string, number>): Aggrega
   });
 }
 
-export class BigQueryHistoricSqlQueryHistoryReader implements HistoricSqlQueryHistoryReader {
+export class BigQueryHistoricSqlQueryHistoryReader {
   private readonly viewPath: string;
 
   constructor(options: BigQueryHistoricSqlQueryHistoryReaderOptions) {
@@ -242,44 +204,6 @@ export class BigQueryHistoricSqlQueryHistoryReader implements HistoricSqlQueryHi
     }
     if (result.error) {
       throw grantsError(result.error);
-    }
-  }
-
-  async *fetch(
-    client: unknown,
-    window: HistoricSqlTimeWindow,
-    cursor?: string | null,
-  ): AsyncIterable<HistoricSqlRawQueryRow> {
-    const start = timestampExpression(cursor ?? window.start);
-    const end = timestampExpression(window.end);
-    const sql = `
-SELECT
-  job_id,
-  query,
-  user_email,
-  creation_time,
-  end_time,
-  TIMESTAMP_DIFF(end_time, creation_time, MILLISECOND) AS runtime_ms,
-  total_slot_ms,
-  total_bytes_processed,
-  state,
-  error_result.reason AS error_reason,
-  error_result.message AS error_message,
-  statement_type
-FROM ${this.viewPath}
-WHERE creation_time >= ${start}
-  AND creation_time < ${end}
-  AND job_type = 'QUERY'
-  AND query IS NOT NULL
-  AND (statement_type IS NULL OR statement_type != 'SCRIPT')
-ORDER BY creation_time ASC, job_id ASC`.trim();
-    const result = await queryClient(client).executeQuery(sql);
-    if (result.error) {
-      throw grantsError(result.error);
-    }
-    const indexes = indexByHeader(result.headers);
-    for (const row of result.rows) {
-      yield mapRow(row, indexes);
     }
   }
 
