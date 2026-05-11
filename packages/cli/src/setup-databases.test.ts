@@ -1237,7 +1237,7 @@ describe('setup databases step', () => {
     expect(config.ingest.adapters).toContain('historic-sql');
   });
 
-  it('writes Postgres Historic SQL config with minCalls and ignores window/redaction output', async () => {
+  it('writes Postgres Historic SQL config with minExecutions and ignores window/redaction output', async () => {
     const io = makeIo();
     const result = await runKtxSetupDatabasesStep(
       {
@@ -1249,7 +1249,7 @@ describe('setup databases step', () => {
         databaseSchemas: ['public'],
         enableHistoricSql: true,
         historicSqlWindowDays: 30,
-        historicSqlMinCalls: 12,
+        historicSqlMinExecutions: 12,
         historicSqlServiceAccountPatterns: ['^svc_'],
         historicSqlRedactionPatterns: ['(?i)secret'],
         skipDatabases: false,
@@ -1271,11 +1271,11 @@ describe('setup databases step', () => {
       historicSql: {
         enabled: true,
         dialect: 'postgres',
-        minCalls: 12,
-        maxTemplatesPerRun: 5000,
+        minExecutions: 12,
         serviceAccountUserPatterns: ['^svc_'],
       },
     });
+    expect(config.connections.warehouse.historicSql).not.toHaveProperty('minCalls');
     expect(config.connections.warehouse.historicSql).not.toHaveProperty('windowDays');
     expect(config.connections.warehouse.historicSql).not.toHaveProperty('redactionPatterns');
     expect(config.ingest.adapters).toContain('historic-sql');
@@ -1354,7 +1354,7 @@ describe('setup databases step', () => {
         databaseConnectionIds: ['warehouse'],
         databaseSchemas: [],
         enableHistoricSql: true,
-        historicSqlMinCalls: 8,
+        historicSqlMinExecutions: 8,
         skipDatabases: false,
       },
       io.io,
@@ -1371,8 +1371,7 @@ describe('setup databases step', () => {
       historicSql: {
         enabled: true,
         dialect: 'postgres',
-        minCalls: 8,
-        maxTemplatesPerRun: 5000,
+        minExecutions: 8,
         serviceAccountUserPatterns: [],
       },
     });

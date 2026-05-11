@@ -715,7 +715,7 @@ describe('runKtxIngest', () => {
         '    historicSql:',
         '      enabled: true',
         '      dialect: postgres',
-        '      minCalls: 2',
+        '      minExecutions: 2',
         'ingest:',
         '  adapters:',
         '    - historic-sql',

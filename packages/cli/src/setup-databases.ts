@@ -34,6 +34,7 @@ export interface KtxSetupDatabasesArgs {
   enableHistoricSql?: boolean;
   disableHistoricSql?: boolean;
   historicSqlWindowDays?: number;
+  historicSqlMinExecutions?: number;
   historicSqlMinCalls?: number;
   historicSqlServiceAccountPatterns?: string[];
   historicSqlRedactionPatterns?: string[];
@@ -676,8 +677,7 @@ async function maybeApplyHistoricSqlConfig(input: {
       ...input.connection,
       historicSql: {
         ...common,
-        minCalls: input.args.historicSqlMinCalls ?? 5,
-        maxTemplatesPerRun: 5000,
+        minExecutions: input.args.historicSqlMinExecutions ?? input.args.historicSqlMinCalls ?? 5,
       },
     };
   }
