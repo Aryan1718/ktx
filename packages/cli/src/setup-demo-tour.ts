@@ -4,7 +4,10 @@ import type {
   ContextBuildViewState,
 } from './context-build-view.js';
 import { createRepainter, renderContextBuildView } from './context-build-view.js';
+import { defaultDemoProjectDir, ensureSeededDemoProject } from './demo-assets.js';
 import type { KtxPublicIngestPlanTarget } from './public-ingest.js';
+import type { KtxSetupAgentsResult } from './setup-agents.js';
+import { runKtxSetupAgentsStep } from './setup-agents.js';
 import { KtxSetupExitError } from './setup-interrupt.js';
 
 // ---------------------------------------------------------------------------
@@ -299,4 +302,83 @@ export async function runDemoContextReplay(
   // Show completion summary and wait for navigation
   io.stdout.write(renderDemoContextCompletionSummary() + '\n');
   return waitForDemoNavigation(stdin);
+}
+
+// ---------------------------------------------------------------------------
+// Demo tour orchestrator
+// ---------------------------------------------------------------------------
+
+type DemoStep = 'databases' | 'sources' | 'context' | 'agents';
+
+const DEMO_STEPS: DemoStep[] = ['databases', 'sources', 'context', 'agents'];
+
+export interface DemoTourDeps {
+  agents?: (args: Parameters<typeof runKtxSetupAgentsStep>[0], io: KtxCliIo) => Promise<KtxSetupAgentsResult>;
+  waitForNavigation?: (stdin?: NodeJS.ReadStream) => Promise<'forward' | 'back'>;
+  ensureProject?: typeof ensureSeededDemoProject;
+  skipReplayAnimation?: boolean;
+}
+
+export async function runDemoTour(
+  args: { inputMode: 'auto' | 'disabled' },
+  io: KtxCliIo,
+  deps: DemoTourDeps = {},
+): Promise<number> {
+  const waitNav = deps.waitForNavigation ?? waitForDemoNavigation;
+  const ensureProject = deps.ensureProject ?? ensureSeededDemoProject;
+
+  const projectDir = defaultDemoProjectDir();
+  await ensureProject({ projectDir, force: false });
+
+  let stepIndex = 0;
+
+  while (stepIndex < DEMO_STEPS.length) {
+    const step = DEMO_STEPS[stepIndex]!;
+    let direction: 'forward' | 'back';
+
+    if (step === 'databases') {
+      direction = await renderDemoCard('Database connection', ['PostgreSQL (demo warehouse)'], io, undefined, waitNav);
+    } else if (step === 'sources') {
+      direction = await renderDemoCard('Context sources', ['dbt', 'Metabase', 'Notion'], io, undefined, waitNav);
+    } else if (step === 'context') {
+      io.stdout.write(renderDemoBanner() + '\n\n');
+      if (deps.skipReplayAnimation) {
+        direction = await waitNav();
+      } else {
+        direction = await runDemoContextReplay(io);
+      }
+    } else {
+      // agents step — real interactive
+      io.stdout.write(renderDemoAgentTransition() + '\n');
+      const agentsRunner = deps.agents ?? runKtxSetupAgentsStep;
+      const agentsResult = await agentsRunner(
+        {
+          projectDir,
+          inputMode: args.inputMode,
+          yes: false,
+          agents: true,
+          scope: 'project',
+          mode: 'both',
+          skipAgents: false,
+        },
+        io,
+      );
+      const agentInstalled = agentsResult.status === 'ready';
+      if (agentsResult.status === 'back') {
+        direction = 'back';
+      } else {
+        io.stdout.write(renderDemoCompletionSummary(projectDir, agentInstalled) + '\n');
+        return 0;
+      }
+    }
+
+    if (direction === 'back') {
+      if (stepIndex === 0) return 0;
+      stepIndex -= 1;
+    } else {
+      stepIndex += 1;
+    }
+  }
+
+  return 0;
 }

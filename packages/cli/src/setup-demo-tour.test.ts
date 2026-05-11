@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { KtxSetupAgentsResult } from './setup-agents.js';
 import {
   buildDemoReplayTimeline,
   DEMO_REPLAY_TARGETS,
@@ -6,6 +7,7 @@ import {
   renderDemoBanner,
   renderDemoCardContent,
   renderDemoCompletionSummary,
+  runDemoTour,
 } from './setup-demo-tour.js';
 
 /** Strip ANSI escape sequences for plain-text assertions. */
@@ -147,5 +149,118 @@ describe('DEMO_REPLAY_TARGETS', () => {
     for (const source of DEMO_REPLAY_TARGETS.contextSources) {
       expect(source.operation).toBe('source-ingest');
     }
+  });
+});
+
+describe('runDemoTour', () => {
+  function createMockIo() {
+    const chunks: string[] = [];
+    return {
+      io: {
+        stdout: { isTTY: true, columns: 80, write: (chunk: string) => { chunks.push(chunk); } },
+        stderr: { write: () => {} },
+      },
+      chunks,
+    };
+  }
+
+  it('returns 0 on successful tour with agent installed', async () => {
+    const { io, chunks } = createMockIo();
+    const mockAgents = vi.fn().mockResolvedValue({
+      status: 'ready',
+      projectDir: '/tmp/test',
+      installs: [{ target: 'claude-code', scope: 'project', mode: 'both' }],
+    } satisfies KtxSetupAgentsResult);
+
+    const navigation = vi.fn().mockResolvedValue('forward');
+
+    const result = await runDemoTour(
+      { inputMode: 'auto' },
+      io,
+      {
+        agents: mockAgents,
+        waitForNavigation: navigation,
+        skipReplayAnimation: true,
+        ensureProject: vi.fn().mockResolvedValue({ projectDir: '/tmp/test' }),
+      },
+    );
+    expect(result).toBe(0);
+    expect(mockAgents).toHaveBeenCalled();
+    // Should have rendered completion summary
+    const allOutput = chunks.join('');
+    expect(allOutput).toContain('agent is connected');
+  });
+
+  it('handles back navigation from first step by exiting', async () => {
+    const { io } = createMockIo();
+    const navigation = vi.fn().mockResolvedValue('back');
+
+    const result = await runDemoTour(
+      { inputMode: 'auto' },
+      io,
+      {
+        waitForNavigation: navigation,
+        skipReplayAnimation: true,
+        ensureProject: vi.fn().mockResolvedValue({ projectDir: '/tmp/test' }),
+      },
+    );
+    expect(result).toBe(0);
+    // Navigation called once for databases step, then exits
+    expect(navigation).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes back from sources to databases', async () => {
+    const { io } = createMockIo();
+    let callCount = 0;
+    const navigation = vi.fn().mockImplementation(() => {
+      callCount++;
+      // First call (databases): forward
+      // Second call (sources): back
+      // Third call (databases again): back (exit)
+      if (callCount === 1) return Promise.resolve('forward');
+      return Promise.resolve('back');
+    });
+
+    const result = await runDemoTour(
+      { inputMode: 'auto' },
+      io,
+      {
+        waitForNavigation: navigation,
+        skipReplayAnimation: true,
+        ensureProject: vi.fn().mockResolvedValue({ projectDir: '/tmp/test' }),
+      },
+    );
+    expect(result).toBe(0);
+    expect(navigation).toHaveBeenCalledTimes(3);
+  });
+
+  it('handles agent step returning back', async () => {
+    const { io } = createMockIo();
+    let navCount = 0;
+    const navigation = vi.fn().mockImplementation(() => {
+      navCount++;
+      // Forward through databases, sources, context
+      // Then back from context (after agents returns back)
+      // Then back from sources, then back from databases (exit)
+      if (navCount <= 3) return Promise.resolve('forward');
+      return Promise.resolve('back');
+    });
+
+    const mockAgents = vi.fn().mockResolvedValue({
+      status: 'back',
+      projectDir: '/tmp/test',
+    } satisfies KtxSetupAgentsResult);
+
+    const result = await runDemoTour(
+      { inputMode: 'auto' },
+      io,
+      {
+        agents: mockAgents,
+        waitForNavigation: navigation,
+        skipReplayAnimation: true,
+        ensureProject: vi.fn().mockResolvedValue({ projectDir: '/tmp/test' }),
+      },
+    );
+    expect(result).toBe(0);
   });
 });

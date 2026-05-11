@@ -4,7 +4,6 @@ import { cancel, isCancel, select } from '@clack/prompts';
 import { loadKtxProject } from '@ktx/context/project';
 import type { KtxCliIo } from './cli-runtime.js';
 import type { KtxDemoArgs } from './demo.js';
-import { defaultDemoProjectDir } from './demo-assets.js';
 import { formatSetupNextStepLines } from './next-steps.js';
 import { isKtxSetupExitError, withSetupInterruptConfirmation } from './setup-interrupt.js';
 import {
@@ -220,15 +219,11 @@ async function runKtxSetupDemoFromEntryMenu(
   io: KtxCliIo,
   deps: KtxSetupDeps,
 ): Promise<number> {
-  const runner = deps.demo ?? (await import('./demo.js')).runKtxDemo;
-  return await runner(
-    {
-      command: 'seeded',
-      projectDir: defaultDemoProjectDir(),
-      outputMode: 'viz',
-      inputMode: args.inputMode,
-    },
+  const { runDemoTour } = await import('./setup-demo-tour.js');
+  return await runDemoTour(
+    { inputMode: args.inputMode },
     io,
+    { agents: deps.agents },
   );
 }
 
