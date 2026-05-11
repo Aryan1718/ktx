@@ -181,6 +181,68 @@ describe('SnowflakeHistoricSqlQueryHistoryReader', () => {
     expect(sql).toContain("START_TIME >= '2026-02-03T12:00:00.000Z'::TIMESTAMP_TZ");
   });
 
+  it('fetches aggregated Snowflake query templates', async () => {
+    const client = queryClient([
+      {
+        headers: [
+          'template_id',
+          'canonical_sql',
+          'executions',
+          'distinct_users',
+          'first_seen',
+          'last_seen',
+          'p50_ms',
+          'p95_ms',
+          'error_rate',
+          'rows_produced',
+          'top_users',
+        ],
+        rows: [
+          [
+            'hash-1',
+            'select status from orders',
+            42,
+            3,
+            '2026-05-01T00:00:00.000Z',
+            '2026-05-11T00:00:00.000Z',
+            12,
+            40,
+            0.05,
+            100,
+            JSON.stringify([{ user: 'ANALYST', executions: 1 }]),
+          ],
+        ],
+        totalRows: 1,
+      },
+    ]);
+    const reader = new SnowflakeHistoricSqlQueryHistoryReader();
+
+    const rows = [];
+    for await (const row of reader.fetchAggregated(
+      client,
+      { start: new Date('2026-02-10T00:00:00.000Z'), end: new Date('2026-05-11T00:00:00.000Z') },
+      { dialect: 'snowflake', minExecutions: 5, windowDays: 90, concurrency: 12, filters: {}, redactionPatterns: [], staleArchiveAfterDays: 90 },
+    )) {
+      rows.push(row);
+    }
+
+    const sql = firstQuery(client);
+    expect(sql).toContain('SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY');
+    expect(sql).toContain('COUNT(*) AS executions');
+    expect(sql).toContain('GROUP BY query_hash');
+    expect(sql).toContain('HAVING COUNT(*) >= 5');
+    expect(rows).toMatchObject([
+      {
+        templateId: 'hash-1',
+        stats: {
+          executions: 42,
+          errorRate: 0.05,
+        },
+        topUsers: [{ user: 'ANALYST', executions: 1 }],
+      },
+    ]);
+  });
+
   it('throws a clear error when the query client cannot execute SQL', async () => {
     const reader = new SnowflakeHistoricSqlQueryHistoryReader();
 

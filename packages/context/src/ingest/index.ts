@@ -328,6 +328,7 @@ export {
 export { HistoricSqlSourceAdapter } from './adapters/historic-sql/historic-sql.adapter.js';
 export { BigQueryHistoricSqlQueryHistoryReader } from './adapters/historic-sql/bigquery-query-history-reader.js';
 export type { BigQueryHistoricSqlQueryHistoryReaderOptions } from './adapters/historic-sql/bigquery-query-history-reader.js';
+export { PostgresPgssReader } from './adapters/historic-sql/postgres-pgss-reader.js';
 export { PostgresPgssQueryHistoryReader } from './adapters/historic-sql/postgres-pgss-query-history-reader.js';
 export { SnowflakeHistoricSqlQueryHistoryReader } from './adapters/historic-sql/snowflake-query-history-reader.js';
 export { stageHistoricSqlAggregatedSnapshot } from './adapters/historic-sql/stage-unified.js';

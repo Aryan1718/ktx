@@ -1,5 +1,12 @@
 import { HistoricSqlGrantsMissingError } from './errors.js';
-import type { HistoricSqlQueryHistoryReader, HistoricSqlRawQueryRow, HistoricSqlTimeWindow } from './types.js';
+import {
+  aggregatedTemplateSchema,
+  type AggregatedTemplate,
+  type HistoricSqlQueryHistoryReader,
+  type HistoricSqlRawQueryRow,
+  type HistoricSqlTimeWindow,
+  type HistoricSqlUnifiedPullConfig,
+} from './types.js';
 
 interface QueryResultLike {
   headers: string[];
@@ -87,7 +94,7 @@ function indexByHeader(headers: string[]): Map<string, number> {
 }
 
 function value(row: unknown[], indexes: Map<string, number>, name: string): unknown {
-  const index = indexes.get(name);
+  const index = indexes.get(name.toUpperCase());
   return index === undefined ? null : row[index];
 }
 
@@ -116,6 +123,18 @@ function nullableNumber(raw: unknown): number | null {
     return null;
   }
   return number;
+}
+
+function requiredNumber(raw: unknown, field: string): number {
+  const number = nullableNumber(raw);
+  if (number === null) {
+    throw new Error(`Snowflake QUERY_HISTORY row has invalid ${field}: ${String(raw)}`);
+  }
+  return number;
+}
+
+function requiredInteger(raw: unknown, field: string): number {
+  return Math.trunc(requiredNumber(raw, field));
 }
 
 function nullableInteger(raw: unknown): number | null {
@@ -173,6 +192,48 @@ function mapRow(row: unknown[], indexes: Map<string, number>): HistoricSqlRawQue
   };
 }
 
+function parseTopUsers(raw: unknown): Array<{ user: string | null; executions: number }> {
+  const text = nullableString(raw);
+  if (!text) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return [];
+      }
+      const user = nullableString((entry as { user?: unknown }).user);
+      const executions = nullableInteger((entry as { executions?: unknown }).executions);
+      return executions === null ? [] : [{ user, executions }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function mapAggregatedRow(row: unknown[], indexes: Map<string, number>): AggregatedTemplate {
+  return aggregatedTemplateSchema.parse({
+    templateId: requiredString(value(row, indexes, 'template_id'), 'template_id'),
+    canonicalSql: requiredString(value(row, indexes, 'canonical_sql'), 'canonical_sql'),
+    dialect: 'snowflake',
+    stats: {
+      executions: requiredInteger(value(row, indexes, 'executions'), 'executions'),
+      distinctUsers: requiredInteger(value(row, indexes, 'distinct_users'), 'distinct_users'),
+      firstSeen: isoTimestamp(value(row, indexes, 'first_seen'), 'first_seen'),
+      lastSeen: isoTimestamp(value(row, indexes, 'last_seen'), 'last_seen'),
+      p50RuntimeMs: nullableNumber(value(row, indexes, 'p50_ms')),
+      p95RuntimeMs: nullableNumber(value(row, indexes, 'p95_ms')),
+      errorRate: requiredNumber(value(row, indexes, 'error_rate'), 'error_rate'),
+      rowsProduced: nullableInteger(value(row, indexes, 'rows_produced')),
+    },
+    topUsers: parseTopUsers(value(row, indexes, 'top_users')),
+  });
+}
+
 export class SnowflakeHistoricSqlQueryHistoryReader implements HistoricSqlQueryHistoryReader {
   async probe(client: unknown): Promise<void> {
     let result: QueryResultLike;
@@ -198,6 +259,42 @@ export class SnowflakeHistoricSqlQueryHistoryReader implements HistoricSqlQueryH
     const indexes = indexByHeader(result.headers);
     for (const row of result.rows) {
       yield mapRow(row, indexes);
+    }
+  }
+
+  async *fetchAggregated(
+    client: unknown,
+    window: HistoricSqlTimeWindow,
+    config: HistoricSqlUnifiedPullConfig,
+  ): AsyncIterable<AggregatedTemplate> {
+    const sql = `
+SELECT
+  query_hash AS template_id,
+  MIN(query_text) AS canonical_sql,
+  COUNT(*) AS executions,
+  COUNT(DISTINCT user_name) AS distinct_users,
+  MIN(start_time) AS first_seen,
+  MAX(start_time) AS last_seen,
+  APPROX_PERCENTILE(total_elapsed_time, 0.50) AS p50_ms,
+  APPROX_PERCENTILE(total_elapsed_time, 0.95) AS p95_ms,
+  DIV0(COUNT_IF(execution_status != 'SUCCESS'), COUNT(*)) AS error_rate,
+  SUM(rows_produced) AS rows_produced,
+  ARRAY_AGG(OBJECT_CONSTRUCT('user', user_name, 'executions', 1)) WITHIN GROUP (ORDER BY start_time DESC)::string AS top_users
+FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE query_text IS NOT NULL
+  AND query_type IN ('SELECT', 'MERGE')
+  AND start_time >= ${timestampLiteral(window.start)}
+  AND start_time < ${timestampLiteral(window.end)}
+GROUP BY query_hash
+HAVING COUNT(*) >= ${config.minExecutions}
+ORDER BY executions DESC`.trim();
+    const result = await queryClient(client).executeQuery(sql);
+    if (result.error) {
+      throw grantsError(result.error);
+    }
+    const indexes = indexByHeader(result.headers);
+    for (const row of result.rows) {
+      yield mapAggregatedRow(row, indexes);
     }
   }
 }
