@@ -202,7 +202,7 @@ describe('renderContextBuildView', () => {
 
     const output = renderContextBuildView(state, { styled: false });
     expect(output).toContain('scanning...');
-    expect(output).toContain('30s');
+    expect(output).toContain('(30s)');
   });
 
   it('renders running target with progress bar when percentage is available', () => {
@@ -217,7 +217,7 @@ describe('renderContextBuildView', () => {
     expect(output).toContain('██████░░░░░░');
     expect(output).toContain('50%');
     expect(output).toContain('Scanning tables...');
-    expect(output).toContain('15s');
+    expect(output).toContain('(15s)');
   });
 
   it('renders completion summary when all targets are done', () => {
@@ -423,6 +423,7 @@ describe('runContextBuild', () => {
     expect(mockExit).toHaveBeenCalledWith(0);
     expect(io.stdout()).toContain('Context build continuing in the background.');
     expect(io.stdout()).toContain('Resume: ktx setup --project-dir /tmp/project');
+    expect(io.stdout()).toContain('Status: ktx setup context status --project-dir /tmp/project');
     mockExit.mockRestore();
   });
 

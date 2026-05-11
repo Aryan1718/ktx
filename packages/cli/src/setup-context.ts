@@ -13,6 +13,7 @@ import { buildPublicIngestPlan } from './public-ingest.js';
 import {
   type ContextBuildSourceProgressUpdate,
   createRepainter,
+  defaultSetupKeystroke,
   renderContextBuildView,
   runContextBuild,
   viewStateFromSourceProgress,
@@ -109,6 +110,7 @@ export interface KtxSetupContextDeps {
   verifyContextReady?: (projectDir: string) => Promise<KtxSetupContextReadiness>;
   sleep?: (ms: number) => Promise<void>;
   watchIntervalMs?: number;
+  setupKeystroke?: (onDetach: () => void, onCtrlC: () => void) => (() => void) | null;
 }
 
 interface KtxSetupContextTargets {
@@ -870,50 +872,80 @@ async function watchContextStatusWithProgressView(
   const intervalMs = deps.watchIntervalMs ?? DEFAULT_WATCH_INTERVAL_MS;
   const isTTY = io.stdout.isTTY === true;
   const repainter = isTTY ? createRepainter(io) : null;
+  const projectDir = resolve(args.projectDir);
+  const viewOpts = { styled: isTTY, showHint: true, projectDir };
   let state = initialState;
-  let frame = 0;
   let lastProgressKey = '';
+  let detached = false;
 
-  while (true) {
-    const now = Date.now();
-    const startedAtMs = state.startedAt ? new Date(state.startedAt).getTime() : undefined;
-    const viewState = viewStateFromSourceProgress(state.sourceProgress ?? [], now, startedAtMs);
-    viewState.frame = frame;
+  let viewState = viewStateFromSourceProgress(state.sourceProgress ?? [], Date.now(),
+    state.startedAt ? new Date(state.startedAt).getTime() : undefined);
 
-    const viewOpts = {
-      styled: isTTY,
-      showHint: true,
-      hintText: 'ctrl+c to stop watching · build continues in background',
-    };
+  const cleanupKeystroke = (isTTY || deps.setupKeystroke)
+    ? (deps.setupKeystroke ?? defaultSetupKeystroke)(
+        () => { detached = true; },
+        () => { detached = true; },
+      )
+    : null;
 
-    if (repainter) {
-      repainter.paint(renderContextBuildView(viewState, viewOpts));
-    } else {
-      const currentKey = JSON.stringify(state.sourceProgress?.map((s) => s.status));
-      if (currentKey !== lastProgressKey || !isActiveStatus(state.status)) {
-        io.stdout.write(renderContextBuildView(viewState, viewOpts));
-        lastProgressKey = currentKey;
+  let spinnerInterval: ReturnType<typeof setInterval> | null = null;
+  if (repainter) {
+    repainter.paint(renderContextBuildView(viewState, viewOpts));
+    spinnerInterval = setInterval(() => {
+      viewState.frame++;
+      const now = Date.now();
+      viewState.totalElapsedMs = viewState.startedAt !== null ? now - viewState.startedAt : 0;
+      for (const t of [...viewState.primarySources, ...viewState.contextSources]) {
+        if (t.status === 'running' && t.startedAt !== null) {
+          t.elapsedMs = now - t.startedAt;
+        }
       }
-    }
-
-    if (!isActiveStatus(state.status)) {
-      return { exitCode: watchExitCode(state.status), state };
-    }
-
-    frame++;
-    await sleep(intervalMs);
-
-    try {
-      state = await readKtxSetupContextState(args.projectDir);
-    } catch {
-      continue;
-    }
-
-    if (!stateMatchesRunId(state, args.runId)) {
-      io.stderr.write(`KTX setup context run "${args.runId}" was not found.\n`);
-      return { exitCode: 1, state };
-    }
+      repainter.paint(renderContextBuildView(viewState, viewOpts));
+    }, 140);
   }
+
+  try {
+    while (true) {
+      if (!repainter) {
+        const currentKey = JSON.stringify(state.sourceProgress?.map((s) => s.status));
+        if (currentKey !== lastProgressKey || !isActiveStatus(state.status)) {
+          io.stdout.write(renderContextBuildView(viewState, viewOpts));
+          lastProgressKey = currentKey;
+        }
+      }
+
+      if (!isActiveStatus(state.status)) {
+        return { exitCode: watchExitCode(state.status), state };
+      }
+      if (detached) break;
+
+      await sleep(intervalMs);
+      if (detached) break;
+
+      try {
+        state = await readKtxSetupContextState(args.projectDir);
+      } catch {
+        continue;
+      }
+
+      if (!stateMatchesRunId(state, args.runId)) {
+        io.stderr.write(`KTX setup context run "${args.runId}" was not found.\n`);
+        return { exitCode: 1, state };
+      }
+
+      const now = Date.now();
+      const startedAtMs = state.startedAt ? new Date(state.startedAt).getTime() : undefined;
+      viewState = viewStateFromSourceProgress(state.sourceProgress ?? [], now, startedAtMs);
+    }
+  } finally {
+    if (spinnerInterval) clearInterval(spinnerInterval);
+    cleanupKeystroke?.();
+  }
+
+  io.stdout.write('\n\nContext build continuing in the background.\n');
+  io.stdout.write(`Resume: ktx setup --project-dir ${projectDir}\n`);
+  io.stdout.write(`Status: ktx setup context status --project-dir ${projectDir}\n`);
+  return { exitCode: 0, state };
 }
 
 function setupResultFromWatchedState(projectDir: string, state: KtxSetupContextState): KtxSetupContextResult {

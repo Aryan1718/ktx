@@ -137,7 +137,7 @@ function targetDetail(target: ContextBuildTargetState, styled: boolean): string 
     const percent = extractPercent(target.detailLine);
     const progressText = target.detailLine?.replace(/^\[\d+%\]\s*/, '')
       ?? (target.target.operation === 'scan' ? 'scanning...' : 'ingesting...');
-    const elapsed = target.elapsedMs > 0 ? formatDuration(target.elapsedMs) : null;
+    const elapsed = target.elapsedMs > 0 ? `(${formatDuration(target.elapsedMs)})` : null;
     const parts: string[] = [];
     if (percent !== null) {
       parts.push(`${renderProgressBar(percent, styled)} ${percent}%`);
@@ -318,7 +318,7 @@ export function createRepainter(io: KtxCliIo) {
       if (lastLineCount > 0) {
         io.stdout.write(`${ESC}[${lastLineCount}A\r`);
       }
-      io.stdout.write(content);
+      io.stdout.write(content.replaceAll('\n', `${ESC}[K\n`));
       io.stdout.write(`${ESC}[J`);
       lastLineCount = (content.match(/\n/g) ?? []).length;
     },
@@ -356,7 +356,7 @@ function spawnBackgroundBuild(projectDir: string): { logPath: string } | null {
 
 // --- Keystroke handling ---
 
-function defaultSetupKeystroke(onDetach: () => void, onCtrlC: () => void): (() => void) | null {
+export function defaultSetupKeystroke(onDetach: () => void, onCtrlC: () => void): (() => void) | null {
   const stdin = process.stdin;
   if (!stdin.isTTY || typeof stdin.setRawMode !== 'function') {
     return null;
@@ -445,6 +445,7 @@ export async function runContextBuild(
         io.stdout.write('\n\nContext build continuing in the background.\n');
         if (bg) io.stdout.write(`Log: ${bg.logPath}\n`);
         io.stdout.write(`Resume: ${resumeCommand(args.projectDir)}\n`);
+        io.stdout.write(`Status: ktx setup context status --project-dir ${resolve(args.projectDir)}\n`);
         process.exit(0);
       },
       () => {

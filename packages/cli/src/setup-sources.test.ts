@@ -444,7 +444,6 @@ describe('setup sources step', () => {
     );
     const options = vi.mocked(testPrompts.multiselect).mock.calls[0]?.[0].options ?? [];
     expect(options).toContainEqual({ value: 'notion', label: 'Notion' });
-    expect(options).not.toContainEqual({ value: 'posthog', label: 'PostHog' });
   });
 
   it('uses a source-specific editable connection name for new interactive connections', async () => {

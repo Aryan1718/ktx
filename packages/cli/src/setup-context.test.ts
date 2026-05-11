@@ -500,6 +500,47 @@ describe('setup context build state', () => {
     expect(output).not.toContain('KTX context built: detached');
   });
 
+  it('supports d to detach from the progress watch view', async () => {
+    await writeReadyProject(tempDir);
+    await writeKtxSetupContextState(tempDir, {
+      runId: 'setup-context-local-detach',
+      status: 'running',
+      startedAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+      primarySourceConnectionIds: ['warehouse'],
+      contextSourceConnectionIds: [],
+      reportIds: [],
+      artifactPaths: [],
+      retryableFailedTargets: [],
+      commands: contextBuildCommands(tempDir, 'setup-context-local-detach'),
+      sourceProgress: [
+        { connectionId: 'warehouse', operation: 'scan' as const, status: 'running' as const, startedAtMs: Date.now() },
+      ],
+    });
+    const io = makeIo();
+    let triggerDetach: (() => void) | null = null;
+
+    await expect(
+      runKtxSetupContextStep(
+        { projectDir: tempDir, inputMode: 'auto', autoWatch: true },
+        io.io,
+        {
+          sleep: async () => { triggerDetach?.(); },
+          watchIntervalMs: 1,
+          setupKeystroke: (onDetach) => {
+            triggerDetach = onDetach;
+            return () => {};
+          },
+        },
+      ),
+    ).resolves.toMatchObject({ status: 'detached' });
+
+    const output = io.stdout();
+    expect(output).toContain('Building KTX context');
+    expect(output).toContain('Context build continuing in the background.');
+    expect(output).toContain('Resume: ktx setup --project-dir');
+  });
+
   it('prints JSON setup context command status with watch and resume commands', async () => {
     await mkdir(join(tempDir, '.ktx', 'setup'), { recursive: true });
     await writeKtxSetupContextState(tempDir, {
