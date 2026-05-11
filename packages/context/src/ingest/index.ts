@@ -347,14 +347,18 @@ export {
 } from './adapters/historic-sql/stage-pgss.js';
 export type { PgssBaseline, StagePgStatStatementsTemplatesResult } from './adapters/historic-sql/stage-pgss.js';
 export type {
+  AggregatedTemplate,
   HistoricSqlDialect,
   HistoricSqlManifest,
   HistoricSqlMetadata,
+  HistoricSqlProbeResult,
   HistoricSqlPullConfig,
   HistoricSqlQueryHistoryReader,
   HistoricSqlRawQueryRow,
+  HistoricSqlReader,
   HistoricSqlSourceAdapterDeps,
   HistoricSqlTimeWindow,
+  HistoricSqlUnifiedPullConfig,
   HistoricSqlUsage,
   KtxPostgresQueryClient,
   PostgresPgssAggregateRow,
@@ -362,15 +366,23 @@ export type {
   PostgresPgssReader,
   PostgresPgssRow,
   PostgresPgssSnapshot,
+  StagedManifest,
+  StagedPatternsInput,
+  StagedTableInput,
 } from './adapters/historic-sql/types.js';
 export {
   HISTORIC_SQL_OBJECT_TYPE,
   HISTORIC_SQL_SOURCE_KEY,
+  aggregatedTemplateSchema,
   historicSqlManifestSchema,
   historicSqlMetadataSchema,
   historicSqlPullConfigSchema,
   historicSqlRawQueryRowSchema,
+  historicSqlUnifiedPullConfigSchema,
   historicSqlUsageSchema,
+  stagedManifestSchema,
+  stagedPatternsInputSchema,
+  stagedTableInputSchema,
 } from './adapters/historic-sql/types.js';
 export type { CanonicalPin } from './canonical-pins.js';
 export { buildCanonicalPinsPromptBlock, selectRelevantCanonicalPins } from './canonical-pins.js';
