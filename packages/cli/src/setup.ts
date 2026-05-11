@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { cancel, isCancel, select } from '@clack/prompts';
-import { loadKtxProject } from '@ktx/context/project';
+import { getLatestLocalIngestStatus, savedMemoryCountsForReport } from '@ktx/context/ingest';
+import { ktxLocalStateDbPath, loadKtxProject, type KtxLocalProject } from '@ktx/context/project';
 import type { KtxCliIo } from './cli-runtime.js';
 import type { KtxDemoArgs } from './demo.js';
 import { defaultDemoProjectDir } from './demo-assets.js';
@@ -152,6 +153,7 @@ export interface KtxSetupDeps {
 }
 
 const SOURCE_DRIVERS = new Set(['dbt', 'metricflow', 'metabase', 'looker', 'lookml', 'notion']);
+const READY_LLM_BACKENDS = new Set(['anthropic', 'vertex', 'gateway']);
 
 type KtxSetupEntryAction = 'setup' | 'new-project' | 'agents' | 'status' | 'demo' | 'exit';
 type KtxSetupFlowStep = 'models' | 'embeddings' | 'databases' | 'sources' | 'context' | 'agents';
@@ -234,7 +236,12 @@ async function runKtxSetupDemoFromEntryMenu(
 }
 
 function llmReady(status: KtxSetupStatus['llm']): boolean {
-  return status.backend === 'anthropic' && typeof status.model === 'string' && status.model.length > 0;
+  return (
+    status.backend !== undefined &&
+    READY_LLM_BACKENDS.has(status.backend) &&
+    typeof status.model === 'string' &&
+    status.model.length > 0
+  );
 }
 
 function embeddingsReady(status: KtxSetupStatus['embeddings']): boolean {
@@ -257,6 +264,31 @@ function sourceConnections(config: Awaited<ReturnType<typeof loadKtxProject>>['c
       type: String(connection.driver).toLowerCase(),
     }))
     .sort((left, right) => left.connectionId.localeCompare(right.connectionId));
+}
+
+type LocalIngestStatusReport = NonNullable<Awaited<ReturnType<typeof getLatestLocalIngestStatus>>>;
+
+function reportHasSavedContext(report: LocalIngestStatusReport): boolean {
+  if (report.body.failedWorkUnits.length > 0) {
+    return false;
+  }
+  const counts = savedMemoryCountsForReport(report);
+  return counts.wikiCount > 0 || counts.slCount > 0;
+}
+
+async function readIngestContextStatus(project: KtxLocalProject): Promise<KtxSetupContextStatusSummary | null> {
+  if (!existsSync(ktxLocalStateDbPath(project))) {
+    return null;
+  }
+  const report = await getLatestLocalIngestStatus(project);
+  if (!report || !reportHasSavedContext(report)) {
+    return null;
+  }
+  return {
+    ready: true,
+    status: 'completed',
+    runId: report.runId,
+  };
 }
 
 export async function readKtxSetupStatus(projectDir: string): Promise<KtxSetupStatus> {
@@ -291,6 +323,10 @@ export async function readKtxSetupStatus(projectDir: string): Promise<KtxSetupSt
 
   const completedSteps = project.config.setup?.completed_steps ?? [];
   const contextState = await readKtxSetupContextState(resolvedProjectDir);
+  const setupContextStatus = setupContextStatusFromState(contextState, {
+    completedStep: completedSteps.includes('context'),
+  });
+  const ingestContextStatus = setupContextStatus.ready ? null : await readIngestContextStatus(project);
   const databaseIds = project.config.setup?.database_connection_ids ?? Object.keys(project.config.connections);
   const databasesComplete = completedSteps.includes('databases');
   const manifest = await readKtxAgentInstallManifest(resolvedProjectDir);
@@ -313,7 +349,7 @@ export async function readKtxSetupStatus(projectDir: string): Promise<KtxSetupSt
       ...source,
       ready: completedSteps.includes('sources'),
     })),
-    context: setupContextStatusFromState(contextState, { completedStep: completedSteps.includes('context') }),
+    context: ingestContextStatus ?? setupContextStatus,
     agents,
   };
 }
