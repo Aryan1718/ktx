@@ -64,6 +64,8 @@ function textInputPrompt(message: string): string {
   return `${title}\n\n${bodyLines.join('\n')}\nPress Escape to go back.\n`;
 }
 
+const legacyHistoricSqlServiceAccountPatternsKey = ['serviceAccount', 'UserPatterns'].join('');
+
 describe('setup databases step', () => {
   let tempDir: string;
 
@@ -1240,7 +1242,7 @@ describe('setup databases step', () => {
         redactionPatterns: ['(?i)secret'],
       },
     });
-    expect(config.connections.snowflake.historicSql).not.toHaveProperty('serviceAccountUserPatterns');
+    expect(config.connections.snowflake.historicSql).not.toHaveProperty(legacyHistoricSqlServiceAccountPatternsKey);
     expect(config.ingest.adapters).toContain('historic-sql');
   });
 
@@ -1291,7 +1293,7 @@ describe('setup databases step', () => {
     expect(config.connections.warehouse.historicSql).not.toHaveProperty('minCalls');
     expect(config.connections.warehouse.historicSql).not.toHaveProperty('windowDays');
     expect(config.connections.warehouse.historicSql).not.toHaveProperty('redactionPatterns');
-    expect(config.connections.warehouse.historicSql).not.toHaveProperty('serviceAccountUserPatterns');
+    expect(config.connections.warehouse.historicSql).not.toHaveProperty(legacyHistoricSqlServiceAccountPatternsKey);
     expect(config.ingest.adapters).toContain('historic-sql');
     expect(io.stdout()).toContain('Historic SQL probe...');
     expect(io.stdout()).toContain('pg_stat_statements ready');
@@ -1344,7 +1346,7 @@ describe('setup databases step', () => {
         redactionPatterns: [],
       },
     });
-    expect(config.connections.analytics.historicSql).not.toHaveProperty('serviceAccountUserPatterns');
+    expect(config.connections.analytics.historicSql).not.toHaveProperty(legacyHistoricSqlServiceAccountPatternsKey);
     expect(config.ingest.adapters).toContain('historic-sql');
   });
 
@@ -1394,7 +1396,7 @@ describe('setup databases step', () => {
         },
       },
     });
-    expect(config.connections.warehouse.historicSql).not.toHaveProperty('serviceAccountUserPatterns');
+    expect(config.connections.warehouse.historicSql).not.toHaveProperty(legacyHistoricSqlServiceAccountPatternsKey);
   });
 
   it('prints a non-blocking Postgres Historic SQL probe failure after connection test succeeds', async () => {

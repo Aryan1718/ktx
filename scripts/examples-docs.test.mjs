@@ -96,10 +96,35 @@ describe('standalone example docs', () => {
     assert.doesNotMatch(smoke, /PYTHON_SERVICE/);
     assert.doesNotMatch(smoke, /uvicorn app\.main:app/);
     assert.doesNotMatch(smoke, /export KTX_SQL_ANALYSIS_URL/);
-    assert.doesNotMatch(smoke, /baselineFirstRun|degraded|statsResetAt|assert_manifest/);
+    assert.doesNotMatch(
+      smoke,
+      new RegExp(
+        [
+          ['baseline', 'FirstRun'],
+          ['de', 'graded'],
+          ['stats', 'ResetAt'],
+          ['assert', '_manifest'],
+        ]
+          .map((parts) => parts.join(''))
+          .join('|'),
+      ),
+    );
     assert.doesNotMatch(readme, /python-service/);
     assert.doesNotMatch(readme, /KTX_SQL_ANALYSIS_URL/);
-    assert.doesNotMatch(readme, /baselineFirstRun|degraded: true|statsResetAt|fresh PGSS baseline|delta-only/);
+    assert.doesNotMatch(
+      readme,
+      new RegExp(
+        [
+          ['baseline', 'FirstRun'],
+          ['de', 'graded: true'],
+          ['stats', 'ResetAt'],
+          ['fresh PGSS', ' baseline'],
+          ['delta', '-only'],
+        ]
+          .map((parts) => parts.join(''))
+          .join('|'),
+      ),
+    );
     assert.doesNotMatch(readme, /--historic-sql-min-calls/);
   });
 

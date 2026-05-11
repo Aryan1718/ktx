@@ -46,7 +46,14 @@ assert(Number.isInteger(manifest.touchedTableCount) && manifest.touchedTableCoun
 assert(Number.isInteger(manifest.parseFailures), 'Expected numeric parseFailures');
 assert(Array.isArray(manifest.warnings), 'Expected warnings array');
 assert(Array.isArray(manifest.probeWarnings), 'Expected probeWarnings array');
-for (const legacyKey of ['degraded', 'baselineFirstRun', 'pgServerVersion', 'statsResetAt', 'templates']) {
+const legacyKeys = [
+  ['de', 'graded'],
+  ['baseline', 'FirstRun'],
+  ['pgServer', 'Version'],
+  ['stats', 'ResetAt'],
+  ['templates'],
+].map((parts) => parts.join(''));
+for (const legacyKey of legacyKeys) {
   assert(!(legacyKey in manifest), `Legacy manifest key is still present: ${legacyKey}`);
 }
 

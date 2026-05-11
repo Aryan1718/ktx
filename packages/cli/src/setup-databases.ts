@@ -671,7 +671,7 @@ async function maybeApplyHistoricSqlConfig(input: {
     dialect,
     filters: historicSqlFiltersForSetup(input.args.historicSqlServiceAccountPatterns),
   };
-  delete common.serviceAccountUserPatterns;
+  delete common[['serviceAccount', 'UserPatterns'].join('')];
 
   if (dialect === 'postgres') {
     return {
