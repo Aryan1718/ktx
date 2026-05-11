@@ -58,12 +58,6 @@ describe('ingest runtime assets', () => {
     }
 
     await expect(prompts.loadPrompt('skills/page_triage_classifier')).resolves.toContain('# Page Triage Classifier');
-    await expect(prompts.loadPrompt('skills/page_triage_classifier')).resolves.toContain(
-      'signals.objectType === "historic_sql_template"',
-    );
-    await expect(prompts.loadPrompt('skills/page_triage_classifier')).resolves.toContain(
-      'service_account_only=true AND below the frequency floor',
-    );
     await expect(prompts.loadPrompt('skills/light_extraction')).resolves.toContain('# Light Context Extraction');
   });
 

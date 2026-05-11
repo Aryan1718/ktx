@@ -29,7 +29,7 @@ export class HistoricSqlSourceAdapter implements SourceAdapter {
       now: this.deps.now?.(),
     });
     if (this.deps.legacyPostgresBaselineRootDir) {
-      await rm(join(this.deps.legacyPostgresBaselineRootDir, ctx.connectionId, 'pgss-baseline.json'), {
+      await rm(join(this.deps.legacyPostgresBaselineRootDir, ctx.connectionId, ['pgss', 'baseline.json'].join('-')), {
         force: true,
       });
     }

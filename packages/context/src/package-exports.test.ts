@@ -232,11 +232,7 @@ describe('@ktx/context package exports', () => {
     expect(ingest.HistoricSqlSourceAdapter).toBeTypeOf('function');
     expect(ingest.SnowflakeHistoricSqlQueryHistoryReader).toBeTypeOf('function');
     expect(ingest.BigQueryHistoricSqlQueryHistoryReader).toBeTypeOf('function');
-    expect(ingest.PostgresPgssQueryHistoryReader).toBeTypeOf('function');
-    expect(ingest.stagePgStatStatementsTemplates).toBeTypeOf('function');
-    expect(ingest.pgssBaselinePath).toBeTypeOf('function');
-    expect(ingest.readPgssBaseline).toBeTypeOf('function');
-    expect(ingest.writePgssBaselineAtomic).toBeTypeOf('function');
+    expect(ingest.PostgresPgssReader).toBeTypeOf('function');
     expect(ingest.HistoricSqlExtensionMissingError).toBeTypeOf('function');
     expect(ingest.HistoricSqlVersionUnsupportedError).toBeTypeOf('function');
     expect(ingest.HISTORIC_SQL_SOURCE_KEY).toBe('historic-sql');

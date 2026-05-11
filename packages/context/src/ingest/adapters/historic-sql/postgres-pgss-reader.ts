@@ -1,4 +1,8 @@
-import { PostgresPgssQueryHistoryReader } from './postgres-pgss-query-history-reader.js';
+import {
+  HistoricSqlExtensionMissingError,
+  HistoricSqlGrantsMissingError,
+  HistoricSqlVersionUnsupportedError,
+} from './errors.js';
 import {
   aggregatedTemplateSchema,
   type AggregatedTemplate,
@@ -16,6 +20,15 @@ interface QueryResultLike {
 }
 
 const STATS_INFO_SQL = 'SELECT stats_reset, dealloc FROM pg_stat_statements_info';
+const VERSION_SQL = `
+SELECT current_setting('server_version_num')::int AS server_version_num,
+       version()                                  AS server_version
+`.trim();
+const EXTENSION_PROBE_SQL = 'SELECT 1 FROM pg_stat_statements LIMIT 1';
+const GRANTS_PROBE_SQL = "SELECT pg_has_role(current_user, 'pg_read_all_stats', 'USAGE') AS has_role";
+const TRACKING_PROBE_SQL = "SELECT current_setting('pg_stat_statements.track') AS track";
+const MAX_SETTING_PROBE_SQL = "SELECT current_setting('pg_stat_statements.max') AS max";
+const RECOMMENDED_PGSS_MAX = 5000;
 
 const AGGREGATE_SQL = `
 SELECT queryid::text AS template_id,
@@ -36,6 +49,13 @@ GROUP BY queryid, query
 HAVING SUM(calls) >= $1
 ORDER BY SUM(total_exec_time) DESC
 `.trim();
+
+const POSTGRES_EXTENSION_REMEDIATION = [
+  'Run CREATE EXTENSION pg_stat_statements; against the connection database.',
+  "Ensure shared_preload_libraries includes 'pg_stat_statements' in the Postgres parameter group or config.",
+].join(' ');
+
+const POSTGRES_GRANTS_REMEDIATION = 'GRANT pg_read_all_stats TO <connection role>;';
 
 function queryClient(client: unknown): KtxPostgresQueryClient {
   if (
@@ -128,6 +148,33 @@ function firstRow(result: QueryResultLike, context: string): { row: unknown[]; h
   return { row, headers: indexByHeader(result.headers) };
 }
 
+function isMissingPgssRelation(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /relation ["']?pg_stat_statements["']? does not exist/i.test(message);
+}
+
+function isPgssPreloadRequired(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /pg_stat_statements.*shared_preload_libraries/i.test(message);
+}
+
+function extensionMissingError(cause: unknown, message?: string): HistoricSqlExtensionMissingError {
+  return new HistoricSqlExtensionMissingError({
+    dialect: 'postgres',
+    message: message ?? 'pg_stat_statements extension is not installed in the connection database.',
+    remediation: POSTGRES_EXTENSION_REMEDIATION,
+    cause,
+  });
+}
+
+function grantsMissingError(): HistoricSqlGrantsMissingError {
+  return new HistoricSqlGrantsMissingError({
+    dialect: 'postgres',
+    message: 'Postgres connection role lacks pg_read_all_stats for historic-SQL ingest.',
+    remediation: POSTGRES_GRANTS_REMEDIATION,
+  });
+}
+
 function parseTopUsers(raw: unknown): Array<{ user: string | null; executions: number }> {
   const text = nullableString(raw);
   if (!text) {
@@ -152,10 +199,64 @@ function parseTopUsers(raw: unknown): Array<{ user: string | null; executions: n
 }
 
 export class PostgresPgssReader {
-  private readonly legacyReader = new PostgresPgssQueryHistoryReader();
+  async probe(client: unknown): Promise<PostgresPgssProbeResult> {
+    const pgClient = queryClient(client);
+    const versionResult = await execute(pgClient, VERSION_SQL);
+    const { row: versionRow, headers: versionHeaders } = firstRow(versionResult, 'version probe');
+    const serverVersionNum = requiredFiniteNumber(
+      value(versionRow, versionHeaders, 'server_version_num'),
+      'server_version_num',
+    );
+    const pgServerVersion = requiredString(value(versionRow, versionHeaders, 'server_version'), 'server_version');
 
-  probe(client: unknown): Promise<PostgresPgssProbeResult> {
-    return this.legacyReader.probe(client);
+    if (serverVersionNum < 140000) {
+      throw new HistoricSqlVersionUnsupportedError({
+        dialect: 'postgres',
+        detectedVersion: pgServerVersion,
+        minimumVersion: 'PostgreSQL 14',
+      });
+    }
+
+    try {
+      await execute(pgClient, EXTENSION_PROBE_SQL);
+    } catch (error) {
+      if (isMissingPgssRelation(error)) {
+        throw extensionMissingError(error);
+      }
+      if (isPgssPreloadRequired(error)) {
+        throw extensionMissingError(
+          error,
+          'pg_stat_statements is installed but not loaded via shared_preload_libraries.',
+        );
+      }
+      throw error;
+    }
+
+    const grantsResult = await execute(pgClient, GRANTS_PROBE_SQL);
+    const { row: grantsRow, headers: grantsHeaders } = firstRow(grantsResult, 'grant probe');
+    if (value(grantsRow, grantsHeaders, 'has_role') !== true) {
+      throw grantsMissingError();
+    }
+
+    const trackingResult = await execute(pgClient, TRACKING_PROBE_SQL);
+    const { row: trackingRow, headers: trackingHeaders } = firstRow(trackingResult, 'tracking probe');
+    const track = nullableString(value(trackingRow, trackingHeaders, 'track'));
+
+    const maxResult = await execute(pgClient, MAX_SETTING_PROBE_SQL);
+    const { row: maxRow, headers: maxHeaders } = firstRow(maxResult, 'max-setting probe');
+    const pgssMax = nullableInteger(value(maxRow, maxHeaders, 'max'));
+
+    const warnings: string[] = [];
+    if (track === 'none') {
+      warnings.push('pg_stat_statements.track is none; set it to top or all in the Postgres parameter group or config');
+    }
+    if (pgssMax !== null && pgssMax < RECOMMENDED_PGSS_MAX) {
+      warnings.push(
+        `pg_stat_statements.max is ${pgssMax}; set it to at least ${RECOMMENDED_PGSS_MAX} to reduce query-template eviction churn`,
+      );
+    }
+
+    return { pgServerVersion, warnings };
   }
 
   async *fetchAggregated(

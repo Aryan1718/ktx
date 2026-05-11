@@ -318,7 +318,6 @@ export { NOTION_ORG_KNOWLEDGE_WARNING } from './adapters/notion/chunk.js';
 export { NotionSourceAdapter, type NotionSourceAdapterDeps } from './adapters/notion/notion.adapter.js';
 export { NotionClient, type NotionApi, type NotionBotInfo } from './adapters/notion/notion-client.js';
 export { bucketDistinctUsers, bucketErrorRate, bucketExecutions, bucketP95Runtime, bucketRecency } from './adapters/historic-sql/buckets.js';
-export { chunkHistoricSqlStagedDir, describeHistoricSqlScope } from './adapters/historic-sql/chunk.js';
 export { chunkHistoricSqlUnifiedStagedDir, describeHistoricSqlUnifiedScope } from './adapters/historic-sql/chunk-unified.js';
 export { detectHistoricSqlStagedDir } from './adapters/historic-sql/detect.js';
 export {
@@ -330,10 +329,8 @@ export { HistoricSqlSourceAdapter } from './adapters/historic-sql/historic-sql.a
 export { BigQueryHistoricSqlQueryHistoryReader } from './adapters/historic-sql/bigquery-query-history-reader.js';
 export type { BigQueryHistoricSqlQueryHistoryReaderOptions } from './adapters/historic-sql/bigquery-query-history-reader.js';
 export { PostgresPgssReader } from './adapters/historic-sql/postgres-pgss-reader.js';
-export { PostgresPgssQueryHistoryReader } from './adapters/historic-sql/postgres-pgss-query-history-reader.js';
 export { SnowflakeHistoricSqlQueryHistoryReader } from './adapters/historic-sql/snowflake-query-history-reader.js';
 export { stageHistoricSqlAggregatedSnapshot } from './adapters/historic-sql/stage-unified.js';
-export { stageHistoricSqlTemplates } from './adapters/historic-sql/stage.js';
 export {
   historicSqlEvidenceEnvelopeSchema,
   historicSqlEvidencePath,
@@ -359,46 +356,24 @@ export type {
   PatternOutput,
   TableUsageOutput,
 } from './adapters/historic-sql/skill-schemas.js';
-export {
-  pgssBaselinePath,
-  readPgssBaseline,
-  stagePgStatStatementsTemplates,
-  writePgssBaselineAtomic,
-} from './adapters/historic-sql/stage-pgss.js';
-export type { PgssBaseline, StagePgStatStatementsTemplatesResult } from './adapters/historic-sql/stage-pgss.js';
 export type {
   AggregatedTemplate,
   HistoricSqlDialect,
-  HistoricSqlManifest,
-  HistoricSqlMetadata,
   HistoricSqlProbeResult,
-  HistoricSqlPullConfig,
-  HistoricSqlQueryHistoryReader,
-  HistoricSqlRawQueryRow,
   HistoricSqlReader,
   HistoricSqlSourceAdapterDeps,
   HistoricSqlTimeWindow,
   HistoricSqlUnifiedPullConfig,
-  HistoricSqlUsage,
   KtxPostgresQueryClient,
-  PostgresPgssAggregateRow,
   PostgresPgssProbeResult,
-  PostgresPgssRow,
-  PostgresPgssSnapshot,
   StagedManifest,
   StagedPatternsInput,
   StagedTableInput,
 } from './adapters/historic-sql/types.js';
 export {
-  HISTORIC_SQL_OBJECT_TYPE,
   HISTORIC_SQL_SOURCE_KEY,
   aggregatedTemplateSchema,
-  historicSqlManifestSchema,
-  historicSqlMetadataSchema,
-  historicSqlPullConfigSchema,
-  historicSqlRawQueryRowSchema,
   historicSqlUnifiedPullConfigSchema,
-  historicSqlUsageSchema,
   stagedManifestSchema,
   stagedPatternsInputSchema,
   stagedTableInputSchema,

@@ -75,7 +75,7 @@ function failureDetail(error: unknown): string {
 async function defaultPostgresHistoricSqlProbe(
   input: PostgresHistoricSqlDoctorProbeInput,
 ): Promise<PostgresHistoricSqlDoctorProbeResult> {
-  const [{ PostgresPgssQueryHistoryReader }, { KtxPostgresHistoricSqlQueryClient, isKtxPostgresConnectionConfig }] =
+  const [{ PostgresPgssReader }, { KtxPostgresHistoricSqlQueryClient, isKtxPostgresConnectionConfig }] =
     await Promise.all([import('@ktx/context/ingest'), import('@ktx/connector-postgres')]);
 
   if (!isKtxPostgresConnectionConfig(input.connection)) {
@@ -88,7 +88,7 @@ async function defaultPostgresHistoricSqlProbe(
     env: input.env,
   });
   try {
-    return await new PostgresPgssQueryHistoryReader().probe(client);
+    return await new PostgresPgssReader().probe(client);
   } finally {
     await client.cleanup();
   }

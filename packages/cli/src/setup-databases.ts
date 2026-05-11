@@ -226,7 +226,7 @@ async function defaultHistoricSqlProbe(input: KtxSetupHistoricSqlProbeInput): Pr
 
   const project = await loadKtxProject({ projectDir: input.projectDir });
   const connection = project.config.connections[input.connectionId];
-  const [{ PostgresPgssQueryHistoryReader }, { KtxPostgresHistoricSqlQueryClient, isKtxPostgresConnectionConfig }] =
+  const [{ PostgresPgssReader }, { KtxPostgresHistoricSqlQueryClient, isKtxPostgresConnectionConfig }] =
     await Promise.all([import('@ktx/context/ingest'), import('@ktx/connector-postgres')]);
 
   const postgresConnection = connection as Parameters<typeof isKtxPostgresConnectionConfig>[0];
@@ -242,7 +242,7 @@ async function defaultHistoricSqlProbe(input: KtxSetupHistoricSqlProbeInput): Pr
     connection: postgresConnection,
   });
   try {
-    const result = await new PostgresPgssQueryHistoryReader().probe(client);
+    const result = await new PostgresPgssReader().probe(client);
     return {
       ok: true,
       lines: [
