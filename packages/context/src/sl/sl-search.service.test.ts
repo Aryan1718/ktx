@@ -191,4 +191,36 @@ describe('SlSearchService', () => {
     expect(text).toContain('commonly joined to public.customers on customer_id');
     expect(text).toContain('stale since 2026-05-01T00:00:00.000Z');
   });
+
+  it('preserves FTS snippets returned by the source index', async () => {
+    const service = new SlSearchService(
+      {
+        maxBatchSize: 16,
+        computeEmbedding: vi.fn(async () => [1, 0]),
+        computeEmbeddingsBulk: vi.fn(),
+      },
+      {
+        upsertSources: vi.fn(),
+        getExistingSearchTexts: vi.fn(),
+        deleteStale: vi.fn(),
+        deleteByConnection: vi.fn(),
+        deleteByConnectionAndName: vi.fn(),
+        search: vi.fn(async () => [
+          {
+            sourceName: 'orders',
+            rrfScore: 0.75,
+            snippet: 'usage: paid <mark>order</mark> lifecycle',
+          },
+        ]),
+      },
+    );
+
+    await expect(service.search('warehouse', 'order lifecycle', 10)).resolves.toEqual([
+      {
+        sourceName: 'orders',
+        score: 0.75,
+        snippet: 'usage: paid <mark>order</mark> lifecycle',
+      },
+    ]);
+  });
 });

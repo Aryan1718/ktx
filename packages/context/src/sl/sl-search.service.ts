@@ -168,7 +168,7 @@ export class SlSearchService {
     query: string,
     limit = 15,
     minRrfScore = 0,
-  ): Promise<Array<{ sourceName: string; score: number }>> {
+  ): Promise<Array<{ sourceName: string; score: number; snippet?: string }>> {
     let queryEmbedding: number[] | null = null;
     try {
       queryEmbedding = await this.embeddingService.computeEmbedding(query);
@@ -179,7 +179,11 @@ export class SlSearchService {
     }
 
     const results = await this.slSourcesRepository.search(connectionId, queryEmbedding, query, limit, minRrfScore);
-    return results.map((r) => ({ sourceName: r.sourceName, score: r.rrfScore }));
+    return results.map((result) => ({
+      sourceName: result.sourceName,
+      score: result.rrfScore,
+      ...(result.snippet ? { snippet: result.snippet } : {}),
+    }));
   }
 
   buildSearchText(source: SemanticLayerSource, priority: string[] = DEFAULT_PRIORITY): string {
