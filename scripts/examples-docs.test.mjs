@@ -66,6 +66,8 @@ describe('standalone example docs', () => {
     assert.match(smoke, /assert_manifest "\$FIRST_MANIFEST" true/);
     assert.match(smoke, /assert_manifest "\$SECOND_MANIFEST" false/);
     assert.match(smoke, /assert_manifest "\$RESET_MANIFEST" true/);
+    assert.doesNotMatch(readme, /python-service/);
+    assert.doesNotMatch(smoke, /python-service|PYTHON_SERVICE|REPO_ROOT/);
   });
 
   it('lists every published TypeScript package in the package root README', async () => {
@@ -140,6 +142,8 @@ describe('standalone example docs', () => {
 
     assert.match(packageJson.scripts.smoke, /src\/standalone-smoke\.test\.ts/);
     assert.match(packageJson.scripts.smoke, /src\/example-smoke\.test\.ts/);
+    assert.match(packageJson.scripts.test, /--exclude src\/standalone-smoke\.test\.ts/);
+    assert.match(packageJson.scripts.test, /--exclude src\/example-smoke\.test\.ts/);
   });
 
   it('documents daemon HTTP database, source generation, LookML, embedding, and code execution support', async () => {
