@@ -1,5 +1,5 @@
 {
   "title": "Benchmarks",
-  "defaultOpen": false,
+  "defaultOpen": true,
   "pages": ["link-detection"]
 }

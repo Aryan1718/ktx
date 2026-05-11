@@ -1,5 +1,5 @@
 {
   "title": "Concepts",
-  "defaultOpen": false,
+  "defaultOpen": true,
   "pages": ["the-context-layer", "context-as-code"]
 }

@@ -1,6 +1,6 @@
 {
   "title": "CLI Reference",
-  "defaultOpen": false,
+  "defaultOpen": true,
   "pages": [
     "ktx-setup",
     "ktx-connection",
