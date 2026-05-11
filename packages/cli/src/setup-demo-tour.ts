@@ -203,18 +203,18 @@ export function buildDemoReplayTimeline(): DemoReplayEvent[] {
   return [
     // demo-warehouse: scan
     { delayMs: 0, connectionId: 'demo-warehouse', status: 'running', detailLine: null, summaryText: null },
-    { delayMs: 600, connectionId: 'demo-warehouse', status: 'running', detailLine: '[50%] Scanning tables...', summaryText: null },
-    { delayMs: 1200, connectionId: 'demo-warehouse', status: 'done', detailLine: null, summaryText: '12 tables' },
+    { delayMs: 1200, connectionId: 'demo-warehouse', status: 'running', detailLine: '[50%] Scanning tables...', summaryText: null },
+    { delayMs: 2400, connectionId: 'demo-warehouse', status: 'done', detailLine: null, summaryText: '12 tables' },
     // dbt
-    { delayMs: 1200, connectionId: 'dbt', status: 'running', detailLine: null, summaryText: null },
-    { delayMs: 1800, connectionId: 'dbt', status: 'running', detailLine: '[60%] Ingesting models...', summaryText: null },
-    { delayMs: 2200, connectionId: 'dbt', status: 'done', detailLine: null, summaryText: '8 models' },
+    { delayMs: 2400, connectionId: 'dbt', status: 'running', detailLine: null, summaryText: null },
+    { delayMs: 3600, connectionId: 'dbt', status: 'running', detailLine: '[60%] Ingesting models...', summaryText: null },
+    { delayMs: 4400, connectionId: 'dbt', status: 'done', detailLine: null, summaryText: '8 models' },
     // metabase
-    { delayMs: 2200, connectionId: 'metabase', status: 'running', detailLine: null, summaryText: null },
-    { delayMs: 2800, connectionId: 'metabase', status: 'done', detailLine: null, summaryText: '5 dashboards' },
+    { delayMs: 4400, connectionId: 'metabase', status: 'running', detailLine: null, summaryText: null },
+    { delayMs: 5600, connectionId: 'metabase', status: 'done', detailLine: null, summaryText: '5 dashboards' },
     // notion
-    { delayMs: 2800, connectionId: 'notion', status: 'running', detailLine: null, summaryText: null },
-    { delayMs: 3400, connectionId: 'notion', status: 'done', detailLine: null, summaryText: '3 pages' },
+    { delayMs: 5600, connectionId: 'notion', status: 'running', detailLine: null, summaryText: null },
+    { delayMs: 6800, connectionId: 'notion', status: 'done', detailLine: null, summaryText: '3 pages' },
   ];
 }
 
