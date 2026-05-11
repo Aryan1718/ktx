@@ -319,6 +319,7 @@ export { NotionSourceAdapter, type NotionSourceAdapterDeps } from './adapters/no
 export { NotionClient, type NotionApi, type NotionBotInfo } from './adapters/notion/notion-client.js';
 export { bucketDistinctUsers, bucketErrorRate, bucketExecutions, bucketP95Runtime, bucketRecency } from './adapters/historic-sql/buckets.js';
 export { chunkHistoricSqlStagedDir, describeHistoricSqlScope } from './adapters/historic-sql/chunk.js';
+export { chunkHistoricSqlUnifiedStagedDir, describeHistoricSqlUnifiedScope } from './adapters/historic-sql/chunk-unified.js';
 export { detectHistoricSqlStagedDir } from './adapters/historic-sql/detect.js';
 export {
   HistoricSqlExtensionMissingError,
