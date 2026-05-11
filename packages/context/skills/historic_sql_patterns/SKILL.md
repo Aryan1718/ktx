@@ -1,20 +1,22 @@
 ---
 name: historic_sql_patterns
-description: Identify recurring cross-table historic-SQL analytical intents and emit typed pattern evidence for deterministic wiki projection.
+description: Identify recurring cross-table historic-SQL analytical intents from a bounded pattern shard and emit typed pattern evidence for deterministic wiki projection.
 callers: [memory_agent]
 ---
 
 # Historic SQL Patterns
 
-Use this skill when the WorkUnit raw file is `patterns-input.json` from the `historic-sql` adapter.
+Use this skill when the WorkUnit raw file is a `patterns-input/part-0001.json` style shard from the `historic-sql` adapter. Older staged bundles may still provide root `patterns-input.json`; when that is the WorkUnit raw file, read it the same way.
 
 ## Required Workflow
 
 1. Read the WorkUnit notes first.
-2. Call `read_raw_file` for `patterns-input.json`.
-3. Identify recurring analytical intents that span at least two tables and have repeated usage signal.
-4. Emit one `pattern` evidence object per durable cross-table intent by calling `emit_historic_sql_evidence`.
-5. Stop after all pattern evidence has been emitted.
+2. Find the single pattern input file listed under the WorkUnit `rawFiles` section.
+3. Call `read_raw_file` for that exact raw file path.
+4. Identify recurring analytical intents that span at least two tables and have repeated usage signal.
+5. Emit one `pattern` evidence object per durable cross-table intent by calling `emit_historic_sql_evidence`.
+6. Set each evidence object's `rawPath` to the exact raw file path read in step 3.
+7. Stop after all pattern evidence has been emitted.
 
 ## Evidence Shape
 
@@ -23,7 +25,7 @@ Each call to `emit_historic_sql_evidence` must use this shape:
 ```json
 {
   "kind": "pattern",
-  "rawPath": "patterns-input.json",
+  "rawPath": "patterns-input/part-0001.json",
   "pattern": {
     "slug": "order-lifecycle-analysis",
     "title": "Order Lifecycle Analysis",
@@ -46,6 +48,7 @@ The `pattern` object must match `patternOutputSchema`; multiple calls together m
 - Use a stable kebab-case slug based on intent, not a template id.
 - Set `definitionSql` to the clearest representative SQL from a constituent template.
 - Set `slRefs` to source names when the source name is obvious from table names; omit uncertain refs rather than guessing.
+- Treat each pattern shard independently; do not read peer shard files from `peerFileIndex`.
 
 ## Boundaries
 

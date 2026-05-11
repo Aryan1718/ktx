@@ -102,11 +102,11 @@ class HistoricSqlAcceptanceAgentRunner extends AgentRunnerService {
       }
     }
 
-    if (params.telemetryTags.unitKey === 'historic-sql-patterns') {
+    if (params.telemetryTags.unitKey === 'historic-sql-patterns-part-0001') {
       const result = await emitEvidence.execute(
         {
           kind: 'pattern',
-          rawPath: 'patterns-input.json',
+          rawPath: 'patterns-input/part-0001.json',
           pattern: {
             slug: 'paid-order-lifecycle',
             title: 'Paid Order Lifecycle',

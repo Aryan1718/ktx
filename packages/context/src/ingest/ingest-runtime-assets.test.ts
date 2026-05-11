@@ -85,7 +85,7 @@ describe('ingest runtime assets', () => {
 
     const body = await readFile(join(skills[0]!.path, 'SKILL.md'), 'utf-8');
     expect(body).toContain('# Historic SQL Patterns');
-    expect(body).toContain('patterns-input.json');
+    expect(body).toContain('patterns-input/part-0001.json');
     expect(body).toContain('patternsArraySchema');
     expect(body).toContain('emit_historic_sql_evidence');
     expect(body).toContain('cross-table');
