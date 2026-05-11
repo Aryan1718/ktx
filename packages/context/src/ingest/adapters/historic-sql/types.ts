@@ -28,10 +28,17 @@ export const historicSqlUnifiedPullConfigSchema = z.preprocess((value) => {
   if (!isRecord(value)) {
     return value;
   }
-  if (value.minExecutions === undefined && typeof value.minCalls === 'number') {
-    return { ...value, minExecutions: value.minCalls };
+  const next: Record<string, unknown> = { ...value };
+  if (next.minExecutions === undefined && typeof next.minCalls === 'number') {
+    next.minExecutions = next.minCalls;
   }
-  return value;
+  if (!next.filters && Array.isArray(next.serviceAccountUserPatterns)) {
+    next.filters = {
+      serviceAccounts: { patterns: next.serviceAccountUserPatterns, mode: 'exclude' },
+      dropTrivialProbes: true,
+    };
+  }
+  return next;
 }, z.object({
   dialect: historicSqlDialectSchema,
   windowDays: z.number().int().positive().default(90),
@@ -222,21 +229,10 @@ export interface PostgresPgssAggregateRow {
 
 export interface HistoricSqlSourceAdapterDeps {
   sqlAnalysis: SqlAnalysisPort;
-  reader: HistoricSqlQueryHistoryReader;
+  reader: HistoricSqlReader;
   queryClient: unknown;
-  postgresReader?: PostgresPgssReader;
-  postgresQueryClient?: KtxPostgresQueryClient;
-  postgresBaselineRootDir?: string;
+  legacyPostgresBaselineRootDir?: string;
   now?: () => Date;
-  onPullSucceeded?: (ctx: {
-    connectionId: string;
-    sourceKey: string;
-    syncId: string;
-    trigger: import('../../types.js').IngestTrigger;
-    completedAt: Date;
-    stagedDir: string;
-    nextSuccessfulCursor: string | null;
-  }) => Promise<void>;
 }
 
 const historicSqlLiteralSlotClassificationSchema = z.enum(['constant', 'runtime', 'categorical']);

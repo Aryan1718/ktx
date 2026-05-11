@@ -42,7 +42,7 @@ export async function chunkHistoricSqlUnifiedStagedDir(stagedDir: string, diffSe
       dependencyPaths: ['manifest.json'],
       peerFileIndex: files.filter((file) => file !== path && file !== 'manifest.json').sort(),
       notes:
-        'Use historic_sql_table_digest. Read this table usage JSON and the existing semantic-layer source for the table; output only table usage evidence shaped like tableUsageOutputSchema.',
+        'Use historic_sql_table_digest. Read this table usage JSON and emit exactly one table_usage object with emit_historic_sql_evidence. Do not call wiki_write or sl_write_source.',
     });
   }
 
@@ -55,7 +55,7 @@ export async function chunkHistoricSqlUnifiedStagedDir(stagedDir: string, diffSe
       dependencyPaths: ['manifest.json'],
       peerFileIndex: files.filter((file) => file !== 'patterns-input.json' && file !== 'manifest.json').sort(),
       notes:
-        'Use historic_sql_patterns. Read patterns-input.json and produce cross-table pattern evidence shaped like patternsArraySchema.',
+        'Use historic_sql_patterns. Read patterns-input.json and emit pattern objects with emit_historic_sql_evidence. Do not call wiki_write or sl_write_source.',
     });
   }
 

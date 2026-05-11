@@ -152,11 +152,14 @@ describe('local ingest adapters', () => {
     await expect(localPullConfigForAdapter(postgresProject, historicSql!, 'warehouse')).resolves.toEqual({
       dialect: 'postgres',
       windowDays: 90,
-      lastSuccessfulCursor: null,
-      serviceAccountUserPatterns: ['^svc_'],
+      minExecutions: 7,
+      concurrency: 12,
+      filters: {
+        serviceAccounts: { patterns: ['^svc_'], mode: 'exclude' },
+        dropTrivialProbes: true,
+      },
       redactionPatterns: [],
-      maxTemplatesPerRun: 123,
-      minCalls: 7,
+      staleArchiveAfterDays: 90,
     });
   });
 

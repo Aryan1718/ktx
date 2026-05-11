@@ -78,6 +78,8 @@ describe('chunkHistoricSqlUnifiedStagedDir', () => {
         notes: expect.stringContaining('historic_sql_patterns'),
       }),
     ]);
+    expect(result.workUnits[0]?.notes).toContain('emit_historic_sql_evidence');
+    expect(result.workUnits[1]?.notes).toContain('emit_historic_sql_evidence');
     expect(result.reconcileNotes).toEqual(['Historic-SQL touched tables=1 parseFailures=0']);
   });
 

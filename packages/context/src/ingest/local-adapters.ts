@@ -6,11 +6,10 @@ import type { SqlAnalysisPort } from '../sql-analysis/index.js';
 import { DbtSourceAdapter } from './adapters/dbt/dbt.adapter.js';
 import { FakeSourceAdapter } from './adapters/fake/fake.adapter.js';
 import { HistoricSqlSourceAdapter } from './adapters/historic-sql/historic-sql.adapter.js';
-import { PostgresPgssQueryHistoryReader } from './adapters/historic-sql/postgres-pgss-query-history-reader.js';
-import { SnowflakeHistoricSqlQueryHistoryReader } from './adapters/historic-sql/snowflake-query-history-reader.js';
+import { PostgresPgssReader } from './adapters/historic-sql/postgres-pgss-reader.js';
 import {
   HISTORIC_SQL_SOURCE_KEY,
-  historicSqlPullConfigSchema,
+  historicSqlUnifiedPullConfigSchema,
   type KtxPostgresQueryClient,
 } from './adapters/historic-sql/types.js';
 import {
@@ -94,15 +93,9 @@ export function createDefaultLocalIngestAdapters(
     adapters.push(
       new HistoricSqlSourceAdapter({
         sqlAnalysis: options.historicSql.sqlAnalysis,
-        reader: new SnowflakeHistoricSqlQueryHistoryReader(),
-        queryClient: {
-          executeQuery: async () => {
-            throw new Error('Local historic-SQL currently supports Postgres pg_stat_statements only');
-          },
-        },
-        postgresReader: new PostgresPgssQueryHistoryReader(),
-        postgresQueryClient: options.historicSql.postgresQueryClient,
-        postgresBaselineRootDir: options.historicSql.postgresBaselineRootDir,
+        reader: new PostgresPgssReader(),
+        queryClient: options.historicSql.postgresQueryClient,
+        legacyPostgresBaselineRootDir: options.historicSql.postgresBaselineRootDir,
         now: options.historicSql.now,
       }),
     );
@@ -180,9 +173,8 @@ export async function localPullConfigForAdapter(
     if (historicSql?.enabled !== true) {
       throw new Error(`Connection "${connectionId}" does not have historicSql.enabled: true`);
     }
-    return historicSqlPullConfigSchema.parse({
+    return historicSqlUnifiedPullConfigSchema.parse({
       ...historicSql,
-      lastSuccessfulCursor: stringField(historicSql.lastSuccessfulCursor),
     });
   }
   if (adapter.source === 'looker') {
