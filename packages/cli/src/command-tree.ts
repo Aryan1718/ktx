@@ -35,10 +35,11 @@ function appendNode(node: CommandTreeNode, prefix: string, connector: string, li
   const label = formatLabel(node);
   lines.push(formatLine(`${prefix}${connector}${label}`, node.description));
 
+  const childPrefix =
+    connector === '' ? `${prefix}  ` : `${prefix}${connector === '└── ' ? '    ' : '│   '}`;
   node.children.forEach((child, index) => {
     const isLast = index === node.children.length - 1;
     const childConnector = isLast ? '└── ' : '├── ';
-    const childPrefix = connector === '' ? '  ' : `${prefix}${isLast ? '    ' : '│   '}`;
     appendNode(child, childPrefix, childConnector, lines);
   });
 }

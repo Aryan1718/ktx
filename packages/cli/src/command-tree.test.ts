@@ -88,7 +88,13 @@ describe('formatCommandTree', () => {
       aliases: [],
       arguments: [],
       children: [
-        { name: 'beta', description: 'b', aliases: [], arguments: [], children: [] },
+        {
+          name: 'beta',
+          description: 'b',
+          aliases: [],
+          arguments: [],
+          children: [{ name: 'leaf', description: 'l', aliases: [], arguments: [], children: [] }],
+        },
         {
           name: 'alpha',
           description: 'a',
@@ -101,7 +107,8 @@ describe('formatCommandTree', () => {
     const lines = formatCommandTree(tree).trimEnd().split('\n');
     expect(lines[0]).toMatch(/^root\s+top$/);
     expect(lines[1]).toMatch(/^  ├── beta\s+b$/);
-    expect(lines[2]).toMatch(/^  └── alpha <id> \(al\)\s+a$/);
-    expect(lines[3]).toMatch(/^      └── inner\s+i$/);
+    expect(lines[2]).toMatch(/^  │   └── leaf\s+l$/);
+    expect(lines[3]).toMatch(/^  └── alpha <id> \(al\)\s+a$/);
+    expect(lines[4]).toMatch(/^      └── inner\s+i$/);
   });
 });
