@@ -32,14 +32,7 @@ export const KTX_NEXT_STEP_DIRECT_COMMANDS = [
   },
 ] as const;
 
-export const KTX_NEXT_STEP_MCP_COMMANDS = [
-  {
-    command: 'ktx serve --mcp stdio --user-id local',
-    description: 'Optional MCP server route for clients that require MCP',
-  },
-] as const;
-
-export const KTX_NEXT_STEP_COMMANDS = [...KTX_NEXT_STEP_DIRECT_COMMANDS, ...KTX_NEXT_STEP_MCP_COMMANDS] as const;
+export const KTX_NEXT_STEP_COMMANDS = [...KTX_NEXT_STEP_DIRECT_COMMANDS] as const;
 
 export const KTX_NEXT_STEP_COMMAND_WIDTH = Math.max(
   ...[...KTX_CONTEXT_BUILD_COMMANDS, ...KTX_NEXT_STEP_COMMANDS].map((step) => step.command.length),

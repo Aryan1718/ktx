@@ -29,10 +29,11 @@ describe('dev Commander tree', () => {
     await expect(runKtxCli(['dev', '--help'], testIo.io)).resolves.toBe(0);
 
     expect(testIo.stdout()).toContain('Usage: ktx dev [options] [command]');
-    for (const command of ['init', 'doctor', 'scan', 'ingest', 'mapping']) {
+    for (const command of ['init', 'runtime', 'scan', 'ingest', 'mapping']) {
       expect(testIo.stdout()).toContain(command);
     }
     for (const removed of [
+      'doctor',
       'knowledge',
       'model',
       'replay',
@@ -100,6 +101,7 @@ describe('dev Commander tree', () => {
 
   it('rejects removed dev command groups', async () => {
     for (const argv of [
+      ['dev', 'doctor', 'setup'],
       ['dev', 'knowledge', 'list'],
       ['dev', 'model', 'list'],
       ['dev', 'artifacts'],
@@ -114,8 +116,8 @@ describe('dev Commander tree', () => {
 
   it.each([
     {
-      argv: ['dev', 'doctor', '--help'],
-      expected: ['Usage: ktx dev doctor', '--json', '--no-input'],
+      argv: ['dev', 'runtime', '--help'],
+      expected: ['Usage: ktx dev runtime', 'install', 'start', 'stop', 'status', 'doctor', 'prune'],
     },
     {
       argv: ['dev', 'scan', '--help'],

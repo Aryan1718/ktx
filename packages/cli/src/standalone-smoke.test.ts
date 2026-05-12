@@ -4,8 +4,6 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { parseKtxProjectConfig } from '@ktx/context/project';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -58,12 +56,6 @@ function getRunId(stdout: string): string {
     throw new Error(`Could not find run id in output:\n${stdout}`);
   }
   return match[1];
-}
-
-function structuredContent<T extends object>(result: unknown): T {
-  const content = (result as { structuredContent?: unknown }).structuredContent;
-  expect(content).toBeDefined();
-  return content as T;
 }
 
 async function writeWarehouseConfig(projectDir: string): Promise<void> {
@@ -344,81 +336,13 @@ describe('standalone built ktx CLI smoke', () => {
     expect(inspect.stdout).not.toContain('ktx serve --mcp stdio');
   });
 
-  it('serves seeded demo wiki and semantic-layer context over stdio MCP', async () => {
-    const projectDir = join(tempDir, 'seeded-mcp-project');
-
-    const seeded = await runBuiltCli(
-      ['setup', 'demo', '--mode', 'seeded', '--project-dir', projectDir, '--plain', '--no-input'],
-      {
-        env: { ...process.env, ANTHROPIC_API_KEY: '' },
-      },
-    );
-    expectProjectStderr(seeded, projectDir);
-    expect(seeded.stdout).toContain('Mode: seeded');
-
-    const client = new Client({ name: 'ktx-seeded-demo-smoke-client', version: '0.0.0' });
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [CLI_BIN, 'serve', '--mcp', 'stdio', '--project-dir', projectDir, '--user-id', 'smoke-user'],
-      stderr: 'pipe',
-    });
-
-    try {
-      await client.connect(transport);
-      const toolNames = (await client.listTools()).tools.map((tool) => tool.name).sort();
-      expect(toolNames).toEqual(
-        expect.arrayContaining(['knowledge_read', 'knowledge_search', 'sl_read_source', 'sl_validate']),
-      );
-
-      const knowledgeSearch = structuredContent<{
-        results: Array<{ key: string; summary: string; score: number }>;
-        totalFound: number;
-      }>(await client.callTool({ name: 'knowledge_search', arguments: { query: 'ARR contract-first definition', limit: 10 } }));
-      expect(knowledgeSearch.totalFound).toBeGreaterThan(0);
-      expect(knowledgeSearch.results.map((result) => result.key)).toContain('orbit-arr-contract-first-definition');
-
-      const knowledgeRead = structuredContent<{
-        key: string;
-        summary: string;
-        content: string;
-        tags: string[];
-        slRefs: string[];
-      }>(await client.callTool({ name: 'knowledge_read', arguments: { key: 'orbit-arr-contract-first-definition' } }));
-      expect(knowledgeRead.key).toBe('orbit-arr-contract-first-definition');
-      expect(knowledgeRead.summary).toContain('ARR');
-      expect(knowledgeRead.content).toContain('contract');
-      expect(knowledgeRead.slRefs).toContain('mart_arr_daily');
-
-      const slRead = structuredContent<{ sourceName: string; yaml: string }>(
-        await client.callTool({
-          name: 'sl_read_source',
-          arguments: { connectionId: 'dbt-main', sourceName: 'mart_arr_daily' },
-        }),
-      );
-      expect(slRead.sourceName).toBe('mart_arr_daily');
-      expect(slRead.yaml).toContain('name: mart_arr_daily');
-      expect(slRead.yaml).toContain('measures:');
-
-      const slValidate = structuredContent<{ success: boolean; errors: string[]; warnings: string[] }>(
-        await client.callTool({
-          name: 'sl_validate',
-          arguments: { connectionId: 'dbt-main', names: ['mart_arr_daily', 'stg_contracts'] },
-        }),
-      );
-      expect(slValidate.success).toBe(true);
-      expect(slValidate.errors).toEqual([]);
-    } finally {
-      await client.close();
-    }
-  });
-
   it('runs doctor setup through the built binary', async () => {
-    const result = await runBuiltCli(['dev', 'doctor', 'setup', '--no-input']);
+    const result = await runBuiltCli(['status', '--no-input']);
 
     expect(result.stdout).toContain('KTX setup doctor');
     expect(result.stdout).toContain('Node 22+');
     expect(result.stdout).toContain('Workspace-local CLI');
-    expect(result.stderr).toBe(`Project: ${process.cwd()}\n`);
+    expect(result.stderr).toBe('');
     expect([0, 1]).toContain(result.code);
   });
 
@@ -747,185 +671,4 @@ describe('standalone built ktx CLI smoke', () => {
     });
   });
 
-  it('serves local ingest MCP tools over stdio from the built binary', async () => {
-    const projectDir = join(tempDir, 'project');
-
-    const init = await runSetupNewProject(projectDir);
-    expectProjectStderr(init, projectDir);
-    await writeWarehouseConfig(projectDir);
-
-    const client = new Client({ name: 'ktx-smoke-client', version: '0.0.0' });
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [CLI_BIN, 'serve', '--mcp', 'stdio', '--project-dir', projectDir, '--user-id', 'smoke-user'],
-      stderr: 'pipe',
-    });
-
-    try {
-      await client.connect(transport);
-      const tools = await client.listTools();
-      const toolNames = tools.tools.map((tool) => tool.name).sort();
-      expect(toolNames).toEqual(
-        expect.arrayContaining([
-          'connection_list',
-          'connection_test',
-          'ingest_report',
-          'ingest_replay',
-          'ingest_status',
-          'ingest_trigger',
-          'knowledge_read',
-          'knowledge_search',
-          'knowledge_write',
-          'scan_list_artifacts',
-          'scan_read_artifact',
-          'scan_report',
-          'scan_status',
-          'scan_trigger',
-          'sl_list_sources',
-          'sl_read_source',
-          'sl_validate',
-          'sl_write_source',
-        ]),
-      );
-
-      const connections = structuredContent<{
-        connections: Array<{ id: string; name: string; connectionType: string }>;
-      }>(await client.callTool({ name: 'connection_list', arguments: {} }));
-      expect(connections).toEqual({
-        connections: [{ id: 'warehouse', name: 'warehouse', connectionType: 'POSTGRESQL' }],
-      });
-
-      await expect(client.callTool({ name: 'ingest_status', arguments: { runId: 'missing-run' } })).resolves.toEqual({
-        content: [{ type: 'text', text: 'Ingest run "missing-run" was not found.' }],
-        isError: true,
-      });
-
-      await expect(client.callTool({ name: 'ingest_report', arguments: { runId: 'missing-run' } })).resolves.toEqual({
-        content: [{ type: 'text', text: 'Ingest report "missing-run" was not found.' }],
-        isError: true,
-      });
-
-      await expect(client.callTool({ name: 'ingest_replay', arguments: { runId: 'missing-run' } })).resolves.toEqual({
-        content: [{ type: 'text', text: 'Ingest replay "missing-run" was not found.' }],
-        isError: true,
-      });
-    } finally {
-      await client.close();
-    }
-  });
-
-  it('serves scan execution and artifact inspection tools over stdio from the built binary', async () => {
-    const projectDir = join(tempDir, 'scan-mcp-project');
-    const init = await runSetupNewProject(projectDir);
-    expectProjectStderr(init, projectDir);
-
-    const dbPath = join(projectDir, 'warehouse.db');
-    createSqliteWarehouse(dbPath);
-    await writeSqliteScanConfig(projectDir, dbPath);
-
-    const client = new Client({ name: 'ktx-scan-smoke-client', version: '0.0.0' });
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [CLI_BIN, 'serve', '--mcp', 'stdio', '--project-dir', projectDir, '--user-id', 'smoke-user'],
-      stderr: 'pipe',
-    });
-
-    try {
-      await client.connect(transport);
-
-      const connectionTest = structuredContent<{
-        id: string;
-        connectionType: string;
-        ok: boolean;
-        tableCount: number | null;
-      }>(await client.callTool({ name: 'connection_test', arguments: { connectionId: 'warehouse' } }));
-      expect(connectionTest).toMatchObject({
-        id: 'warehouse',
-        connectionType: 'SQLITE',
-        ok: true,
-        tableCount: 2,
-      });
-
-      const trigger = structuredContent<{
-        runId: string;
-        status: 'done';
-        done: true;
-        connectionId: string;
-        mode: string;
-        dryRun: boolean;
-        report: {
-          artifactPaths: { manifestShards: string[] };
-          manifestShardsWritten: number;
-        };
-      }>(
-        await client.callTool({
-          name: 'scan_trigger',
-          arguments: {
-            connectionId: 'warehouse',
-            mode: 'structural',
-            detectRelationships: false,
-            dryRun: false,
-          },
-        }),
-      );
-      expect(trigger).toMatchObject({
-        status: 'done',
-        done: true,
-        connectionId: 'warehouse',
-        mode: 'structural',
-        dryRun: false,
-      });
-      expect(trigger.report.artifactPaths.manifestShards).toEqual(['semantic-layer/warehouse/_schema/public.yaml']);
-      expect(trigger.report.manifestShardsWritten).toBe(1);
-
-      const status = structuredContent<{
-        runId: string;
-        status: string;
-        done: boolean;
-        reportPath: string | null;
-      }>(await client.callTool({ name: 'scan_status', arguments: { runId: trigger.runId } }));
-      expect(status).toMatchObject({
-        runId: trigger.runId,
-        status: 'done',
-        done: true,
-      });
-      expect(status.reportPath).toContain('scan-report.json');
-
-      const artifacts = structuredContent<{
-        runId: string;
-        artifacts: Array<{ path: string; type: string }>;
-      }>(await client.callTool({ name: 'scan_list_artifacts', arguments: { runId: trigger.runId } }));
-      expect(artifacts.artifacts).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ path: 'semantic-layer/warehouse/_schema/public.yaml', type: 'manifest_shard' }),
-          expect.objectContaining({ type: 'report' }),
-          expect.objectContaining({ type: 'raw_source' }),
-        ]),
-      );
-
-      const manifestArtifact = structuredContent<{
-        runId: string;
-        path: string;
-        type: string;
-        content: string;
-      }>(
-        await client.callTool({
-          name: 'scan_read_artifact',
-          arguments: {
-            runId: trigger.runId,
-            path: 'semantic-layer/warehouse/_schema/public.yaml',
-          },
-        }),
-      );
-      expect(manifestArtifact).toMatchObject({
-        runId: trigger.runId,
-        path: 'semantic-layer/warehouse/_schema/public.yaml',
-        type: 'manifest_shard',
-      });
-      expect(manifestArtifact.content).toContain('orders:');
-      expect(manifestArtifact.content).toContain('source: formal');
-    } finally {
-      await client.close();
-    }
-  });
 });

@@ -137,6 +137,6 @@ echo "Building KTX packages..."
 pnpm run build
 
 echo "Running KTX setup doctor..."
-node packages/cli/dist/bin.js dev doctor setup --no-input
+node packages/cli/dist/bin.js status --no-input
 
 echo "=== Setup complete ==="

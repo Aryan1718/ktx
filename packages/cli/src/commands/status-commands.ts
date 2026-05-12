@@ -1,20 +1,46 @@
 import type { Command } from '@commander-js/extra-typings';
 import type { KtxCliCommandContext } from '../cli-program.js';
-import { resolveCommandProjectDir } from '../cli-program.js';
+import { resolveCommandProjectDir, resolveCommandProjectDirOverride } from '../cli-program.js';
+import { findNearestKtxProjectDir } from '../project-resolver.js';
+
+function outputMode(options: { json?: boolean }): 'plain' | 'json' {
+  return options.json === true ? 'json' : 'plain';
+}
+
+function inputMode(options: { input?: boolean }): { inputMode?: 'disabled' } {
+  return options.input === false ? { inputMode: 'disabled' } : {};
+}
 
 export function registerStatusCommands(program: Command, context: KtxCliCommandContext): void {
   program
     .command('status')
-    .description('Show current KTX project setup status')
+    .description('Check current KTX setup and project readiness')
     .option('--json', 'Print JSON output', false)
-    .action(async (options: { json?: boolean }, command) => {
-      const runner = context.deps.setup ?? (await import('../setup.js')).runKtxSetup;
+    .option('--no-input', 'Disable interactive terminal input')
+    .action(async (options: { json?: boolean; input?: boolean }, command) => {
+      const runner = context.deps.doctor ?? (await import('../doctor.js')).runKtxDoctor;
+      const explicitOrEnvProjectDir = resolveCommandProjectDirOverride(command);
+      const nearestProjectDir = explicitOrEnvProjectDir ? undefined : findNearestKtxProjectDir(process.cwd());
+      if (!explicitOrEnvProjectDir && !nearestProjectDir) {
+        context.setExitCode(
+          await runner(
+            {
+              command: 'setup',
+              outputMode: outputMode(options),
+              ...inputMode(options),
+            },
+            context.io,
+          ),
+        );
+        return;
+      }
       context.setExitCode(
         await runner(
           {
-            command: 'status',
+            command: 'project',
             projectDir: resolveCommandProjectDir(command),
-            json: options.json === true,
+            outputMode: outputMode(options),
+            ...inputMode(options),
           },
           context.io,
         ),

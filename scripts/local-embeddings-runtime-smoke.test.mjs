@@ -89,23 +89,23 @@ describe('localEmbeddingsSmokeCommands', () => {
 
     assert.deepEqual(commands.map((command) => command.label), [
       'ktx public package version',
-      'ktx runtime status missing',
-      'ktx runtime install local embeddings',
-      'ktx runtime status local embeddings ready',
-      'ktx runtime start local embeddings',
+      'ktx dev runtime status missing',
+      'ktx dev runtime install local embeddings',
+      'ktx dev runtime status local embeddings ready',
+      'ktx dev runtime start local embeddings',
       'ktx setup local embeddings',
-      'ktx runtime stop local embeddings',
+      'ktx dev runtime stop local embeddings',
     ]);
     assert.deepEqual(commands[2], {
-      label: 'ktx runtime install local embeddings',
+      label: 'ktx dev runtime install local embeddings',
       command: 'pnpm',
-      args: ['exec', 'ktx', 'runtime', 'install', '--feature', 'local-embeddings', '--yes'],
+      args: ['exec', 'ktx', 'dev', 'runtime', 'install', '--feature', 'local-embeddings', '--yes'],
       timeoutMs: 1_200_000,
     });
     assert.deepEqual(commands[4], {
-      label: 'ktx runtime start local embeddings',
+      label: 'ktx dev runtime start local embeddings',
       command: 'pnpm',
-      args: ['exec', 'ktx', 'runtime', 'start', '--feature', 'local-embeddings'],
+      args: ['exec', 'ktx', 'dev', 'runtime', 'start', '--feature', 'local-embeddings'],
       timeoutMs: 300_000,
     });
     assert.deepEqual(commands[5].args, [

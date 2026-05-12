@@ -1,8 +1,8 @@
 # Local Warehouse Example
 
 This example is a standalone KTX project that can be copied to a temp directory
-and used with the local CLI and stdio MCP server. It uses the `fake` ingest
-adapter so it does not require a database or external app server.
+and used with the local CLI. It uses the `fake` ingest adapter so it does not
+require a database or external app server.
 
 Run the example from the repository root after building the CLI:
 

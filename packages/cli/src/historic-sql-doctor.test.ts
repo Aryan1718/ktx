@@ -143,7 +143,7 @@ describe('runPostgresHistoricSqlDoctorChecks', () => {
         status: 'warn',
         detail:
           'pg_stat_statements ready (PostgreSQL 16.4) with warnings: pg_stat_statements.track is none; set it to top or all in the Postgres parameter group or config; info: pg_stat_statements.max is 1000; set it to at least 5000 to reduce query-template eviction churn',
-        fix: 'Update the Postgres parameter group or config, then rerun `ktx dev doctor --project-dir /tmp/ktx-project`',
+        fix: 'Update the Postgres parameter group or config, then rerun `ktx status --project-dir /tmp/ktx-project`',
       },
     ]);
   });

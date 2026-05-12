@@ -151,7 +151,7 @@ describe('findPythonArtifacts', () => {
   it('throws when a required Python artifact is missing', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ktx-artifacts-test-'));
     try {
-      await assert.rejects(() => findPythonArtifacts(root), /Missing Python artifact: kaelio-ktx runtime wheel/);
+      await assert.rejects(() => findPythonArtifacts(root), /Missing Python artifact: kaelio-ktx dev runtime wheel/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -472,24 +472,24 @@ describe('verification snippets', () => {
     assert.doesNotMatch(source, /run\('python'/);
     assert.match(source, /KTX_RUNTIME_ROOT/);
     assert.match(source, /managed-runtime/);
-    assert.match(source, /ktx runtime status missing/);
+    assert.match(source, /ktx dev runtime status missing/);
     assert.match(source, /runtimeStatusBefore\.kind, 'missing'/);
     assert.ok(source.includes(String.raw`Installing KTX Python runtime \(core\) with uv`));
     assert.match(source, /KTX Python runtime ready:/);
-    assert.match(source, /ktx runtime status ready/);
+    assert.match(source, /ktx dev runtime status ready/);
     assert.match(source, /runtimeStatusAfter\.kind, 'ready'/);
     assert.match(source, /runtimeStatusAfter\.manifest\.features/);
-    assert.match(source, /ktx runtime doctor/);
+    assert.match(source, /ktx dev runtime doctor/);
     assert.match(source, /PASS Managed Python runtime/);
-    assert.match(source, /ktx runtime start/);
-    assert.match(source, /ktx runtime start reuse/);
+    assert.match(source, /ktx dev runtime start/);
+    assert.match(source, /ktx dev runtime start reuse/);
     assert.match(source, /Using existing KTX Python daemon/);
-    assert.match(source, /ktx runtime stop/);
-    assert.match(source, /ktx runtime prune dry run/);
+    assert.match(source, /ktx dev runtime stop/);
+    assert.match(source, /ktx dev runtime prune dry run/);
     assert.match(source, /0\.0\.0/);
-    assert.match(source, /ktx runtime prune needs confirmation/);
+    assert.match(source, /ktx dev runtime prune needs confirmation/);
     assert.match(source, /Refusing to prune without --yes/);
-    assert.match(source, /ktx runtime prune confirmed/);
+    assert.match(source, /ktx dev runtime prune confirmed/);
     assert.match(source, /Removed stale KTX Python runtimes/);
     assert.match(source, /assert\.rejects\(\(\) => access\(staleRuntimeDir\)\)/);
     assert.match(source, /run\('pnpm', \[\s*'exec',\s*'ktx',\s*'dev',\s*'scan',\s*'warehouse'/);
@@ -519,7 +519,7 @@ describe('verification snippets', () => {
       assert.match(source, /LLM calls: none/);
       assert.match(source, /ktx agent context --json/);
       assert.doesNotMatch(source, new RegExp(["'demo'", "'--mode'", "'deterministic'"].join(', ')));
-      assert.match(source, /'dev', 'doctor', 'setup', '--no-input'/);
+      assert.match(source, /'status', '--no-input'/);
       assert.match(source, /'--plain'/);
       assert.match(source, /function requireProjectStderr/);
       assert.match(source, /requireProjectStderr\('ktx setup demo seeded', seeded, projectDir\)/);

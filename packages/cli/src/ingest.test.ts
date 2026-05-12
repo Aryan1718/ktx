@@ -118,7 +118,6 @@ describe('runKtxIngest', () => {
           mode: 'new',
           agents: false,
           agentScope: 'project',
-          agentInstallMode: 'cli',
           skipAgents: true,
           inputMode: 'disabled',
           yes: true,

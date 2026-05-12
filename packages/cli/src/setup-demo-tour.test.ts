@@ -173,7 +173,7 @@ describe('runDemoTour', () => {
     const mockAgents = vi.fn().mockResolvedValue({
       status: 'ready',
       projectDir: '/tmp/test',
-      installs: [{ target: 'claude-code', scope: 'project', mode: 'both' }],
+      installs: [{ target: 'claude-code', scope: 'project', mode: 'cli' }],
     } satisfies KtxSetupAgentsResult);
 
     const navigation = vi.fn().mockResolvedValue('forward');

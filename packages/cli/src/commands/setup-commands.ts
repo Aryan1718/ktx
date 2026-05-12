@@ -64,13 +64,6 @@ function agentScope(value: string): 'project' | 'global' {
   throw new InvalidArgumentError(`invalid choice '${value}'`);
 }
 
-function agentInstallMode(value: string): 'cli' | 'mcp' | 'both' {
-  if (value === 'cli' || value === 'mcp' || value === 'both') {
-    return value;
-  }
-  throw new InvalidArgumentError(`invalid choice '${value}'`);
-}
-
 function positiveNumber(value: string): number {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
@@ -232,9 +225,6 @@ export function registerSetupCommands(program: Command, context: KtxCliCommandCo
     .addOption(new Option('--agent-scope <scope>', 'Agent install scope').argParser(agentScope).default('project'))
     .option('--project', 'Install agent integration into the project scope', false)
     .option('--global', 'Install agent integration into the global target scope', false)
-    .addOption(
-      new Option('--agent-install-mode <mode>', 'Agent install mode').argParser(agentInstallMode).default('cli'),
-    )
     .option('--skip-agents', 'Leave agent integration incomplete for now', false)
     .option('--yes', 'Accept safe defaults in non-interactive setup', false)
     .option('--no-input', 'Disable interactive terminal input')
@@ -371,7 +361,6 @@ export function registerSetupCommands(program: Command, context: KtxCliCommandCo
       agents: options.agents === true,
       ...(options.target ? { target: options.target } : {}),
       agentScope: resolvedAgentScope,
-      agentInstallMode: options.agentInstallMode,
       skipAgents: options.skipAgents === true,
       inputMode: options.input === false ? 'disabled' : 'auto',
       yes: options.yes === true,

@@ -15,7 +15,7 @@ unset KTX_SQL_ANALYSIS_URL
 
 cleanup() {
   if [[ -f "$KTX_BIN" ]]; then
-    node "$KTX_BIN" runtime stop >/dev/null 2>&1 || true
+    node "$KTX_BIN" dev runtime stop >/dev/null 2>&1 || true
   fi
   if [[ "${KTX_POSTGRES_HISTORIC_KEEP_DOCKER:-0}" != "1" ]]; then
     docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1 || true
@@ -220,8 +220,8 @@ node "$KTX_BIN" --project-dir "$PROJECT_DIR" setup \
   --yes \
   --no-input
 
-node "$KTX_BIN" runtime install --yes
-node "$KTX_BIN" runtime start
+node "$KTX_BIN" dev runtime install --yes
+node "$KTX_BIN" dev runtime start
 
 FIRST_RECORD="$PROJECT_PARENT/first-record.json"
 run_historic_stage_only "historic-first-$$" "$FIRST_RECORD"

@@ -7,7 +7,6 @@ import type { KtxCliIo } from './cli-runtime.js';
 import { formatSetupNextStepLines } from './next-steps.js';
 import { isKtxSetupExitError, withSetupInterruptConfirmation } from './setup-interrupt.js';
 import {
-  type KtxAgentInstallMode,
   type KtxAgentScope,
   type KtxAgentTarget,
   type KtxSetupAgentsDeps,
@@ -60,7 +59,6 @@ export type KtxSetupArgs =
       agents: boolean;
       target?: KtxAgentTarget;
       agentScope?: KtxAgentScope;
-      agentInstallMode?: KtxAgentInstallMode;
       skipAgents?: boolean;
       inputMode: 'auto' | 'disabled';
       yes: boolean;
@@ -736,7 +734,7 @@ async function runKtxSetupInner(args: KtxSetupArgs, io: KtxCliIo, deps: KtxSetup
             agents: true,
             ...(args.target ? { target: args.target } : {}),
             scope: args.agentScope ?? 'project',
-            mode: args.agentInstallMode ?? 'cli',
+            mode: 'cli',
             skipAgents: false,
           },
           io,

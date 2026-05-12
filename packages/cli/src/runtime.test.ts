@@ -300,7 +300,7 @@ describe('runKtxRuntime', () => {
           label: 'Managed Python runtime',
           status: 'fail',
           detail: 'No runtime manifest',
-          fix: 'Run: ktx runtime install --yes',
+          fix: 'Run: ktx dev runtime install --yes',
         },
       ]),
     };
@@ -309,7 +309,7 @@ describe('runKtxRuntime', () => {
 
     expect(io.stdout()).toContain('PASS uv: uv 0.9.5');
     expect(io.stdout()).toContain('FAIL Managed Python runtime: No runtime manifest');
-    expect(io.stdout()).toContain('Fix: Run: ktx runtime install --yes');
+    expect(io.stdout()).toContain('Fix: Run: ktx dev runtime install --yes');
   });
 
   it('requires --yes before pruning stale runtime directories', async () => {

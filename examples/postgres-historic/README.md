@@ -78,13 +78,13 @@ node packages/cli/dist/bin.js --project-dir /tmp/ktx-postgres-historic setup \
 ### Readiness check
 
 ```bash
-pnpm run ktx -- dev doctor --project-dir /tmp/ktx-postgres-historic --no-input
+pnpm run ktx -- status --project-dir /tmp/ktx-postgres-historic --no-input
 ```
 
 The installed CLI form is:
 
 ```bash
-ktx dev doctor --project-dir /tmp/ktx-postgres-historic --no-input
+ktx status --project-dir /tmp/ktx-postgres-historic --no-input
 ```
 
 Expected output includes `PASS Postgres Historic SQL (warehouse)` when
@@ -127,6 +127,6 @@ table.
 - Missing grants: confirm `GRANT pg_read_all_stats TO ktx_reader;`.
 - Empty snapshot: rerun `scripts/generate-workload.sh base` and keep
   `--historic-sql-min-executions 2` for the smoke.
-- SQL-analysis failures: run `pnpm run ktx -- runtime doctor` from the KTX
+- SQL-analysis failures: run `pnpm run ktx -- dev runtime doctor` from the KTX
   repository root and confirm `uv`, the bundled Python wheel, and the managed
   runtime all pass.

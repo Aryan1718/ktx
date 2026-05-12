@@ -152,32 +152,31 @@ or `--url file:PATH` over literal credential URLs.
 
 KTX installs its Python runtime only when a Python-backed command needs it.
 The runtime lives outside the npm cache, is versioned by the installed CLI
-version, and is managed by `ktx runtime` commands.
+version, and is managed by `ktx dev runtime` commands.
 
 KTX requires `uv` on `PATH` to create the managed runtime. Install `uv` with
 your system package manager or the official installer before running Python-
 backed KTX commands. KTX doesn't download `uv` automatically; run
-`ktx runtime doctor` if runtime installation fails:
+`ktx dev runtime doctor` if runtime installation fails:
 
 ```bash
-ktx runtime install --yes
-ktx runtime status
-ktx runtime doctor
-ktx runtime start
-ktx runtime stop
-ktx runtime prune --dry-run
-ktx runtime prune --yes
+ktx dev runtime install --yes
+ktx dev runtime status
+ktx dev runtime doctor
+ktx dev runtime start
+ktx dev runtime stop
+ktx dev runtime prune --dry-run
+ktx dev runtime prune --yes
 ```
 
 The release artifact manifest contains the public npm tarball and the bundled `kaelio-ktx`
 runtime wheel. The `python/ktx-sl` and `python/ktx-daemon` directories remain
 source packages for development, not public release artifacts.
 
-## Serve agents
+## Use KTX with agents
 
-KTX integrates with coding agents through CLI skills, an MCP server, or both.
-The setup wizard configures this automatically — here's what each mode looks
-like.
+KTX integrates with coding agents through CLI skills. The setup wizard
+configures this automatically.
 
 **CLI skills** — the agent calls `ktx` commands directly through a skill file
 installed in your agent's config (e.g., `.claude/skills/ktx/SKILL.md`):
@@ -188,27 +187,8 @@ ktx wiki search "revenue definition"
 ktx sl validate orders
 ```
 
-**MCP server** — the agent calls KTX tools over the Model Context Protocol:
-
-```bash
-ktx serve --mcp stdio \
-  --user-id local \
-  --semantic-compute \
-  --execute-queries \
-  --yes
-```
-
-This exposes tools for connections, knowledge search, semantic-layer sources,
-validation, queries, ingestion, and replay. The `--semantic-compute` flag starts
-the managed Python runtime for query planning automatically.
-
-The standalone MCP server exposes `connection_list`, `knowledge_search`,
-`knowledge_read`, `knowledge_write`, `sl_list_sources`, `sl_read_source`,
-`sl_write_source`, `sl_validate`, `sl_query`, `ingest_trigger`,
-`ingest_status`, `ingest_report`, and `ingest_replay`.
-
 Supported agents: Claude Code, Codex, Cursor, OpenCode, and any agent that
-reads `.agents/` skills or MCP configuration.
+reads `.agents/` skills.
 
 ## Workspace packages
 

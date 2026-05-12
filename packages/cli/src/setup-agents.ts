@@ -9,7 +9,7 @@ import { withSetupInterruptConfirmation } from './setup-interrupt.js';
 
 export type KtxAgentTarget = 'claude-code' | 'codex' | 'cursor' | 'opencode' | 'universal';
 export type KtxAgentScope = 'project' | 'global';
-export type KtxAgentInstallMode = 'cli' | 'mcp' | 'both';
+export type KtxAgentInstallMode = 'cli';
 
 export interface KtxSetupAgentsArgs {
   projectDir: string;
@@ -91,17 +91,9 @@ export function plannedKtxAgentFiles(input: {
     'claude-code': { kind: 'file', path: join(root, '.claude/rules/ktx.md'), role: 'rule' },
     codex: { kind: 'file', path: join(root, '.codex/instructions/ktx.md'), role: 'rule' },
   };
-  const mcpEntries: Record<KtxAgentTarget, InstallEntry> = {
-    'claude-code': { kind: 'json-key', path: join(root, '.mcp.json'), jsonPath: ['mcpServers', 'ktx'] },
-    codex: { kind: 'json-key', path: join(root, '.agents/mcp/ktx.json'), jsonPath: ['mcpServers', 'ktx'] },
-    cursor: { kind: 'json-key', path: join(root, '.cursor/mcp.json'), jsonPath: ['mcpServers', 'ktx'] },
-    opencode: { kind: 'json-key', path: join(root, '.opencode/mcp.json'), jsonPath: ['mcpServers', 'ktx'] },
-    universal: { kind: 'json-key', path: join(root, '.agents/mcp/ktx.json'), jsonPath: ['mcpServers', 'ktx'] },
-  };
-  return [
-    ...(input.mode === 'cli' || input.mode === 'both' ? [cliEntries[input.target], ruleEntries[input.target]] : []),
-    ...(input.mode === 'mcp' || input.mode === 'both' ? [mcpEntries[input.target]] : []),
-  ].filter((entry): entry is InstallEntry => entry !== undefined);
+  return [cliEntries[input.target], ruleEntries[input.target]].filter(
+    (entry): entry is InstallEntry => entry !== undefined,
+  );
 }
 
 function ktxCliLauncher(): KtxCliLauncher {
@@ -185,32 +177,6 @@ function ruleInstructionContent(input: { projectDir: string }): string {
     'Do not use for general programming, code review, or tasks unrelated to data and analytics.',
     '',
   ].join('\n');
-}
-
-function mcpConfig(projectDir: string, launcher: KtxCliLauncher): Record<string, unknown> {
-  return {
-    command: launcher.command,
-    args: [...launcher.args, '--project-dir', projectDir, 'serve', '--mcp', 'stdio', '--semantic-compute', '--execute-queries'],
-    env: {},
-  };
-}
-
-async function writeJsonKey(path: string, jsonPath: string[], value: Record<string, unknown>): Promise<void> {
-  let root: Record<string, unknown> = {};
-  try {
-    root = JSON.parse(await readFile(path, 'utf-8')) as Record<string, unknown>;
-  } catch {
-    root = {};
-  }
-  let cursor = root;
-  for (const segment of jsonPath.slice(0, -1)) {
-    const next = cursor[segment];
-    if (!next || typeof next !== 'object' || Array.isArray(next)) cursor[segment] = {};
-    cursor = cursor[segment] as Record<string, unknown>;
-  }
-  cursor[jsonPath.at(-1) as string] = value;
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(root, null, 2)}\n`, 'utf-8');
 }
 
 async function removeJsonKey(path: string, jsonPath: string[]): Promise<void> {
@@ -351,7 +317,6 @@ export function formatInstallSummary(
   const fileHints: Record<string, string> = {
     skill: 'teaches your agent which KTX commands to run',
     rule: 'tells your agent when to use KTX',
-    mcp: 'lets your agent talk to KTX over MCP',
   };
 
   const lines: string[] = [];
@@ -366,9 +331,6 @@ export function formatInstallSummary(
         const label = isRule ? 'Rule installed' : fileEntryLabels[install.target];
         const hint = fileHints[isRule ? 'rule' : (entry.role ?? 'skill')] ?? '';
         lines.push(`    + ${label} — ${hint}`);
-        lines.push(`      ${displayPath}`);
-      } else {
-        lines.push(`    + MCP config added — ${fileHints.mcp}`);
         lines.push(`      ${displayPath}`);
       }
     }
@@ -385,16 +347,13 @@ async function installTarget(input: {
   const entries = plannedKtxAgentFiles(input);
   const launcher = ktxCliLauncher();
   for (const entry of entries) {
-    if (entry.kind === 'file') {
-      const content =
-        entry.role === 'rule'
-          ? ruleInstructionContent({ projectDir: input.projectDir })
-          : cliInstructionContent({ projectDir: input.projectDir, launcher });
-      await mkdir(dirname(entry.path), { recursive: true });
-      await writeFile(entry.path, content, 'utf-8');
-    } else {
-      await writeJsonKey(entry.path, entry.jsonPath, mcpConfig(input.projectDir, launcher));
-    }
+    if (entry.kind !== 'file') continue;
+    const content =
+      entry.role === 'rule'
+        ? ruleInstructionContent({ projectDir: input.projectDir })
+        : cliInstructionContent({ projectDir: input.projectDir, launcher });
+    await mkdir(dirname(entry.path), { recursive: true });
+    await writeFile(entry.path, content, 'utf-8');
   }
   return entries;
 }
@@ -425,8 +384,6 @@ export async function runKtxSetupAgentsStep(
           message: 'How should agents use this KTX project?',
           options: [
             { value: 'cli', label: 'CLI tools and skills' },
-            { value: 'mcp', label: 'MCP server config' },
-            { value: 'both', label: 'Both' },
             { value: 'skip', label: 'Skip' },
             { value: 'back', label: 'Back' },
           ],

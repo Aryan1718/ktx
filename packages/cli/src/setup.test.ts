@@ -1007,7 +1007,6 @@ describe('setup status', () => {
           mode: 'new',
           agents: false,
           agentScope: 'project',
-          agentInstallMode: 'cli',
           skipAgents: true,
           inputMode: 'disabled',
           yes: false,
@@ -1525,7 +1524,6 @@ describe('setup status', () => {
           agents: true,
           target: 'codex',
           agentScope: 'project',
-          agentInstallMode: 'cli',
           inputMode: 'disabled',
           yes: true,
           cliVersion: '0.2.0',
@@ -1579,7 +1577,6 @@ describe('setup status', () => {
           agents: true,
           target: 'codex',
           agentScope: 'project',
-          agentInstallMode: 'cli',
           inputMode: 'disabled',
           yes: true,
           cliVersion: '0.2.0',
@@ -1996,7 +1993,7 @@ describe('setup status', () => {
     const agents = vi.fn(async () => ({
       status: 'ready' as const,
       projectDir: tempDir,
-      installs: [{ target: 'universal' as const, scope: 'project' as const, mode: 'both' as const }],
+      installs: [{ target: 'universal' as const, scope: 'project' as const, mode: 'cli' as const }],
     }));
 
     await expect(
@@ -2008,7 +2005,6 @@ describe('setup status', () => {
           agents: true,
           target: 'universal',
           agentScope: 'project',
-          agentInstallMode: 'both',
           inputMode: 'disabled',
           yes: true,
           cliVersion: '0.2.0',

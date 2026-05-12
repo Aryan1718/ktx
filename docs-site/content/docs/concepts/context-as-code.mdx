@@ -61,7 +61,7 @@ A typical branch shows a semantic diff: "this ingest added 3 new sources from db
 
 Teams usually run this on demand while setting up a source, then schedule it once the source is stable. A cron job or CI schedule can run `ktx ingest --all --no-input` overnight on an ingest branch so the latest dbt manifests, BI metadata, and documentation updates are ready for review each morning.
 
-Once merged, agents querying through KTX's MCP server or CLI see the updated context immediately. No deployment step, no cache invalidation, no restart. The files are the source of truth, and agents read them on every request.
+Once merged, agents querying through the KTX CLI see the updated context immediately. No deployment step, no cache invalidation, no restart. The files are the source of truth, and agents read them on every request.
 
 This workflow gives you the same review guarantees you have for dbt models. No semantic source reaches production without a human approving it. But unlike maintaining context manually, the heavy lifting — discovering new tables, drafting source definitions, extracting business rules from documentation — is done by the ingestion agent. You review and approve. You don't write from scratch.
 

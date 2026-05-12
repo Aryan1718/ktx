@@ -11,7 +11,6 @@ import type { KtxKnowledgeArgs } from './knowledge.js';
 import type { KtxPublicIngestArgs } from './public-ingest.js';
 import type { KtxRuntimeArgs } from './runtime.js';
 import type { KtxScanArgs } from './scan.js';
-import type { KtxServeArgs } from './serve.js';
 import type { KtxSetupArgs } from './setup.js';
 import type { KtxSlArgs } from './sl.js';
 import { profileMark, profileSpan } from './startup-profile.js';
@@ -32,7 +31,6 @@ export interface KtxCliIo {
 }
 
 export interface KtxCliDeps {
-  serveStdio?: (args: KtxServeArgs) => Promise<number>;
   setup?: (args: KtxSetupArgs, io: KtxCliIo) => Promise<number>;
   agent?: (args: KtxAgentArgs, io: KtxCliIo) => Promise<number>;
   connection?: (args: KtxConnectionArgs, io: KtxCliIo) => Promise<number>;
