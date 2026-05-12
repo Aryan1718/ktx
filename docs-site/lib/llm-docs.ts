@@ -1,6 +1,6 @@
 import { source } from "@/lib/source";
 
-const siteOrigin = "https://ktx.dev";
+const siteOrigin = "https://docs.kaelio.com/ktx";
 
 export type LlmDocsPage = {
   title: string;
@@ -26,8 +26,8 @@ export async function getPageMarkdown(page: LlmDocsPage) {
 
   return normalizeMarkdown(`# ${page.title}${description}
 
-Canonical URL: ${page.url}
-Markdown URL: ${page.markdownUrl}
+Canonical URL: ${absoluteUrl(page.url)}
+Markdown URL: ${absoluteUrl(page.markdownUrl)}
 
 ${body}
 `);
@@ -40,7 +40,7 @@ export function buildLlmsTxt() {
     const page = byUrl.get(url);
     const description = page?.description ?? fallbackDescription;
     const markdownUrl = page?.markdownUrl ?? `${url}.md`;
-    return `- [${label}](${markdownUrl}): ${description}`;
+    return `- [${label}](${absoluteUrl(markdownUrl)}): ${description}`;
   };
 
   return `# KTX
@@ -64,10 +64,10 @@ ${link("/docs/guides/writing-context", "Writing Context", "Write semantic source
 
 ## Machine-Readable Documentation
 
-- [Full documentation](/llms-full.txt): All docs pages in one plain-text markdown response
-- [Markdown access guide](/docs/ai-resources/markdown-access.md): How to fetch llms.txt, llms-full.txt, and per-page Markdown
-- [Quickstart markdown](/docs/getting-started/quickstart.md): Human setup walkthrough
-- [Agent CLI markdown](/docs/cli-reference/ktx-agent.md): Machine-readable agent commands
+- [Full documentation](${absoluteUrl("/llms-full.txt")}): All docs pages in one plain-text markdown response
+- [Markdown access guide](${absoluteUrl("/docs/ai-resources/markdown-access.md")}): How to fetch llms.txt, llms-full.txt, and per-page Markdown
+- [Quickstart markdown](${absoluteUrl("/docs/getting-started/quickstart.md")}): Human setup walkthrough
+- [Agent CLI markdown](${absoluteUrl("/docs/cli-reference/ktx-agent.md")}): Machine-readable agent commands
 
 ## CLI Reference
 
@@ -127,7 +127,7 @@ function buildPageIndex(pages: LlmDocsPage[]) {
       const links = categoryPages
         .map((page) => {
           const description = page.description ? `: ${page.description}` : "";
-          return `- [${page.title}](${page.markdownUrl})${description}`;
+          return `- [${page.title}](${absoluteUrl(page.markdownUrl)})${description}`;
         })
         .join("\n");
 
@@ -136,6 +136,10 @@ function buildPageIndex(pages: LlmDocsPage[]) {
 ${links}`;
     })
     .join("\n\n");
+}
+
+function absoluteUrl(path: string) {
+  return `${siteOrigin}${path}`;
 }
 
 function formatCategoryName(category: string) {

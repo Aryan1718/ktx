@@ -8,10 +8,10 @@ Use these instructions when a coding assistant needs to answer questions from th
 ```text
 When answering KTX docs questions:
 
-1. Start with https://ktx.dev/llms.txt.
+1. Start with https://docs.kaelio.com/ktx/llms.txt.
 2. Fetch the smallest relevant Markdown page from the index.
 3. Prefer /docs/<path>.md over rendered HTML.
-4. Use https://ktx.dev/llms-full.txt only when the task needs broad docs context.
+4. Use https://docs.kaelio.com/ktx/llms-full.txt only when the task needs broad docs context.
 5. Quote commands exactly from docs pages.
 6. If docs and local repository behavior disagree, say what differs and prefer local verified output for code changes.
 ```
@@ -30,7 +30,7 @@ It does not describe local tool configuration.
 ## Minimal project prompt
 
 ```text
-You are helping with KTX. Read https://ktx.dev/llms.txt first, then fetch only the Markdown pages needed for the task. Do not scrape the rendered docs site when a .md route exists.
+You are helping with KTX. Read https://docs.kaelio.com/ktx/llms.txt first, then fetch only the Markdown pages needed for the task. Do not scrape the rendered docs site when a .md route exists.
 ```
 
 ## Repository prompt

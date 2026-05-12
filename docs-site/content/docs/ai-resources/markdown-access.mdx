@@ -10,7 +10,7 @@ KTX docs are available as plain Markdown so assistants do not need to parse the 
 Fetch the curated index:
 
 ```text
-https://ktx.dev/llms.txt
+https://docs.kaelio.com/ktx/llms.txt
 ```
 
 Use this file to discover high-value pages, task-specific entry points, and Markdown URLs.
@@ -20,7 +20,7 @@ Use this file to discover high-value pages, task-specific entry points, and Mark
 Fetch the complete docs corpus:
 
 ```text
-https://ktx.dev/llms-full.txt
+https://docs.kaelio.com/ktx/llms-full.txt
 ```
 
 Use this when an assistant needs broad context across setup, concepts, CLI reference, integrations, and troubleshooting. Prefer the smaller per-page Markdown route for narrow tasks.
@@ -30,15 +30,15 @@ Use this when an assistant needs broad context across setup, concepts, CLI refer
 Every docs page has a Markdown route:
 
 ```text
-https://ktx.dev/docs/getting-started/quickstart.md
-https://ktx.dev/docs/cli-reference/ktx-agent.md
-https://ktx.dev/docs/guides/building-context.md
+https://docs.kaelio.com/ktx/docs/getting-started/quickstart.md
+https://docs.kaelio.com/ktx/docs/cli-reference/ktx-agent.md
+https://docs.kaelio.com/ktx/docs/guides/building-context.md
 ```
 
 Requests that ask for Markdown can also use the normal docs URL with `Accept: text/markdown`:
 
 ```bash
-curl -H "Accept: text/markdown" https://ktx.dev/docs/getting-started/quickstart
+curl -H "Accept: text/markdown" https://docs.kaelio.com/ktx/docs/getting-started/quickstart
 ```
 
 ## Recommended retrieval order
