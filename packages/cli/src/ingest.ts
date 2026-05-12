@@ -18,6 +18,7 @@ import {
 } from '@ktx/context/ingest';
 import { loadKtxProject } from '@ktx/context/project';
 import { readIngestReportSnapshotFile } from './ingest-report-file.js';
+import { createCliOperationalLogger } from './io/logger.js';
 import { createKtxCliLocalIngestAdapters } from './local-adapters.js';
 import type { KtxManagedPythonInstallPolicy } from './managed-python-command.js';
 import { type KtxMemoryFlowStdin, renderMemoryFlowInteractively } from './memory-flow-interactive.js';
@@ -142,22 +143,22 @@ function createMetabaseFanoutProgress(
   connectionId: string,
   io: KtxIngestIo,
 ): LocalMetabaseFanoutProgress {
-  io.stdout.write(`Metabase ingest: ${connectionId}\n`);
-  io.stdout.write('Checking mappings and scheduled-pull targets...\n');
+  io.stderr.write(`Metabase ingest: ${connectionId}\n`);
+  io.stderr.write('Checking mappings and scheduled-pull targets...\n');
   return {
     onMetabaseFanoutPlanned(event) {
-      io.stdout.write(`Targets: ${pluralize(event.children.length, 'mapped database')}\n`);
+      io.stderr.write(`Targets: ${pluralize(event.children.length, 'mapped database')}\n`);
       for (const child of event.children) {
-        io.stdout.write(`- database=${child.metabaseDatabaseId} target=${child.targetConnectionId} status=queued\n`);
+        io.stderr.write(`- database=${child.metabaseDatabaseId} target=${child.targetConnectionId} status=queued\n`);
       }
     },
     onMetabaseChildStarted(event) {
-      io.stdout.write(
+      io.stderr.write(
         `- database=${event.metabaseDatabaseId} target=${event.targetConnectionId} status=running job=${event.jobId}\n`,
       );
     },
     onMetabaseChildCompleted(event) {
-      io.stdout.write(
+      io.stderr.write(
         `- database=${event.metabaseDatabaseId} target=${event.targetConnectionId} status=${event.status} job=${event.jobId}\n`,
       );
     },
@@ -506,11 +507,13 @@ export async function runKtxIngest(
       const executeLocalIngest = deps.runLocalIngest ?? runLocalIngest;
       const localIngestOptions = deps.localIngestOptions ?? {};
       const managedDaemon = managedDaemonOptionsForIngestRun(args, io);
+      const operationalLogger = createCliOperationalLogger(io, args.outputMode);
       const adapterOptions = {
         ...(localIngestOptions.pullConfigOptions ?? {}),
         ...(args.databaseIntrospectionUrl ? { databaseIntrospectionUrl: args.databaseIntrospectionUrl } : {}),
         ...(managedDaemon ? { managedDaemon } : {}),
         ...(args.adapter === 'historic-sql' ? { historicSqlConnectionId: args.connectionId } : {}),
+        logger: operationalLogger,
       };
       if (args.adapter === 'metabase' && args.sourceDir) {
         throw new Error('source-dir uploads are not supported for the Metabase fan-out adapter');

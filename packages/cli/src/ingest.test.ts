@@ -14,6 +14,7 @@ import {
 import { initKtxProject, ktxLocalStateDbPath, loadKtxProject } from '@ktx/context/project';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type KtxIngestArgs, runKtxIngest } from './ingest.js';
+import type { KtxCliLocalIngestAdaptersOptions } from './local-adapters.js';
 import {
   CliLookerSlWritingAgentRunner,
   CliMetabaseAgentRunner,
@@ -229,7 +230,7 @@ describe('runKtxIngest', () => {
     expect(io.stdout()).toContain('Metabase fan-out: all_succeeded');
     expect(io.stdout()).toContain('warehouse_a');
     expect(io.stdout()).toContain('metabase-child-1');
-    expect(io.stderr()).toBe('');
+    expect(io.stderr()).toContain('Metabase ingest: prod-metabase');
   });
 
   it('returns a non-zero code when Metabase fan-out has failed children', async () => {
@@ -299,7 +300,7 @@ describe('runKtxIngest', () => {
     expect(io.stdout()).toContain('Metabase fan-out: partial_failure');
     expect(io.stdout()).toContain('Failed work units: 1');
     expect(io.stdout()).toContain('status=error');
-    expect(io.stderr()).toBe('');
+    expect(io.stderr()).toContain('Metabase ingest: prod-metabase');
   });
 
   it('prints Metabase fan-out progress before the final summary', async () => {
@@ -373,12 +374,56 @@ describe('runKtxIngest', () => {
       ),
     ).resolves.toBe(0);
 
-    expect(io.stdout()).toContain('Metabase ingest: prod-metabase');
-    expect(io.stdout()).toContain('Targets: 1 mapped database');
-    expect(io.stdout()).toContain('- database=1 target=warehouse_a status=running job=metabase-child-1');
-    expect(io.stdout()).toContain('- database=1 target=warehouse_a status=done job=metabase-child-1');
+    expect(io.stderr()).toContain('Metabase ingest: prod-metabase');
+    expect(io.stderr()).toContain('Targets: 1 mapped database');
+    expect(io.stderr()).toContain('- database=1 target=warehouse_a status=running job=metabase-child-1');
+    expect(io.stderr()).toContain('- database=1 target=warehouse_a status=done job=metabase-child-1');
     expect(io.stdout()).toContain('Metabase fan-out: all_succeeded');
-    expect(io.stderr()).toBe('');
+    expect(io.stdout()).not.toContain('status=running job=metabase-child-1');
+  });
+
+  it('writes metabase fan-out progress to stderr and final result to stdout', async () => {
+    const projectDir = join(tempDir, 'project');
+    await writeMetabaseConfig(projectDir);
+    const io = makeIo({ isTTY: true });
+
+    await expect(
+      runKtxIngest(
+        {
+          command: 'run',
+          projectDir,
+          connectionId: 'prod-metabase',
+          adapter: 'metabase',
+          outputMode: 'plain',
+        },
+        io.io,
+        {
+          runLocalMetabaseIngest: async (input) => {
+            input.progress?.onMetabaseFanoutPlanned?.({
+              metabaseConnectionId: 'prod-metabase',
+              children: [{ metabaseDatabaseId: 1, targetConnectionId: 'warehouse_a' }],
+            });
+            input.progress?.onMetabaseChildStarted?.({
+              metabaseConnectionId: 'prod-metabase',
+              metabaseDatabaseId: 1,
+              targetConnectionId: 'warehouse_a',
+              jobId: 'metabase-child-1',
+            });
+            return {
+              metabaseConnectionId: 'prod-metabase',
+              status: 'all_succeeded',
+              totals: { workUnits: 0, failedWorkUnits: 0 },
+              children: [],
+            };
+          },
+        },
+      ),
+    ).resolves.toBe(0);
+
+    expect(io.stderr()).toContain('Metabase ingest: prod-metabase');
+    expect(io.stderr()).toContain('status=running job=metabase-child-1');
+    expect(io.stdout()).toContain('Metabase fan-out: all_succeeded');
+    expect(io.stdout()).not.toContain('status=running job=metabase-child-1');
   });
 
   it('runs Metabase scheduled ingest through the public CLI command path with real fan-out', async () => {
@@ -463,7 +508,8 @@ describe('runKtxIngest', () => {
       ),
     ).resolves.toBe(0);
 
-    expect(io.stderr()).toBe('');
+    expect(io.stderr()).toContain('Metabase ingest: prod-metabase');
+    expect(io.stderr()).toContain('Targets: 2 mapped databases');
     expect(io.stdout()).toContain('Metabase fan-out: all_succeeded');
     expect(io.stdout()).toContain('Source: prod-metabase');
     expect(io.stdout()).toContain('Children: 2');
@@ -550,6 +596,46 @@ describe('runKtxIngest', () => {
       status: 'all_succeeded',
       children: [],
     });
+    expect(io.stderr()).toBe('');
+  });
+
+  it('keeps metabase JSON stdout free of operational adapter logs', async () => {
+    const projectDir = join(tempDir, 'project');
+    await writeMetabaseConfig(projectDir);
+    const io = makeIo();
+    let adapterOptions: KtxCliLocalIngestAdaptersOptions | undefined;
+
+    await expect(
+      runKtxIngest(
+        {
+          command: 'run',
+          projectDir,
+          connectionId: 'prod-metabase',
+          adapter: 'metabase',
+          outputMode: 'json',
+        },
+        io.io,
+        {
+          createAdapters: (_project, options) => {
+            adapterOptions = options;
+            options?.logger?.warn('adapter warning');
+            return [];
+          },
+          runLocalMetabaseIngest: async (input) => {
+            input.adapters.find((adapter) => adapter.source === 'metabase');
+            return {
+              metabaseConnectionId: 'prod-metabase',
+              status: 'all_succeeded',
+              totals: { workUnits: 0, failedWorkUnits: 0 },
+              children: [],
+            };
+          },
+        },
+      ),
+    ).resolves.toBe(0);
+
+    expect(adapterOptions?.logger).toEqual(expect.objectContaining({ warn: expect.any(Function) }));
+    expect(() => JSON.parse(io.stdout())).not.toThrow();
     expect(io.stderr()).toBe('');
   });
 
@@ -764,17 +850,22 @@ describe('runKtxIngest', () => {
       ),
     ).resolves.toBe(0);
 
-    expect(createAdapters).toHaveBeenCalledWith(expect.objectContaining({ projectDir }), {
-      databaseIntrospectionUrl: 'http://127.0.0.1:8765',
-    });
+    expect(createAdapters).toHaveBeenCalledWith(
+      expect.objectContaining({ projectDir }),
+      expect.objectContaining({
+        databaseIntrospectionUrl: 'http://127.0.0.1:8765',
+        logger: expect.any(Object),
+      }),
+    );
     expect(runLocal).toHaveBeenCalledWith(
       expect.objectContaining({
         adapters: createdAdapters,
         adapter: 'fake',
         connectionId: 'warehouse',
-        pullConfigOptions: {
+        pullConfigOptions: expect.objectContaining({
           databaseIntrospectionUrl: 'http://127.0.0.1:8765',
-        },
+          logger: expect.any(Object),
+        }),
       }),
     );
   });
@@ -817,14 +908,19 @@ describe('runKtxIngest', () => {
       installPolicy: 'auto',
       io: io.io,
     };
-    expect(createAdapters).toHaveBeenCalledWith(expect.objectContaining({ projectDir }), {
-      managedDaemon: expectedManagedDaemon,
-    });
+    expect(createAdapters).toHaveBeenCalledWith(
+      expect.objectContaining({ projectDir }),
+      expect.objectContaining({
+        managedDaemon: expectedManagedDaemon,
+        logger: expect.any(Object),
+      }),
+    );
     expect(runLocal).toHaveBeenCalledWith(
       expect.objectContaining({
-        pullConfigOptions: {
+        pullConfigOptions: expect.objectContaining({
           managedDaemon: expectedManagedDaemon,
-        },
+          logger: expect.any(Object),
+        }),
       }),
     );
   });
@@ -878,9 +974,13 @@ describe('runKtxIngest', () => {
       ),
     ).resolves.toBe(0);
 
-    expect(createAdapters).toHaveBeenCalledWith(expect.objectContaining({ projectDir }), {
-      historicSqlConnectionId: 'warehouse',
-    });
+    expect(createAdapters).toHaveBeenCalledWith(
+      expect.objectContaining({ projectDir }),
+      expect.objectContaining({
+        historicSqlConnectionId: 'warehouse',
+        logger: expect.any(Object),
+      }),
+    );
     expect(runLocal).toHaveBeenCalledWith(
       expect.objectContaining({
         adapters: createdAdapters,
@@ -982,9 +1082,39 @@ describe('runKtxIngest', () => {
     expect(stdout).toContain('[45%] Planned 1 work unit');
     expect(stdout).toContain('[80%] Processed 1/1 work units');
     expect(stdout).toContain('[100%] Ingest completed');
-    expect(stdout.indexOf('[5%] Fetching source files for warehouse/historic-sql')).toBeLessThan(
-      stdout.indexOf('Report: report-live-1'),
-    );
+    expect(stdout).toContain('Report: report-live-1');
+    expect(io.stderr()).toBe('');
+  });
+
+  it('writes plain TTY ingest progress and final report to stdout', async () => {
+    const projectDir = join(tempDir, 'project');
+    await writeWarehouseConfig(projectDir);
+    const sourceDir = join(tempDir, 'source');
+    await mkdir(join(sourceDir, 'orders'), { recursive: true });
+    await writeFile(join(sourceDir, 'orders', 'orders.json'), '{"name":"orders"}\n', 'utf-8');
+    const runLocal = vi.fn(async (input: RunLocalIngestOptions) => completedLocalBundleRun(input, 'local-job-1'));
+    const io = makeIo({ isTTY: true });
+
+    await expect(
+      runKtxIngest(
+        {
+          command: 'run',
+          projectDir,
+          connectionId: 'warehouse',
+          adapter: 'fake',
+          sourceDir,
+          outputMode: 'plain',
+        },
+        io.io,
+        {
+          env: interactiveEnv(),
+          runLocalIngest: runLocal,
+        },
+      ),
+    ).resolves.toBe(0);
+
+    expect(io.stdout()).toContain('[5%] Fetching source files for warehouse/fake');
+    expect(io.stdout()).toContain('Report: report-live-1');
     expect(io.stderr()).toBe('');
   });
 
@@ -1214,15 +1344,19 @@ describe('runKtxIngest', () => {
       ),
     ).resolves.toBe(0);
 
-    expect(createAdapters).toHaveBeenCalledWith(expect.objectContaining({ projectDir }), {
-      looker: {
-        parser: pullConfigOptions.looker.parser,
-      },
-    });
+    expect(createAdapters).toHaveBeenCalledWith(
+      expect.objectContaining({ projectDir }),
+      expect.objectContaining({
+        logger: expect.any(Object),
+        looker: {
+          parser: pullConfigOptions.looker.parser,
+        },
+      }),
+    );
     expect(runLocal).toHaveBeenCalledWith(
       expect.objectContaining({
         agentRunner,
-        pullConfigOptions,
+        pullConfigOptions: expect.objectContaining(pullConfigOptions),
       }),
     );
   });
