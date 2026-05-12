@@ -25,7 +25,7 @@ export function formatCommandTree(node: CommandTreeNode): string {
 function appendNode(node: CommandTreeNode, depth: number, lines: string[]): void {
   const indent = '  '.repeat(depth);
   const aliasPart = node.aliases.length > 0 ? ` (${node.aliases.join(', ')})` : '';
-  const descriptionPart = node.description.length > 0 ? ` - ${node.description}` : '';
+  const descriptionPart = node.description.length > 0 ? ` — ${node.description}` : '';
   lines.push(`${indent}${node.name}${aliasPart}${descriptionPart}`);
 
   const sortedChildren = [...node.children].sort((a, b) => a.name.localeCompare(b.name));

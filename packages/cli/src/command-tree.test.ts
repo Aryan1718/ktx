@@ -46,12 +46,12 @@ describe('walkCommandTree', () => {
 describe('formatCommandTree', () => {
   it('renders a single node with no children', () => {
     const node = { name: 'solo', description: 'just me', aliases: [], children: [] };
-    expect(formatCommandTree(node)).toBe('solo - just me\n');
+    expect(formatCommandTree(node)).toBe('solo — just me\n');
   });
 
   it('renders aliases in parentheses before the description', () => {
     const node = { name: 'cmd', description: 'does things', aliases: ['c', 'co'], children: [] };
-    expect(formatCommandTree(node)).toBe('cmd (c, co) - does things\n');
+    expect(formatCommandTree(node)).toBe('cmd (c, co) — does things\n');
   });
 
   it('omits the dash when description is empty', () => {
@@ -75,7 +75,7 @@ describe('formatCommandTree', () => {
       ],
     };
     expect(formatCommandTree(tree)).toBe(
-      'root - top\n' + '  alpha (al) - a\n' + '    inner - i\n' + '  beta - b\n',
+      'root — top\n' + '  alpha (al) — a\n' + '    inner — i\n' + '  beta — b\n',
     );
   });
 });

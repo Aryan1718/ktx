@@ -6,7 +6,7 @@ describe('renderKtxCommandTree', () => {
     const output = renderKtxCommandTree();
 
     const lines = output.split('\n');
-    expect(lines[0]).toMatch(/^ktx( |$|\s-)/);
+    expect(lines[0]).toMatch(/^ktx( |$|\s—)/);
 
     const topLevel = lines.filter((line) => /^ {2}\S/.test(line)).map((line) => line.trim().split(' ')[0]);
 
