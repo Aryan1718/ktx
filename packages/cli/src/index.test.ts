@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { initKtxProject } from '@ktx/context/project';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -308,6 +309,23 @@ describe('runKtxCli', () => {
     expect(testIo.stdout()).toContain('Usage: ktx [options] [command]');
     expect(setup).not.toHaveBeenCalled();
     expect(testIo.stderr()).toBe('');
+  });
+
+  it('keeps representative JSON command stdout parseable', async () => {
+    const projectDir = join(tempDir, 'project');
+    await initKtxProject({ projectDir, projectName: 'warehouse' });
+    const commands = [
+      ['--project-dir', projectDir, 'setup', 'status', '--json'],
+      ['--project-dir', projectDir, 'sl', 'list', '--json'],
+    ];
+
+    for (const argv of commands) {
+      const testIo = makeIo();
+      await expect(runKtxCli(argv, testIo.io)).resolves.toBe(0);
+
+      expect(() => JSON.parse(testIo.stdout())).not.toThrow();
+      expect(testIo.stderr()).toBe('');
+    }
   });
 
   it('starts setup for bare ktx in a TTY when no project is discoverable', async () => {

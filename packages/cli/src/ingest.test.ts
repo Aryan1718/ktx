@@ -399,11 +399,11 @@ describe('runKtxIngest', () => {
         io.io,
         {
           runLocalMetabaseIngest: async (input) => {
-            input.progress?.onMetabaseFanoutPlanned({
+            input.progress?.onMetabaseFanoutPlanned?.({
               metabaseConnectionId: 'prod-metabase',
               children: [{ metabaseDatabaseId: 1, targetConnectionId: 'warehouse_a' }],
             });
-            input.progress?.onMetabaseChildStarted({
+            input.progress?.onMetabaseChildStarted?.({
               metabaseConnectionId: 'prod-metabase',
               metabaseDatabaseId: 1,
               targetConnectionId: 'warehouse_a',
