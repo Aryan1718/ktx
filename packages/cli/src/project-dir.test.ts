@@ -36,72 +36,56 @@ describe('project directory defaults', () => {
     const ingest = vi.fn(async () => 0);
     const publicIngest = vi.fn(async () => 0);
     const scan = vi.fn(async () => 0);
-    const serveStdio = vi.fn(async () => 0);
     const setup = vi.fn(async () => 0);
     const agent = vi.fn(async () => 0);
-    const deps: KtxCliDeps = { agent, connection, demo, doctor, ingest, publicIngest, scan, serveStdio, setup };
+    const deps: KtxCliDeps = { agent, connection, demo, doctor, ingest, publicIngest, scan, setup };
 
     const cases: Array<{
       argv: string[];
       spy: ReturnType<typeof vi.fn>;
       expected: Record<string, unknown>;
-      runnerType: 'cli' | 'serve';
       expectedStderr: string;
     }> = [
       {
         argv: ['connection', 'list'],
         spy: connection,
         expected: { command: 'list', projectDir: '/tmp/ktx-env-project' },
-        runnerType: 'cli',
         expectedStderr: 'Project: /tmp/ktx-env-project\n',
       },
       {
         argv: ['setup', 'demo', 'scan', '--no-input'],
         spy: demo,
         expected: { command: 'scan', projectDir: '/tmp/ktx-env-project' },
-        runnerType: 'cli',
         expectedStderr: 'Project: /tmp/ktx-env-project\n',
       },
       {
-        argv: ['dev', 'doctor', '--no-input'],
+        argv: ['status', '--no-input'],
         spy: doctor,
         expected: { command: 'project', projectDir: '/tmp/ktx-env-project' },
-        runnerType: 'cli',
         expectedStderr: 'Project: /tmp/ktx-env-project\n',
       },
       {
         argv: ['ingest', 'status', 'run-1'],
         spy: publicIngest,
         expected: { command: 'status', projectDir: '/tmp/ktx-env-project', runId: 'run-1' },
-        runnerType: 'cli',
         expectedStderr: 'Project: /tmp/ktx-env-project\n',
       },
       {
         argv: ['setup', 'status'],
         spy: setup,
         expected: { command: 'status', projectDir: '/tmp/ktx-env-project' },
-        runnerType: 'cli',
         expectedStderr: 'Project: /tmp/ktx-env-project\n',
       },
       {
         argv: ['dev', 'scan', 'warehouse'],
         spy: scan,
         expected: { command: 'run', projectDir: '/tmp/ktx-env-project', connectionId: 'warehouse' },
-        runnerType: 'cli',
         expectedStderr: 'Project: /tmp/ktx-env-project\n',
-      },
-      {
-        argv: ['serve', '--mcp', 'stdio'],
-        spy: serveStdio,
-        expected: { mcp: 'stdio', projectDir: '/tmp/ktx-env-project' },
-        runnerType: 'serve',
-        expectedStderr: '',
       },
       {
         argv: ['agent', 'tools', '--json'],
         spy: agent,
         expected: { command: 'tools', projectDir: '/tmp/ktx-env-project' },
-        runnerType: 'cli',
         expectedStderr: '',
       },
     ];
@@ -109,11 +93,7 @@ describe('project directory defaults', () => {
     for (const item of cases) {
       const testIo = makeIo();
       await expect(runKtxCli(item.argv, testIo.io, deps)).resolves.toBe(0);
-      if (item.runnerType === 'serve') {
-        expect(item.spy).toHaveBeenLastCalledWith(expect.objectContaining(item.expected));
-      } else {
-        expect(item.spy).toHaveBeenLastCalledWith(expect.objectContaining(item.expected), testIo.io);
-      }
+      expect(item.spy).toHaveBeenLastCalledWith(expect.objectContaining(item.expected), testIo.io);
       expect(testIo.stderr()).toBe(item.expectedStderr);
     }
   });

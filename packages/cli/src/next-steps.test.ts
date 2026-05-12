@@ -44,22 +44,15 @@ describe('KTX demo next steps', () => {
         command: 'ktx wiki list',
         description: 'Inspect generated wiki pages',
       },
-      {
-        command: 'ktx serve --mcp stdio --user-id local',
-        description: 'Optional MCP server route for clients that require MCP',
-      },
     ]);
   });
 
-  it('prefers the direct CLI route before MCP serving', () => {
+  it('uses only the direct CLI route for agent verification', () => {
     const commands = KTX_NEXT_STEP_COMMANDS.map((step) => step.command);
 
-    expect(commands.indexOf('ktx agent context --json')).toBeLessThan(
-      commands.indexOf('ktx serve --mcp stdio --user-id local'),
-    );
-    expect(commands.indexOf('ktx agent tools --json')).toBeLessThan(
-      commands.indexOf('ktx serve --mcp stdio --user-id local'),
-    );
+    expect(commands).toContain('ktx agent context --json');
+    expect(commands).toContain('ktx agent tools --json');
+    expect(commands).not.toContain('ktx serve --mcp stdio --user-id local');
   });
 
   it('explains what the next-step commands are for', () => {

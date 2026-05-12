@@ -149,7 +149,7 @@ export async function findPythonArtifacts(pythonDir) {
       files,
       RUNTIME_WHEEL_DISTRIBUTION_NAME,
       '.whl',
-      'kaelio-ktx runtime wheel',
+      'kaelio-ktx dev runtime wheel',
       pythonDir,
       RUNTIME_WHEEL_PACKAGE_VERSION,
     ),
@@ -594,8 +594,8 @@ try {
   requireOutput('ktx public package version', version, /@kaelio\\/ktx 0\\.1\\.0/);
 
   const runtimeStatusBefore = parseJsonResult(
-    'ktx runtime status missing',
-    await run('pnpm', ['exec', 'ktx', 'runtime', 'status', '--json']),
+    'ktx dev runtime status missing',
+    await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'status', '--json']),
   );
   assert.equal(runtimeStatusBefore.kind, 'missing');
   assert.equal(runtimeStatusBefore.layout.runtimeRoot, process.env.KTX_RUNTIME_ROOT);
@@ -835,8 +835,8 @@ try {
   requireOutput('ktx sl query first managed runtime install', slQuery, /orders/);
 
   const runtimeStatusAfter = parseJsonResult(
-    'ktx runtime status ready',
-    await run('pnpm', ['exec', 'ktx', 'runtime', 'status', '--json']),
+    'ktx dev runtime status ready',
+    await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'status', '--json']),
   );
   assert.equal(runtimeStatusAfter.kind, 'ready');
   assert.deepEqual(runtimeStatusAfter.manifest.features, ['core']);
@@ -864,51 +864,51 @@ try {
   requireOutput('ktx sl query sqlite execute', sqliteSlQuery, /"rows": \\[\\s*\\[\\s*3\\s*\\]\\s*\\]/);
   process.stdout.write('ktx sl query sqlite execute verified\\n');
 
-  const runtimeDoctor = await run('pnpm', ['exec', 'ktx', 'runtime', 'doctor']);
-  requireSuccess('ktx runtime doctor', runtimeDoctor);
-  requireOutput('ktx runtime doctor', runtimeDoctor, /PASS uv/);
-  requireOutput('ktx runtime doctor', runtimeDoctor, /PASS Bundled Python wheel/);
-  requireOutput('ktx runtime doctor', runtimeDoctor, /PASS Managed Python runtime/);
-  process.stdout.write('ktx runtime doctor verified\\n');
+  const runtimeDoctor = await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'doctor']);
+  requireSuccess('ktx dev runtime doctor', runtimeDoctor);
+  requireOutput('ktx dev runtime doctor', runtimeDoctor, /PASS uv/);
+  requireOutput('ktx dev runtime doctor', runtimeDoctor, /PASS Bundled Python wheel/);
+  requireOutput('ktx dev runtime doctor', runtimeDoctor, /PASS Managed Python runtime/);
+  process.stdout.write('ktx dev runtime doctor verified\\n');
 
-  const runtimeStart = await run('pnpm', ['exec', 'ktx', 'runtime', 'start']);
-  requireSuccess('ktx runtime start', runtimeStart);
+  const runtimeStart = await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'start']);
+  requireSuccess('ktx dev runtime start', runtimeStart);
   daemonStarted = true;
-  requireOutput('ktx runtime start', runtimeStart, /Started KTX Python daemon/);
-  requireOutput('ktx runtime start', runtimeStart, /url: http:\\/\\/127\\.0\\.0\\.1:\\d+/);
-  requireOutput('ktx runtime start', runtimeStart, /features: core/);
+  requireOutput('ktx dev runtime start', runtimeStart, /Started KTX Python daemon/);
+  requireOutput('ktx dev runtime start', runtimeStart, /url: http:\\/\\/127\\.0\\.0\\.1:\\d+/);
+  requireOutput('ktx dev runtime start', runtimeStart, /features: core/);
 
-  const runtimeStartReuse = await run('pnpm', ['exec', 'ktx', 'runtime', 'start']);
-  requireSuccess('ktx runtime start reuse', runtimeStartReuse);
-  requireOutput('ktx runtime start reuse', runtimeStartReuse, /Using existing KTX Python daemon/);
-  requireOutput('ktx runtime start reuse', runtimeStartReuse, /features: core/);
+  const runtimeStartReuse = await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'start']);
+  requireSuccess('ktx dev runtime start reuse', runtimeStartReuse);
+  requireOutput('ktx dev runtime start reuse', runtimeStartReuse, /Using existing KTX Python daemon/);
+  requireOutput('ktx dev runtime start reuse', runtimeStartReuse, /features: core/);
 
-  const runtimeStop = await run('pnpm', ['exec', 'ktx', 'runtime', 'stop']);
-  requireSuccess('ktx runtime stop', runtimeStop);
+  const runtimeStop = await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'stop']);
+  requireSuccess('ktx dev runtime stop', runtimeStop);
   daemonStarted = false;
-  requireOutput('ktx runtime stop', runtimeStop, /Stopped KTX Python daemon/);
-  process.stdout.write('ktx runtime daemon lifecycle verified\\n');
+  requireOutput('ktx dev runtime stop', runtimeStop, /Stopped KTX Python daemon/);
+  process.stdout.write('ktx dev runtime daemon lifecycle verified\\n');
 
   const staleRuntimeDir = join(process.env.KTX_RUNTIME_ROOT, '0.0.0');
   await mkdir(staleRuntimeDir, { recursive: true });
 
-  const runtimePruneDryRun = await run('pnpm', ['exec', 'ktx', 'runtime', 'prune', '--dry-run']);
-  requireSuccess('ktx runtime prune dry run', runtimePruneDryRun);
-  requireOutput('ktx runtime prune dry run', runtimePruneDryRun, /Stale KTX Python runtimes/);
-  requireOutput('ktx runtime prune dry run', runtimePruneDryRun, /0\\.0\\.0/);
+  const runtimePruneDryRun = await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'prune', '--dry-run']);
+  requireSuccess('ktx dev runtime prune dry run', runtimePruneDryRun);
+  requireOutput('ktx dev runtime prune dry run', runtimePruneDryRun, /Stale KTX Python runtimes/);
+  requireOutput('ktx dev runtime prune dry run', runtimePruneDryRun, /0\\.0\\.0/);
   await access(staleRuntimeDir);
 
-  const runtimePruneNeedsConfirmation = await run('pnpm', ['exec', 'ktx', 'runtime', 'prune']);
-  assert.equal(runtimePruneNeedsConfirmation.code, 1, 'ktx runtime prune needs confirmation');
-  assert.equal(runtimePruneNeedsConfirmation.stdout, '', 'ktx runtime prune needs confirmation wrote stdout');
+  const runtimePruneNeedsConfirmation = await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'prune']);
+  assert.equal(runtimePruneNeedsConfirmation.code, 1, 'ktx dev runtime prune needs confirmation');
+  assert.equal(runtimePruneNeedsConfirmation.stdout, '', 'ktx dev runtime prune needs confirmation wrote stdout');
   assert.match(runtimePruneNeedsConfirmation.stderr, /Refusing to prune without --yes/);
 
-  const runtimePruneConfirmed = await run('pnpm', ['exec', 'ktx', 'runtime', 'prune', '--yes']);
-  requireSuccess('ktx runtime prune confirmed', runtimePruneConfirmed);
-  requireOutput('ktx runtime prune confirmed', runtimePruneConfirmed, /Removed stale KTX Python runtimes/);
-  requireOutput('ktx runtime prune confirmed', runtimePruneConfirmed, /0\\.0\\.0/);
+  const runtimePruneConfirmed = await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'prune', '--yes']);
+  requireSuccess('ktx dev runtime prune confirmed', runtimePruneConfirmed);
+  requireOutput('ktx dev runtime prune confirmed', runtimePruneConfirmed, /Removed stale KTX Python runtimes/);
+  requireOutput('ktx dev runtime prune confirmed', runtimePruneConfirmed, /0\\.0\\.0/);
   await assert.rejects(() => access(staleRuntimeDir));
-  process.stdout.write('ktx runtime prune verified\\n');
+  process.stdout.write('ktx dev runtime prune verified\\n');
 
   const structuralScan = await run('pnpm', ['exec', 'ktx', 'dev', 'scan', 'warehouse',
     '--project-dir',
@@ -992,7 +992,7 @@ try {
   process.stdout.write('ktx dev ingest provider guard verified\\n');
 } finally {
   if (daemonStarted) {
-    await run('pnpm', ['exec', 'ktx', 'runtime', 'stop']);
+    await run('pnpm', ['exec', 'ktx', 'dev', 'runtime', 'stop']);
   }
   if (previousRuntimeRoot === undefined) {
     delete process.env.KTX_RUNTIME_ROOT;
@@ -1122,11 +1122,11 @@ try {
   );
   process.stdout.write('ktx seeded demo agent sl search verified\\n');
 
-  const doctor = await run('pnpm', ['exec', 'ktx', 'dev', 'doctor', 'setup', '--no-input']);
-  assert.ok([0, 1].includes(doctor.code), 'ktx dev doctor setup exit code must be 0 or 1');
-  requireStdout('ktx dev doctor setup', doctor, /KTX setup doctor/);
-  requireStdout('ktx dev doctor setup', doctor, /Node 22\\+/);
-  assert.equal(doctor.stderr, 'Project: ' + process.cwd() + '\\n', 'ktx dev doctor setup wrote unexpected stderr');
+  const doctor = await run('pnpm', ['exec', 'ktx', 'status', '--no-input']);
+  assert.ok([0, 1].includes(doctor.code), 'ktx status setup exit code must be 0 or 1');
+  requireStdout('ktx status setup', doctor, /KTX setup doctor/);
+  requireStdout('ktx status setup', doctor, /Node 22\\+/);
+  assert.equal(doctor.stderr, '', 'ktx status setup wrote unexpected stderr');
 } finally {
   await rm(root, { recursive: true, force: true });
 }

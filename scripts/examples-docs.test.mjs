@@ -71,7 +71,7 @@ describe('standalone example docs', () => {
     assert.match(examples, /unified Historic SQL artifacts/);
     assert.match(readme, /--enable-historic-sql/);
     assert.match(readme, /--historic-sql-min-executions 2/);
-    assert.match(readme, /ktx dev doctor --project-dir/);
+    assert.match(readme, /ktx status --project-dir/);
     assert.match(readme, /Postgres Historic SQL/);
     assert.match(readme, /manifest\.json/);
     assert.match(readme, /tables\/\*\.json/);
@@ -152,33 +152,20 @@ describe('standalone example docs', () => {
     assert.match(contributing, /ktx-daemon\/\s+# Daemon/);
   });
 
-  it('documents every standalone MCP tool that the CLI server exposes', async () => {
+  it('documents agent-facing CLI commands', async () => {
     const servingAgents = await readText('docs-site/content/docs/guides/serving-agents.mdx');
 
-    for (const tool of [
-      'connection_list',
-      'connection_test',
-      'knowledge_search',
-      'knowledge_read',
-      'knowledge_write',
-      'sl_list_sources',
-      'sl_read_source',
-      'sl_write_source',
-      'sl_validate',
-      'sl_query',
-      'scan_trigger',
-      'scan_status',
-      'scan_report',
-      'scan_list_artifacts',
-      'scan_read_artifact',
-      'ingest_trigger',
-      'ingest_status',
-      'ingest_report',
-      'ingest_replay',
-      'memory_capture',
-      'memory_capture_status',
+    for (const command of [
+      'ktx agent tools --json',
+      'ktx agent context --json',
+      'ktx agent sl list --json',
+      'ktx agent sl read orders --json',
+      'ktx agent sl query --json',
+      'ktx agent wiki search "revenue recognition" --json',
+      'ktx agent wiki read order-status-definitions --json',
+      'ktx agent sql execute --json',
     ]) {
-      assert.match(servingAgents, new RegExp(`\`${tool}\``));
+      assert.match(servingAgents, new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     }
   });
 
@@ -199,14 +186,14 @@ describe('standalone example docs', () => {
 
     assert.match(rootReadme, publicPackagePattern('npm install -g {package}'));
     assert.match(quickstart, publicPackagePattern('npm install -g {package}'));
-    assert.match(quickstart, /ktx runtime install --feature local-embeddings --yes/);
-    assert.match(quickstart, /ktx runtime start --feature local-embeddings/);
-    assert.match(quickstart, /Install `uv`, run `ktx runtime doctor`/);
+    assert.match(quickstart, /ktx dev runtime install --feature local-embeddings --yes/);
+    assert.match(quickstart, /ktx dev runtime start --feature local-embeddings/);
+    assert.match(quickstart, /Install `uv`, run `ktx dev runtime doctor`/);
     assert.match(packageArtifacts, /requires `uv` on `PATH`/);
-    assert.match(packageArtifacts, /ktx runtime status/);
-    assert.match(packageArtifacts, /ktx runtime doctor/);
-    assert.match(packageArtifacts, /ktx runtime prune --dry-run/);
-    assert.match(packageArtifacts, /ktx runtime prune --yes/);
+    assert.match(packageArtifacts, /ktx dev runtime status/);
+    assert.match(packageArtifacts, /ktx dev runtime doctor/);
+    assert.match(packageArtifacts, /ktx dev runtime prune --dry-run/);
+    assert.match(packageArtifacts, /ktx dev runtime prune --yes/);
     assert.match(
       packageArtifacts,
       new RegExp(
@@ -215,7 +202,7 @@ describe('standalone example docs', () => {
         )}\` runtime wheel`,
       ),
     );
-    assert.match(rootReadme, /ktx serve --mcp stdio/);
+    assert.doesNotMatch(rootReadme, /ktx serve --mcp stdio/);
     assert.doesNotMatch(rootReadme, /uv run ktx-daemon serve-http/);
     assert.doesNotMatch(rootReadme, /--semantic-compute-url http:\/\/127\.0\.0\.1:8765/);
   });
@@ -237,10 +224,10 @@ describe('standalone example docs', () => {
     assert.doesNotMatch(readme, /standalone Python distributions/);
     assert.doesNotMatch(readme, /installs the Python artifacts directly/);
     assert.match(readme, /requires `uv` on `PATH`/);
-    assert.match(readme, /ktx runtime status/);
-    assert.match(readme, /ktx runtime doctor/);
-    assert.match(readme, /ktx runtime prune --dry-run/);
-    assert.match(readme, /ktx runtime prune --yes/);
+    assert.match(readme, /ktx dev runtime status/);
+    assert.match(readme, /ktx dev runtime doctor/);
+    assert.match(readme, /ktx dev runtime prune --dry-run/);
+    assert.match(readme, /ktx dev runtime prune --yes/);
     assert.doesNotMatch(readme, /@ktx\/context/);
     assert.doesNotMatch(readme, /@ktx\/cli/);
     assert.doesNotMatch(readme, /python -m ktx_daemon semantic-validate/);

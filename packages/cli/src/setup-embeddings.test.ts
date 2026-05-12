@@ -245,7 +245,7 @@ describe('setup embeddings step', () => {
     const io = makeIo();
     const ensureLocalEmbeddings = vi.fn(async () => {
       throw new Error(
-        'KTX Python runtime is required for this command. Run: ktx runtime install --feature local-embeddings --yes',
+        'KTX Python runtime is required for this command. Run: ktx dev runtime install --feature local-embeddings --yes',
       );
     });
 
@@ -263,7 +263,7 @@ describe('setup embeddings step', () => {
 
     expect(result.status).toBe('failed');
     expect(io.stderr()).toContain(
-      'KTX Python runtime is required for this command. Run: ktx runtime install --feature local-embeddings --yes',
+      'KTX Python runtime is required for this command. Run: ktx dev runtime install --feature local-embeddings --yes',
     );
   });
 
@@ -290,7 +290,7 @@ describe('setup embeddings step', () => {
     expect(config.setup?.completed_steps ?? []).not.toContain('embeddings');
     expect(config.ingest.embeddings.backend).toBe('deterministic');
     expect(io.stderr()).toContain('Local embedding health check failed: 401 invalid api key [redacted]');
-    expect(io.stderr()).toContain('Prepare the runtime with: ktx runtime start --feature local-embeddings');
+    expect(io.stderr()).toContain('Prepare the runtime with: ktx dev runtime start --feature local-embeddings');
     expect(io.stderr()).not.toContain('skip for now');
   });
 

@@ -28,7 +28,7 @@ describe('Conductor workspace scripts', () => {
     assert.match(setupScript, /pnpm install --frozen-lockfile --prefer-offline/);
     assert.match(setupScript, /pnpm run native:rebuild/);
     assert.match(setupScript, /pnpm run build/);
-    assert.match(setupScript, /packages\/cli\/dist\/bin\.js dev doctor setup --no-input/);
+    assert.match(setupScript, /packages\/cli\/dist\/bin\.js status --no-input/);
     assert.doesNotMatch(setupScript, /scripts\/conductor\//);
   });
 

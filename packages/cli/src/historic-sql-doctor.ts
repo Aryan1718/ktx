@@ -63,7 +63,7 @@ function capabilityFailureFix(error: unknown, connectionId: string, projectDir: 
   if (error instanceof Error && error.name === 'HistoricSqlVersionUnsupportedError') {
     return 'Use PostgreSQL 14 or newer, or disable historicSql for this connection';
   }
-  return `Fix connections.${connectionId} Postgres settings, then rerun \`ktx dev doctor --project-dir ${projectDir}\``;
+  return `Fix connections.${connectionId} Postgres settings, then rerun \`ktx status --project-dir ${projectDir}\``;
 }
 
 function failureDetail(error: unknown): string {
@@ -143,7 +143,7 @@ export async function runPostgresHistoricSqlDoctorChecks(
             checkId(connectionId),
             label,
             readinessDetail(result),
-            `Update the Postgres parameter group or config, then rerun \`ktx dev doctor --project-dir ${project.projectDir}\``,
+            `Update the Postgres parameter group or config, then rerun \`ktx status --project-dir ${project.projectDir}\``,
           ),
         );
       } else {

@@ -2,9 +2,9 @@
 
 ## local-warehouse
 
-`local-warehouse/` is a runnable standalone KTX project for local CLI and MCP
-smoke testing. It uses the fake ingest adapter and does not require a database
-or external app server.
+`local-warehouse/` is a runnable standalone KTX project for local CLI smoke
+testing. It uses the fake ingest adapter and does not require a database or
+external app server.
 
 Copy it before running commands:
 

@@ -52,8 +52,8 @@ export interface ManagedPythonSemanticLayerComputeOptions extends ManagedPythonC
 
 export function managedRuntimeInstallCommand(feature: KtxRuntimeFeature): string {
   return feature === 'local-embeddings'
-    ? 'ktx runtime install --feature local-embeddings --yes'
-    : 'ktx runtime install --yes';
+    ? 'ktx dev runtime install --feature local-embeddings --yes'
+    : 'ktx dev runtime install --yes';
 }
 
 function installPrompt(feature: KtxRuntimeFeature): string {

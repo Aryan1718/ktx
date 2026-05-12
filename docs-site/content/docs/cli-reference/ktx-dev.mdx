@@ -16,8 +16,7 @@ ktx dev <subcommand> [options]
 | Subcommand | Description |
 |-----------|-------------|
 | `init [directory]` | Initialize a Git-backed KTX project directory |
-| `doctor` | Check KTX setup, project, and demo readiness |
-| `doctor setup` | Check KTX install, build, and local runtime readiness |
+| `runtime` | Install, inspect, and prune the KTX-managed Python runtime |
 | `scan` | Run or inspect standalone connection scans |
 | `ingest run` | Run local ingest for one configured connection and source adapter |
 | `ingest status [runId]` | Print status for a stored local ingest run |
@@ -35,19 +34,14 @@ ktx dev <subcommand> [options]
 | `--name <name>` | Project name written to `ktx.yaml` | — |
 | `--force` | Rewrite `ktx.yaml` and scaffold files in an existing project | `false` |
 
-### `dev doctor`
+### `dev runtime`
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `--feature <feature>` | Runtime feature level for `install` and `start` (`core` or `local-embeddings`) | `core` |
 | `--json` | Print JSON output | `false` |
-| `--no-input` | Disable interactive terminal input | — |
-
-### `dev doctor setup`
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--json` | Print JSON output | `false` |
-| `--no-input` | Disable interactive terminal input | — |
+| `--yes` | Confirm runtime install or prune actions where supported | `false` |
+| `--force` | Reinstall or restart where supported | `false` |
 
 ### `dev scan`
 
@@ -115,11 +109,11 @@ ktx dev init ./my-project --name "Analytics Context"
 # Re-initialize an existing project
 ktx dev init --force
 
-# Check project readiness
-ktx dev doctor
+# Check managed Python runtime readiness
+ktx dev runtime doctor
 
-# Check CLI install readiness
-ktx dev doctor setup
+# Start the managed Python daemon
+ktx dev runtime start
 
 # Run a low-level ingest with a specific adapter
 ktx dev ingest run --connection-id my-dbt --adapter dbt

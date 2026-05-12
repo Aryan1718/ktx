@@ -44,8 +44,8 @@ export async function runSetupDev(options = {}) {
     {
       name: 'doctor setup',
       command: process.execPath,
-      args: ['packages/cli/dist/bin.js', 'dev', 'doctor', 'setup', '--no-input'],
-      retry: 'pnpm run ktx -- dev doctor setup --no-input',
+      args: ['packages/cli/dist/bin.js', 'status', '--no-input'],
+      retry: 'pnpm run ktx -- status --no-input',
     },
   ];
 

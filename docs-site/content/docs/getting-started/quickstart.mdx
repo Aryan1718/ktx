@@ -75,8 +75,8 @@ KTX uses embeddings for semantic search over sources, wiki content, schema metad
 **Local embeddings** use `all-MiniLM-L6-v2` (384 dimensions) via the KTX managed Python runtime. No API key is needed. KTX can install and start the runtime during setup; to prepare it ahead of time, run:
 
 ```bash
-ktx runtime install --feature local-embeddings --yes
-ktx runtime start --feature local-embeddings
+ktx dev runtime install --feature local-embeddings --yes
+ktx dev runtime start --feature local-embeddings
 ```
 
 ## Step 3: Connect a database
@@ -183,8 +183,6 @@ The final step connects KTX to your coding agent. Choose how agents should acces
 ```
 ◆  How should agents use this KTX project?
 │  ○ CLI tools and skills
-│  ○ MCP server config
-│  ○ Both
 ```
 
 Then select which agents to install for:
@@ -200,9 +198,7 @@ Then select which agents to install for:
 
 **CLI mode** writes a skill file (e.g., `.claude/skills/ktx/SKILL.md`) that teaches the agent to call KTX commands directly.
 
-**MCP mode** writes an MCP server configuration (e.g., `.mcp.json`) that lets the agent call KTX tools like `sl_query`, `knowledge_search`, and `sl_write_source` over the Model Context Protocol.
-
-**Custom agent** uses the universal `.agents` target for agents that can read project-local skills or MCP configuration.
+**Custom agent** uses the universal `.agents` target for agents that can read project-local skills.
 
 ## Generated files
 
@@ -215,7 +211,6 @@ KTX writes project state as plain files so agents can inspect and edit changes i
 | `semantic-layer/<connection-id>/*.yaml` | context build, ingestion, or `ktx sl write` | Semantic source definitions agents use for SQL generation |
 | `knowledge/global/*.md` | ingestion or `ktx wiki write --scope global` | Shared business context and metric definitions |
 | `knowledge/user/<user-id>/*.md` | `ktx wiki write --scope user` | User-scoped notes for one agent/user context |
-| `.mcp.json`, `.cursor/mcp.json`, `.agents/mcp/ktx.json`, `.opencode/mcp.json` | agent integration setup | MCP server configuration for supported agent clients |
 | `.claude/skills/ktx/SKILL.md`, `.agents/skills/ktx/SKILL.md` | CLI-mode agent integration setup | Agent instructions for calling `ktx agent` commands |
 
 ## Verify it worked
@@ -244,10 +239,10 @@ Agent integration ready: yes (claude-code:project)
 | `ktx: command not found` | The KTX package is not installed globally, or the shell cannot find the global binary | Run `npm install -g @kaelio/ktx` and open a new shell |
 | LLM health check fails | Missing, invalid, or unauthorized Anthropic API key | Export `ANTHROPIC_API_KEY` or rerun `ktx setup` and choose the file-backed secret option |
 | OpenAI embedding check fails | `OPENAI_API_KEY` is missing when OpenAI embeddings are selected | Export `OPENAI_API_KEY`, or rerun setup and choose local sentence-transformers embeddings |
-| Local embeddings hang or fail | The managed Python runtime cannot start or the local model runtime is unavailable | Install `uv`, run `ktx runtime doctor`, then run `ktx runtime install --feature local-embeddings --yes` and rerun setup |
+| Local embeddings hang or fail | The managed Python runtime cannot start or the local model runtime is unavailable | Install `uv`, run `ktx dev runtime doctor`, then run `ktx dev runtime install --feature local-embeddings --yes` and rerun setup |
 | Database connection test fails | Credentials, network access, warehouse, database, or schema value is wrong | Test the same URL with the database's native client, then rerun `ktx connection add ... --force` or rerun setup |
 | `KTX context built: no` in `ktx status` | Setup saved configuration but did not build context | Run `ktx setup context build` or rerun `ktx setup` and choose to build context now |
-| Agent integration is incomplete | Setup skipped the agents step or the target was not installed | Run `ktx setup --agents --target codex --agent-install-mode both --project` using the target you need |
+| Agent integration is incomplete | Setup skipped the agents step or the target was not installed | Run `ktx setup --agents --target codex --project` using the target you need |
 
 ## Next steps
 

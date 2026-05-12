@@ -1,9 +1,11 @@
 ---
 title: "ktx status"
-description: "Show current project status."
+description: "Check KTX setup and project readiness."
 ---
 
-Print the current setup status of your KTX project — which steps are complete, which need attention, and whether the project is ready for agents.
+Run the KTX readiness doctor. Inside a KTX project, this checks setup,
+project configuration, semantic search, connections, and related diagnostics.
+Outside a project, it checks local CLI setup readiness.
 
 ## Command signature
 
@@ -16,6 +18,7 @@ ktx status [options]
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--json` | Print JSON output | `false` |
+| `--no-input` | Disable interactive terminal input | — |
 
 ## Examples
 
@@ -23,22 +26,26 @@ ktx status [options]
 # Show project status
 ktx status
 
-# Get status as JSON (useful for scripting)
-ktx status --json
+# Get status as JSON without interactive input
+ktx status --json --no-input
 ```
 
 ## Output
 
-`ktx status` prints readiness for each setup area. Agents should use `ktx status --json` when they need to branch on readiness state.
+`ktx status` prints doctor checks. Agents should use `ktx status --json --no-input`
+when they need to branch on readiness state.
 
 ```json
 {
-  "projectReady": true,
-  "llmReady": true,
-  "embeddingsReady": true,
-  "primarySourcesConfigured": true,
-  "contextBuilt": true,
-  "agentIntegrationReady": true
+  "title": "KTX project doctor",
+  "checks": [
+    {
+      "id": "project-config",
+      "label": "Project config",
+      "status": "pass",
+      "detail": "warehouse"
+    }
+  ]
 }
 ```
 
@@ -46,6 +53,6 @@ ktx status --json
 
 | Error | Cause | Recovery |
 |-------|-------|----------|
-| No KTX project found | Current directory has no `ktx.yaml` and `KTX_PROJECT_DIR` is unset | Run from a KTX project or set `KTX_PROJECT_DIR` |
-| Project ready is false | One or more setup steps are incomplete | Run `ktx setup` to resume setup |
-| Agent integration ready is false | No agent target has been installed | Run `ktx setup --agents --target <target>` |
+| No KTX project found | Current directory has no `ktx.yaml` and `KTX_PROJECT_DIR` is unset | `ktx status` runs setup checks; run from a KTX project or set `KTX_PROJECT_DIR` for project checks |
+| Project config check fails | The project directory is missing or has an invalid `ktx.yaml` | Run `ktx setup` to resume setup |
+| Semantic search check warns | Embeddings are not configured or the provider probe failed | Run `ktx setup` or inspect the check's `fix` field in JSON output |

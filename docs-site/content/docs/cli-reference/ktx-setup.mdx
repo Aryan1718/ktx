@@ -49,7 +49,6 @@ ktx setup [options]
 | `--agents` | Install agent integration only | `false` |
 | `--target <target>` | Agent target (`claude-code`, `codex`, `cursor`, `opencode`, `universal`) | — |
 | `--agent-scope <scope>` | Agent install scope (`project` or `global`) | `project` |
-| `--agent-install-mode <mode>` | Agent install mode (`cli`, `mcp`, or `both`) | `cli` |
 | `--project` | Install agent integration into the project scope | `false` |
 | `--global` | Install agent integration into the global target scope (Claude Code and Codex only) | `false` |
 | `--skip-agents` | Leave agent integration incomplete for now | `false` |
@@ -196,4 +195,4 @@ Agent integration ready: yes (codex:project)
 | Setup resumes an unexpected project | `KTX_PROJECT_DIR` or nearest `ktx.yaml` points to another directory | Pass `--project-dir <path>` explicitly |
 | Health check for model fails | Provider key or model id is invalid | Set the correct environment variable or secret file and rerun setup |
 | Setup cannot run in CI | Interactive prompts need a TTY | Use `--yes --no-input` with explicit flags for required values |
-| Agent integration missing | Setup skipped the agents step | Run `ktx setup --agents --target <target> --agent-install-mode both` |
+| Agent integration missing | Setup skipped the agents step | Run `ktx setup --agents --target <target>` |

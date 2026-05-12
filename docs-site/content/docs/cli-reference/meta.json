@@ -8,7 +8,6 @@
     "ktx-ingest",
     "ktx-sl",
     "ktx-wiki",
-    "ktx-serve",
     "ktx-status",
     "ktx-agent",
     "ktx-dev"

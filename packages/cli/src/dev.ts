@@ -3,8 +3,8 @@ import type { Command } from '@commander-js/extra-typings';
 import { type CommandWithGlobalOptions, type KtxCliCommandContext, resolveCommandProjectDir } from './cli-program.js';
 import { registerCompletionCommands } from './commands/completion-commands.js';
 import { registerConnectionMappingCommands } from './commands/connection-commands.js';
-import { registerDoctorCommands } from './commands/doctor-commands.js';
 import { registerIngestCommands } from './commands/ingest-commands.js';
+import { registerRuntimeCommands } from './commands/runtime-commands.js';
 import { registerScanCommands } from './commands/scan-commands.js';
 import { profileMark } from './startup-profile.js';
 
@@ -50,7 +50,7 @@ export function registerDevCommands(program: Command, context: KtxCliCommandCont
       },
     );
 
-  registerDoctorCommands(dev, context);
+  registerRuntimeCommands(dev, context);
   registerScanCommands(dev, context);
   registerIngestCommands(dev, context, {
     runIngestWithProgress: async (ingestArgs, ingestIo, ingestDeps, defaultRunIngest) =>

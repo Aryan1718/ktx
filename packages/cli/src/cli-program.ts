@@ -4,8 +4,6 @@ import { registerAgentCommands } from './commands/agent-commands.js';
 import { registerConnectionCommands } from './commands/connection-commands.js';
 import { registerWikiCommands } from './commands/knowledge-commands.js';
 import { registerPublicIngestCommands } from './commands/public-ingest-commands.js';
-import { registerRuntimeCommands } from './commands/runtime-commands.js';
-import { registerServeCommands } from './commands/serve-commands.js';
 import { registerSetupCommands } from './commands/setup-commands.js';
 import { registerSlCommands } from './commands/sl-commands.js';
 import { registerStatusCommands } from './commands/status-commands.js';
@@ -145,13 +143,23 @@ function isProjectAwareCommand(path: string[]): boolean {
 
   const rootCommand = path[1];
   if (rootCommand === 'dev') {
-    return path[2] !== undefined && path[2] !== 'completion';
+    return path[2] !== undefined && path[2] !== 'completion' && path[2] !== 'runtime';
   }
   return rootCommand !== undefined && PROJECT_AWARE_ROOT_COMMANDS.has(rootCommand);
 }
 
 function shouldSuppressProjectDirLine(path: string[], options: Record<string, unknown>): boolean {
-  if (path.join(' ') === 'ktx dev init') {
+  const commandPathKey = path.join(' ');
+  if (commandPathKey === 'ktx dev init') {
+    return true;
+  }
+
+  if (
+    commandPathKey === 'ktx status' &&
+    typeof options.projectDir !== 'string' &&
+    process.env.KTX_PROJECT_DIR === undefined &&
+    !findNearestKtxProjectDir(process.cwd())
+  ) {
     return true;
   }
 
@@ -159,7 +167,6 @@ function shouldSuppressProjectDirLine(path: string[], options: Record<string, un
     return true;
   }
 
-  const commandPathKey = path.join(' ');
   if (commandPathKey === 'ktx ingest watch') {
     return options.json !== true;
   }
@@ -263,7 +270,6 @@ async function runBareInteractiveCommand(
         mode: 'auto',
         agents: false,
         agentScope: 'project',
-        agentInstallMode: 'cli',
         skipAgents: false,
         inputMode: 'auto',
         yes: false,
@@ -323,12 +329,6 @@ export async function runCommanderKtxCli(
 
   registerSlCommands(program, context);
   profileMark('commander:register-sl');
-
-  registerRuntimeCommands(program, context);
-  profileMark('commander:register-runtime');
-
-  registerServeCommands(program, context);
-  profileMark('commander:register-serve');
 
   registerStatusCommands(program, context);
   profileMark('commander:register-status');

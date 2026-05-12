@@ -117,16 +117,16 @@ describe('runKtxCli', () => {
     expect(testIo.stderr()).toBe('');
   });
 
-  it('prints the May 6 public command surface in root help', async () => {
+  it('prints the public command surface in root help', async () => {
     const testIo = makeIo();
 
     await expect(runKtxCli(['--help'], testIo.io)).resolves.toBe(0);
 
     expect(testIo.stdout()).toContain('Usage: ktx [options] [command]');
-    for (const command of ['setup', 'connection', 'ingest', 'wiki', 'sl', 'runtime', 'serve', 'status']) {
+    for (const command of ['setup', 'connection', 'ingest', 'wiki', 'sl', 'status']) {
       expect(testIo.stdout()).toContain(`${command}`);
     }
-    for (const removed of ['demo', 'init', 'connect', 'scan', 'ask', 'knowledge', 'agent', 'completion']) {
+    for (const removed of ['demo', 'init', 'connect', 'scan', 'ask', 'knowledge', 'agent', 'completion', 'runtime', 'serve']) {
       expect(testIo.stdout()).not.toContain(`${removed} [`);
       expect(testIo.stdout()).not.toContain(`${removed} `);
     }
@@ -150,18 +150,18 @@ describe('runKtxCli', () => {
     const pruneIo = makeIo();
 
     await expect(
-      runKtxCli(['runtime', 'install', '--feature', 'local-embeddings', '--force', '--yes'], installIo.io, {
+      runKtxCli(['dev', 'runtime', 'install', '--feature', 'local-embeddings', '--force', '--yes'], installIo.io, {
         runtime,
       }),
     ).resolves.toBe(0);
     await expect(
-      runKtxCli(['runtime', 'start', '--feature', 'local-embeddings', '--force'], startIo.io, { runtime }),
+      runKtxCli(['dev', 'runtime', 'start', '--feature', 'local-embeddings', '--force'], startIo.io, { runtime }),
     ).resolves.toBe(0);
-    await expect(runKtxCli(['runtime', 'stop'], stopIo.io, { runtime })).resolves.toBe(0);
-    await expect(runKtxCli(['runtime', 'stop', '--all'], stopAllIo.io, { runtime })).resolves.toBe(0);
-    await expect(runKtxCli(['runtime', 'status', '--json'], statusIo.io, { runtime })).resolves.toBe(0);
-    await expect(runKtxCli(['runtime', 'doctor'], doctorIo.io, { runtime })).resolves.toBe(0);
-    await expect(runKtxCli(['runtime', 'prune', '--dry-run'], pruneIo.io, { runtime })).resolves.toBe(0);
+    await expect(runKtxCli(['dev', 'runtime', 'stop'], stopIo.io, { runtime })).resolves.toBe(0);
+    await expect(runKtxCli(['dev', 'runtime', 'stop', '--all'], stopAllIo.io, { runtime })).resolves.toBe(0);
+    await expect(runKtxCli(['dev', 'runtime', 'status', '--json'], statusIo.io, { runtime })).resolves.toBe(0);
+    await expect(runKtxCli(['dev', 'runtime', 'doctor'], doctorIo.io, { runtime })).resolves.toBe(0);
+    await expect(runKtxCli(['dev', 'runtime', 'prune', '--dry-run'], pruneIo.io, { runtime })).resolves.toBe(0);
 
     expect(runtime).toHaveBeenNthCalledWith(
       1,
@@ -229,6 +229,9 @@ describe('runKtxCli', () => {
       },
       pruneIo.io,
     );
+    for (const io of [installIo, startIo, stopIo, stopAllIo, statusIo, doctorIo, pruneIo]) {
+      expect(io.stderr()).toBe('');
+    }
   });
 
   it('prints the resolved project directory for ordinary project commands', async () => {
@@ -266,7 +269,7 @@ describe('runKtxCli', () => {
   it('documents runtime stop all in command help', async () => {
     const testIo = makeIo();
 
-    await expect(runKtxCli(['runtime', 'stop', '--help'], testIo.io)).resolves.toBe(0);
+    await expect(runKtxCli(['dev', 'runtime', 'stop', '--help'], testIo.io)).resolves.toBe(0);
 
     expect(testIo.stdout()).toContain('--all');
     expect(testIo.stdout()).toContain('Stop all KTX daemon processes recorded or discoverable');
@@ -407,7 +410,6 @@ describe('runKtxCli', () => {
           mode: 'auto',
           agents: false,
           agentScope: 'project',
-          agentInstallMode: 'cli',
           skipAgents: false,
           inputMode: 'auto',
           yes: false,
@@ -653,28 +655,13 @@ describe('runKtxCli', () => {
     expect(choiceIo.stderr()).toBe('');
   });
 
-  it('dispatches serve stdio commands', async () => {
+  it('rejects removed serve commands', async () => {
     const testIo = makeIo();
-    const serveStdio = vi.fn().mockResolvedValue(0);
 
-    await expect(
-      runKtxCli(['--project-dir', tempDir, 'serve', '--mcp', 'stdio', '--user-id', 'agent'], testIo.io, {
-        serveStdio,
-      }),
-    ).resolves.toBe(0);
+    await expect(runKtxCli(['--project-dir', tempDir, 'serve', '--mcp', 'stdio', '--user-id', 'agent'], testIo.io))
+      .resolves.toBe(1);
 
-    expect(serveStdio).toHaveBeenCalledWith({
-      mcp: 'stdio',
-      projectDir: tempDir,
-      userId: 'agent',
-      semanticCompute: false,
-      semanticComputeUrl: undefined,
-      executeQueries: false,
-      memoryCapture: false,
-      memoryModel: undefined,
-      cliVersion: '0.0.0-private',
-      runtimeInstallPolicy: 'prompt',
-    });
+    expect(testIo.stderr()).toMatch(/unknown command|error:/);
   });
 
   it('routes public ingest through the public ingest parser', async () => {
@@ -948,16 +935,14 @@ describe('runKtxCli', () => {
     );
   });
 
-  it('dispatches dev doctor and ingest parser cases through Commander', async () => {
+  it('rejects removed dev doctor while keeping ingest parser cases under dev', async () => {
     const doctor = vi.fn(async () => 0);
     const ingest = vi.fn(async () => 0);
     const doctorIo = makeIo();
     const ingestRunIo = makeIo();
     const ingestReplayHelpIo = makeIo();
 
-    await expect(runKtxCli(['dev', 'doctor', 'setup', '--json', '--no-input'], doctorIo.io, { doctor })).resolves.toBe(
-      0,
-    );
+    await expect(runKtxCli(['dev', 'doctor', 'setup', '--json', '--no-input'], doctorIo.io, { doctor })).resolves.toBe(1);
     await expect(
       runKtxCli(
         [
@@ -983,7 +968,7 @@ describe('runKtxCli', () => {
     ).resolves.toBe(0);
     await expect(runKtxCli(['dev', 'ingest', 'replay', '--help'], ingestReplayHelpIo.io, { ingest })).resolves.toBe(0);
 
-    expect(doctor).toHaveBeenCalledWith({ command: 'setup', outputMode: 'json', inputMode: 'disabled' }, doctorIo.io);
+    expect(doctor).not.toHaveBeenCalled();
     expect(ingest).toHaveBeenCalledWith(
       {
         command: 'run',
@@ -1002,7 +987,7 @@ describe('runKtxCli', () => {
     );
     expect(ingestReplayHelpIo.stdout()).toContain('Usage: ktx dev ingest replay [options] <runId>');
     expect(ingestReplayHelpIo.stdout()).toContain('<runId>');
-    expect(doctorIo.stderr()).toBe('');
+    expect(doctorIo.stderr()).toMatch(/unknown command|error:/);
     expect(ingestRunIo.stderr()).toBe('');
     expect(ingestReplayHelpIo.stderr()).toBe('');
   });
@@ -1082,18 +1067,58 @@ describe('runKtxCli', () => {
     expect(testIo.stderr()).toBe(`Project: ${tempDir}\n`);
   });
 
-  it('dispatches setup status and top-level status through the setup runner', async () => {
+  it('keeps setup status on the setup runner and routes top-level status through doctor', async () => {
     const setup = vi.fn(async () => 0);
+    const doctor = vi.fn(async () => 0);
     const setupIo = makeIo();
     const statusIo = makeIo();
 
     await expect(
       runKtxCli(['--project-dir', tempDir, 'setup', 'status', '--json'], setupIo.io, { setup }),
     ).resolves.toBe(0);
-    await expect(runKtxCli(['--project-dir', tempDir, 'status', '--json'], statusIo.io, { setup })).resolves.toBe(0);
+    await expect(
+      runKtxCli(['--project-dir', tempDir, 'status', '--json', '--no-input'], statusIo.io, { setup, doctor }),
+    ).resolves.toBe(0);
 
     expect(setup).toHaveBeenNthCalledWith(1, { command: 'status', projectDir: tempDir, json: true }, setupIo.io);
-    expect(setup).toHaveBeenNthCalledWith(2, { command: 'status', projectDir: tempDir, json: true }, statusIo.io);
+    expect(setup).toHaveBeenCalledTimes(1);
+    expect(doctor).toHaveBeenCalledWith(
+      { command: 'project', projectDir: tempDir, outputMode: 'json', inputMode: 'disabled' },
+      statusIo.io,
+    );
+    expect(statusIo.stderr()).toBe('');
+  });
+
+  it('routes top-level status without a project to setup doctor checks', async () => {
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const originalCwd = process.cwd();
+    const previousProjectDir = process.env.KTX_PROJECT_DIR;
+    const tempCwd = await mkdtemp(join(tmpdir(), 'ktx-status-no-project-'));
+    const doctor = vi.fn(async () => 0);
+    const statusIo = makeIo();
+
+    try {
+      delete process.env.KTX_PROJECT_DIR;
+      process.chdir(tempCwd);
+
+      await expect(runKtxCli(['status', '--json', '--no-input'], statusIo.io, { doctor })).resolves.toBe(0);
+
+      expect(doctor).toHaveBeenCalledWith(
+        { command: 'setup', outputMode: 'json', inputMode: 'disabled' },
+        statusIo.io,
+      );
+      expect(statusIo.stderr()).toBe('');
+    } finally {
+      process.chdir(originalCwd);
+      if (previousProjectDir === undefined) {
+        delete process.env.KTX_PROJECT_DIR;
+      } else {
+        process.env.KTX_PROJECT_DIR = previousProjectDir;
+      }
+      await rm(tempCwd, { recursive: true, force: true });
+    }
   });
 
   it('dispatches setup context recovery commands through the setup runner', async () => {
@@ -1356,8 +1381,6 @@ describe('runKtxCli', () => {
           '--target',
           'codex',
           '--project',
-          '--agent-install-mode',
-          'both',
           '--no-input',
           '--yes',
         ],
@@ -1376,7 +1399,6 @@ describe('runKtxCli', () => {
         agents: true,
         target: 'codex',
         agentScope: 'project',
-        agentInstallMode: 'both',
         inputMode: 'disabled',
         yes: true,
       }),
@@ -2241,9 +2263,8 @@ describe('runKtxCli', () => {
     expect(conflictIo.stderr()).toContain('Choose only one runtime install mode: --yes or --no-input');
   });
 
-  it('dispatches serve public command options through Commander', async () => {
+  it('rejects removed public serve command options before dispatch', async () => {
     const serveIo = makeIo();
-    const serveStdio = vi.fn(async () => 0);
 
     await expect(
       runKtxCli(
@@ -2261,77 +2282,10 @@ describe('runKtxCli', () => {
           'openai/gpt-5.2',
         ],
         serveIo.io,
-        { serveStdio },
-      ),
-    ).resolves.toBe(0);
-
-    expect(serveStdio).toHaveBeenCalledWith({
-      mcp: 'stdio',
-      projectDir: tempDir,
-      userId: 'local',
-      semanticCompute: true,
-      semanticComputeUrl: 'http://127.0.0.1:18080',
-      databaseIntrospectionUrl: undefined,
-      executeQueries: true,
-      memoryCapture: true,
-      memoryModel: 'openai/gpt-5.2',
-      cliVersion: '0.0.0-private',
-      runtimeInstallPolicy: 'prompt',
-    });
-    expect(serveIo.stderr()).toBe('');
-  });
-
-  it('routes serve managed runtime install policies', async () => {
-    const autoIo = makeIo();
-    const neverIo = makeIo();
-    const conflictIo = makeIo();
-    const serveStdio = vi.fn(async () => 0);
-
-    await expect(
-      runKtxCli(['serve', '--mcp', 'stdio', '--project-dir', tempDir, '--semantic-compute', '--yes'], autoIo.io, {
-        serveStdio,
-      }),
-    ).resolves.toBe(0);
-    await expect(
-      runKtxCli(['serve', '--mcp', 'stdio', '--project-dir', tempDir, '--semantic-compute', '--no-input'], neverIo.io, {
-        serveStdio,
-      }),
-    ).resolves.toBe(0);
-    await expect(
-      runKtxCli(
-        ['serve', '--mcp', 'stdio', '--project-dir', tempDir, '--semantic-compute', '--yes', '--no-input'],
-        conflictIo.io,
-        { serveStdio },
       ),
     ).resolves.toBe(1);
 
-    expect(serveStdio).toHaveBeenNthCalledWith(1, {
-      mcp: 'stdio',
-      projectDir: tempDir,
-      userId: 'local',
-      semanticCompute: true,
-      semanticComputeUrl: undefined,
-      databaseIntrospectionUrl: undefined,
-      executeQueries: false,
-      memoryCapture: false,
-      memoryModel: undefined,
-      cliVersion: '0.0.0-private',
-      runtimeInstallPolicy: 'auto',
-    });
-    expect(serveStdio).toHaveBeenNthCalledWith(2, {
-      mcp: 'stdio',
-      projectDir: tempDir,
-      userId: 'local',
-      semanticCompute: true,
-      semanticComputeUrl: undefined,
-      databaseIntrospectionUrl: undefined,
-      executeQueries: false,
-      memoryCapture: false,
-      memoryModel: undefined,
-      cliVersion: '0.0.0-private',
-      runtimeInstallPolicy: 'never',
-    });
-    expect(conflictIo.stderr()).toContain('Choose only one runtime install mode: --yes or --no-input');
+    expect(serveIo.stderr()).toMatch(/unknown command|error:/);
   });
 
   it('prints dev help for bare dev commands', async () => {

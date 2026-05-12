@@ -365,7 +365,7 @@ export async function runDemoTour(
           yes: false,
           agents: true,
           scope: 'project',
-          mode: 'both',
+          mode: 'cli',
           skipAgents: false,
         },
         io,

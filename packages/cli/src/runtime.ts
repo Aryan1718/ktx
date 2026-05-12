@@ -229,7 +229,7 @@ export async function runKtxRuntime(
       return checks.some((check) => check.status === 'fail') ? 1 : 0;
     }
     if (!args.dryRun && !args.yes) {
-      io.stderr.write('Refusing to prune without --yes. Preview with: ktx runtime prune --dry-run\n');
+      io.stderr.write('Refusing to prune without --yes. Preview with: ktx dev runtime prune --dry-run\n');
       return 1;
     }
     const status = await (deps.readStatus ?? readManagedPythonRuntimeStatus)({ cliVersion: args.cliVersion });
