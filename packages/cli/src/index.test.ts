@@ -139,22 +139,78 @@ describe('runKtxCli', () => {
     expect(testIo.stderr()).toBe('');
   });
 
-  it('rejects removed public wiki and sl read/write commands', async () => {
-    const sl = vi.fn(async () => 0);
+  it('routes public wiki read and write commands', async () => {
     const knowledge = vi.fn(async () => 0);
 
+    const readIo = makeIo();
+    await expect(runKtxCli(['--project-dir', tempDir, 'wiki', 'read', 'revenue', '--json'], readIo.io, { knowledge }))
+      .resolves.toBe(0);
+    expect(knowledge).toHaveBeenCalledWith(
+      {
+        command: 'read',
+        projectDir: tempDir,
+        key: 'revenue',
+        userId: 'local',
+        json: true,
+      },
+      readIo.io,
+    );
+
+    const writeIo = makeIo();
+    await expect(
+      runKtxCli(
+        [
+          '--project-dir',
+          tempDir,
+          'wiki',
+          'write',
+          'revenue',
+          '--scope',
+          'user',
+          '--summary',
+          'Revenue',
+          '--content',
+          'Revenue.',
+          '--tag',
+          'finance',
+          '--ref',
+          'https://example.com/revenue',
+          '--sl-ref',
+          'orders',
+        ],
+        writeIo.io,
+        { knowledge },
+      ),
+    ).resolves.toBe(0);
+    expect(knowledge).toHaveBeenLastCalledWith(
+      {
+        command: 'write',
+        projectDir: tempDir,
+        key: 'revenue',
+        scope: 'USER',
+        userId: 'local',
+        summary: 'Revenue',
+        content: 'Revenue.',
+        tags: ['finance'],
+        refs: ['https://example.com/revenue'],
+        slRefs: ['orders'],
+      },
+      writeIo.io,
+    );
+  });
+
+  it('rejects removed public sl read/write commands', async () => {
+    const sl = vi.fn(async () => 0);
+
     for (const argv of [
-      ['--project-dir', tempDir, 'wiki', 'read', 'revenue'],
-      ['--project-dir', tempDir, 'wiki', 'write', 'revenue', '--summary', 'Revenue', '--content', 'Revenue.'],
       ['--project-dir', tempDir, 'sl', 'read', 'orders', '--connection-id', 'warehouse'],
       ['--project-dir', tempDir, 'sl', 'write', 'orders', '--connection-id', 'warehouse', '--yaml', 'name: orders'],
     ]) {
       const io = makeIo();
-      await expect(runKtxCli(argv, io.io, { knowledge, sl })).resolves.toBe(1);
+      await expect(runKtxCli(argv, io.io, { sl })).resolves.toBe(1);
       expect(io.stderr()).toMatch(/unknown command|error:/);
     }
 
-    expect(knowledge).not.toHaveBeenCalled();
     expect(sl).not.toHaveBeenCalled();
   });
 
