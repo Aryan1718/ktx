@@ -955,10 +955,11 @@ describe('setup databases step', () => {
       [
         '◇  Testing postgres-warehouse',
         '│  ✓ Connection test passed',
-        '│  Driver: PostgreSQL · Tables: 2',
+        '│  Driver: PostgreSQL',
         '│',
       ].join('\n'),
     );
+    expect(io.stdout()).not.toContain('Tables: 2');
     expect(io.stdout()).toContain(
       [
         '◇  Scanning postgres-warehouse',
