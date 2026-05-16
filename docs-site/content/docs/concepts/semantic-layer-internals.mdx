@@ -1,26 +1,26 @@
 ---
-title: Semantic Layer Internals
-description: How KTX uses join graphs, grain, and relationship metadata to turn context into safe SQL.
+title: Context-Aware SQL
+description: How KTX turns reviewed context, grain, and relationship evidence into safe SQL for agents.
 ---
 
-KTX is a context layer for agents. This page focuses on one internal subsystem:
-the semantic execution layer that turns reviewed context into safe SQL.
+## Why query planning needs context
 
-The semantic layer is important, but it is not the whole product. KTX also
-handles schema evidence, wiki context, provenance, validation, and agent
-workflows around those files.
+Agents can generate SQL from schema alone, but safe analytics SQL needs more
+than table names. KTX uses reviewed context to understand grain, joins, measures,
+filters, and where aggregation must happen.
 
-Read the page as a pipeline:
+Read this page as four mechanics:
 
-- context inputs feed the semantic engine;
+- context files feed the semantic engine;
 - evidence becomes a join graph with grain and relationship metadata;
-- review and corrections keep that graph current;
-- the execution engine uses the graph to avoid fan-out and ambiguous joins.
+- review keeps the graph current;
+- query planning avoids fan-out and ambiguous joins.
 
 ## Where the semantic layer fits
 
-The semantic layer is not a separate product category inside KTX. It is the
-engine that makes the rest of the context actionable for SQL generation.
+This planner is one subsystem inside KTX's broader context layer. It uses source
+YAML, wiki context, scan evidence, and provenance to make context actionable for
+SQL generation.
 
 <div
   className="not-prose my-8 overflow-hidden rounded-lg border border-fd-border bg-fd-card shadow-sm"
@@ -125,16 +125,17 @@ engine that makes the rest of the context actionable for SQL generation.
   </div>
 </div>
 
-## The join graph KTX builds
+## Join graph
 
-A semantic source is a node. A join is an edge with a join condition and a
-relationship type. The graph lets KTX choose valid paths, reject unsafe paths,
-and reason about whether a join preserves or multiplies rows before SQL is
-generated.
+A semantic source is a node. A join is a typed edge. KTX uses the graph to
+choose valid paths and detect row-multiplying joins before SQL is generated.
 
-- `many_to_one` paths are usually safe for adding dimensions.
-- `one_to_many` paths can multiply fact rows and trigger fan-out handling.
-- Equal-cost paths can be ambiguous, so aliases and explicit joins matter.
+| Relationship | Planning impact |
+|--------------|-----------------|
+| `many_to_one` | Usually safe for adding dimensions |
+| `one_to_many` | Can multiply measures and trigger fan-out handling |
+| `one_to_one` | Usually safe when keys are correct |
+| Equal-cost paths | Ambiguous unless aliases or explicit joins disambiguate |
 
 <figure
   className="not-prose my-8 overflow-hidden rounded-lg border border-fd-border bg-fd-card p-4 shadow-sm"
@@ -165,30 +166,21 @@ generated.
 </figure>
 
 The graph is bidirectional for planning. If `orders -> customers` is
-`many_to_one`, the reverse path is `one_to_many`; KTX keeps that distinction
-instead of treating every join as a neutral edge.
+`many_to_one`, the reverse path is `one_to_many`.
 
-## How KTX builds the graph
+## Building and maintaining the graph
 
-KTX starts from evidence, not a blank modeling canvas. Database scans and
-analytics-tool imports create source definitions that an analyst can review.
+KTX starts from evidence, writes reviewable source YAML, and treats the merged
+diff as the accepted graph.
 
 | Evidence | What it contributes |
-|---|---|
-| Declared primary keys | Initial row grain for each source |
-| Declared foreign keys | Formal join candidates and relationship direction |
-| Inferred relationships | Useful edges when warehouses lack constraints |
-| dbt, MetricFlow, and LookML imports | Existing metrics, dimensions, entities, explores, and joins |
-| Query history | Real join and filter patterns agents should respect |
-| Analyst review | The final authority before context is merged |
-
-Generated YAML is intentionally reviewable. KTX can draft joins and measures,
-but the accepted semantic layer is still the plain-file diff your team approves.
-
-## How KTX keeps the graph current
-
-The semantic layer changes as schemas, metrics, and business rules change. KTX
-keeps that loop explicit instead of hiding it behind a remote runtime.
+|----------|---------------------|
+| Declared primary keys | Initial row grain |
+| Declared foreign keys | Formal join candidates |
+| Inferred relationships | Edges when warehouses lack constraints |
+| dbt, MetricFlow, and LookML imports | Existing metrics, dimensions, explores, and joins |
+| Query history | Real join and filter patterns |
+| Analyst review | Final authority before context is merged |
 
 <div
   className="not-prose my-8 overflow-hidden rounded-lg border border-fd-border bg-fd-card shadow-sm"
@@ -303,37 +295,26 @@ keeps that loop explicit instead of hiding it behind a remote runtime.
   </div>
 </div>
 
-This matters because semantic correctness is not static. If a source gains a
-new key, a metric changes definition, or an analyst corrects a relationship,
-the next agent gets that reviewed context.
+## Modeling problems
 
-## The modeling problem the graph solves
+Fan-out is the classic failure mode: an order-level measure joins to line-item
+rows before aggregation, so one order becomes many rows.
 
-Fan-out is the classic failure mode. If an order-level measure is joined to
-line-item rows before aggregation, one order can become many rows and revenue
-can be counted more than once.
+| Problem | What happens | How KTX handles it |
+|---------|--------------|--------------------|
+| Order measure joins to `order_items` | `orders.revenue` repeats once per item | Detect `one_to_many` and pre-aggregate |
+| Two fact sources share `customers` | Measures multiply across the shared dimension | Treat as a chasm trap and plan each fact locally |
+| Filter crosses `one_to_many` | Filtering changes measure grain | Reject or localize the filter |
+| Equal-cost paths connect sources | Join choice is ambiguous | Prefer safer paths or require aliases |
 
-| Problem | What happens | How KTX avoids it |
-|---|---|---|
-| Order measure joins to `order_items` | `orders.revenue` repeats once per item | Detect the `one_to_many` path and pre-aggregate the order measure |
-| Two independent fact sources share `customers` | Measures from each fact table multiply across the shared dimension | Treat it as a chasm trap and use aggregate-locality planning |
-| Filter lives only across a `one_to_many` path | Filtering after the join changes the measure grain | Reject or localize the filter instead of silently producing unsafe SQL |
-| Multiple equal-cost paths connect the same sources | The join path is ambiguous | Prefer safer paths and use aliases to disambiguate repeated joins |
+## Execution planning
 
-Many-to-many questions usually show up as multiple one-to-many paths or
-independent fact sources. KTX treats those shapes as fan-out or chasm risks
-unless the query can be planned at a safe grain.
-
-## How the execution engine uses the graph
-
-The planner resolves the sources in a semantic query, chooses a join tree, and
-checks whether any requested dimension or filter crosses a row-multiplying
-edge. The SQL generator then chooses the simple path or the aggregate-locality
-path.
+The planner resolves sources, chooses a join tree, checks relationship paths,
+and picks a simple or aggregate-locality SQL shape.
 
 | Naive SQL shape | Semantic-layer SQL shape |
-|---|---|
-| Join facts and dimensions first, then aggregate | Aggregate each fact source at its own grain, then join the results |
+|-----------------|--------------------------|
+| Join facts and dimensions first, then aggregate | Aggregate each fact source at its own grain, then join results |
 | Put every filter in one outer `WHERE` clause | Keep measure filters with the measure source when locality is needed |
 | Trust the shortest textual join path | Prefer safe relationship paths and reject disconnected sources |
 | Let dimension grain differ across facts | Raise when asymmetric dimensions would fan out another measure |
@@ -342,27 +323,49 @@ path.
   className="not-prose my-8 overflow-hidden rounded-lg border border-fd-border bg-fd-card shadow-sm"
   aria-label="Fan-out safe execution shape"
 >
-  <div className="grid gap-0 md:grid-cols-2">
-    <section className="border-b border-fd-border bg-fd-background p-4 md:border-b-0 md:border-r">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-fd-muted-foreground">
-        {"Unsafe shape"}
-      </p>
-      <pre className="overflow-x-auto rounded-md bg-fd-muted p-3 text-xs leading-5 text-fd-foreground">
+  <div className="border-b border-fd-border bg-fd-muted/35 px-4 py-3">
+    <p className="text-[11px] font-semibold uppercase tracking-wide text-fd-muted-foreground">
+      {"Fan-out handling"}
+    </p>
+    <p className="mt-1 text-sm leading-6 text-fd-muted-foreground">
+      {"The same question planned before and after KTX preserves the measure grain."}
+    </p>
+  </div>
+  <div className="grid gap-3 bg-fd-background p-4 md:grid-cols-[0.92fr_1.08fr]">
+    <section className="flex min-h-full flex-col rounded-md border border-fd-border bg-fd-card">
+      <div className="border-b border-fd-border px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">
+          {"Unsafe shape"}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-fd-foreground">
+          {"Join first, aggregate later"}
+        </p>
+      </div>
+      <pre className="m-0 min-h-[13rem] flex-1 overflow-x-auto bg-transparent px-4 py-3 text-xs leading-5 text-fd-foreground">
 {`orders
-  join order_items
-  join customers
-group by customer_segment
-sum(orders.amount)`}
+  -> join order_items
+  -> join customers
+
+group by
+  customer_segment
+
+measure
+  sum(orders.amount)`}
       </pre>
-      <p className="mt-3 text-sm text-fd-muted-foreground">
-        {"The order measure is exposed to line-item fan-out before aggregation."}
-      </p>
+      <div className="border-t border-fd-border bg-red-50/60 px-4 py-3 text-sm leading-6 text-red-950 dark:bg-red-950/20 dark:text-red-100">
+        {"Order-level revenue is exposed to line-item fan-out before aggregation."}
+      </div>
     </section>
-    <section className="bg-fd-background p-4">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-fd-muted-foreground">
-        {"KTX shape"}
-      </p>
-      <pre className="overflow-x-auto rounded-md border border-fd-border bg-fd-muted p-3 text-xs leading-5 text-fd-foreground">
+    <section className="flex min-h-full flex-col rounded-md border border-fd-primary/40 bg-fd-card shadow-[inset_4px_0_0_var(--color-fd-primary)]">
+      <div className="border-b border-fd-border px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-fd-primary">
+          {"KTX shape"}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-fd-foreground">
+          {"Aggregate locally, then join"}
+        </p>
+      </div>
+      <pre className="m-0 min-h-[13rem] flex-1 overflow-x-auto bg-transparent px-4 py-3 text-xs leading-5 text-fd-foreground">
 {`orders_agg as (
   select customer_id, sum(amount) revenue
   from orders
@@ -372,27 +375,25 @@ select customers.segment, sum(revenue)
 from orders_agg
 join customers`}
       </pre>
-      <p className="mt-3 text-sm text-fd-muted-foreground">
-        {"KTX pre-aggregates fact measures at their own grain before joining dimensions."}
-      </p>
+      <div className="border-t border-fd-border bg-fd-primary/10 px-4 py-3 text-sm leading-6 text-fd-foreground">
+        {"The measure is pre-aggregated at order grain before dimensions are joined."}
+      </div>
     </section>
   </div>
 </div>
 
-The result is not magic. It is structured planning: validated sources, typed
-relationships, graph search, fan-out detection, aggregate locality, and final
-dialect transpilation.
+The result is structured planning: validated sources, typed relationships,
+graph search, fan-out detection, aggregate locality, and dialect transpilation.
 
-## What this means for agents
+## Agent usage notes
 
-KTX gives agents a semantic surface they can inspect and improve, not just a
-folder of notes.
+Use this page when an agent needs to explain how KTX turns reviewed semantic
+context into SQL, why relationship metadata matters, or why a query was rejected
+as unsafe.
 
-- Search semantic sources and related wiki pages before writing SQL.
-- Compile SQL through `ktx sl query` instead of guessing joins.
-- Validate semantic-layer changes before review.
-- Patch YAML and Markdown files in git.
-- Explain metric meaning and provenance from the same accepted context.
-
-Next, read [Writing Context](/docs/guides/writing-context) for the YAML editing
-workflow or [ktx sl](/docs/cli-reference/ktx-sl) for the command reference.
+| Agent task | Relevant section | Next page |
+|------------|------------------|-----------|
+| Explain why KTX asks for `grain` and relationship types | Join graph | [Writing Context](/docs/guides/writing-context) |
+| Diagnose duplicated measures after a join | Modeling problems | [ktx sl](/docs/cli-reference/ktx-sl) |
+| Explain safe SQL generation | Execution planning | [ktx sl](/docs/cli-reference/ktx-sl) |
+| Describe how semantic context stays current | Building and maintaining the graph | [Context as Code](/docs/concepts/context-as-code) |
