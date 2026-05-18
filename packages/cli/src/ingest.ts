@@ -102,7 +102,7 @@ export interface KtxIngestDeps {
 }
 
 function reportStatus(report: IngestReportSnapshot): 'done' | 'error' {
-  return report.body.failedWorkUnits.length > 0 ? 'error' : 'done';
+  return report.body.status === 'failed' || report.body.failedWorkUnits.length > 0 ? 'error' : 'done';
 }
 
 const REPORT_SOURCE_LABELS = new Map<string, string>([
@@ -174,6 +174,9 @@ function formatFailureReason(sourceKey: string, reason: string): string {
 }
 
 function failedReportMessage(report: IngestReportSnapshot): string | null {
+  if (report.body.status === 'failed' && report.body.failure?.message) {
+    return sanitizeMemoryFlowError(report.body.failure.message);
+  }
   const failedCount = report.body.failedWorkUnits.length;
   if (failedCount === 0) {
     return null;
@@ -195,6 +198,9 @@ function writeReportStatus(report: IngestReportSnapshot, io: KtxIngestIo): void 
   io.stdout.write(`Report: ${report.id}\n`);
   io.stdout.write(`Run: ${report.runId}\n`);
   io.stdout.write(`Job: ${report.jobId}\n`);
+  if (report.body.tracePath) {
+    io.stdout.write(`Trace: ${report.body.tracePath}\n`);
+  }
   io.stdout.write(`Status: ${reportStatus(report)}\n`);
   io.stdout.write(`Source: ${reportSourceLabel(report.sourceKey)}\n`);
   io.stdout.write(`Connection: ${report.connectionId}\n`);
@@ -289,7 +295,11 @@ function formatDiffProgress(event: Extract<MemoryFlowEvent, { type: 'diff_comput
 }
 
 function workUnitEventsThrough(snapshot: MemoryFlowReplayInput, eventIndex: number): MemoryFlowEvent[] {
-  return snapshot.events.slice(0, eventIndex + 1);
+  const latestPlanIndex = snapshot.events
+    .slice(0, eventIndex + 1)
+    .findLastIndex((event) => event.type === 'chunks_planned');
+  const startIndex = latestPlanIndex >= 0 ? latestPlanIndex + 1 : 0;
+  return snapshot.events.slice(startIndex, eventIndex + 1);
 }
 
 function completedWorkUnitCountThrough(snapshot: MemoryFlowReplayInput, eventIndex: number): number {
@@ -313,7 +323,8 @@ function plannedWorkUnitCountThrough(snapshot: MemoryFlowReplayInput, eventIndex
   if (snapshot.plannedWorkUnits.length > 0) {
     return snapshot.plannedWorkUnits.length;
   }
-  const planEvent = workUnitEventsThrough(snapshot, eventIndex)
+  const planEvent = snapshot.events
+    .slice(0, eventIndex + 1)
     .filter((event) => event.type === 'chunks_planned')
     .at(-1);
   return planEvent?.workUnitCount ?? completedWorkUnitCountThrough(snapshot, eventIndex);
@@ -359,6 +370,12 @@ function plainIngestEventProgress(
       };
     case 'stage_skipped':
       return { percent: 45, message: `Skipped ${event.stage}: ${event.reason}` };
+    case 'stage_progress':
+      return {
+        percent: event.percent,
+        message: event.message,
+        ...(event.transient !== undefined ? { transient: event.transient } : {}),
+      };
     case 'work_unit_started': {
       const total = plannedWorkUnitCountThrough(snapshot, eventIndex);
       const ordinal = workUnitOrdinalThrough(snapshot, eventIndex, event.unitKey);
@@ -705,6 +722,25 @@ export async function runKtxIngest(
       }
       if (args.adapter === 'metabase') {
         const executeMetabaseFanout = deps.runLocalMetabaseIngest ?? runLocalMetabaseIngest;
+        const runOutputMode = effectiveIngestOutputMode(args.outputMode, io, env, {
+          requireInput: (args.inputMode ?? 'auto') === 'auto',
+        });
+        const plainProgress = shouldWritePlainIngestProgress(runOutputMode, io, env)
+          ? createPlainIngestProgressRenderer(args, io)
+          : null;
+        const structuredProgress = deps.progress
+          ? createPlainIngestProgressObserver(args, deps.progress)
+          : null;
+        const initialMemoryFlow =
+          plainProgress || structuredProgress ? initialRunMemoryFlowInput(args, 'pending') : undefined;
+        const memoryFlow = initialMemoryFlow
+          ? createMemoryFlowLiveBuffer(initialMemoryFlow, {
+              onChange: (snapshot) => {
+                plainProgress?.update(snapshot);
+                structuredProgress?.update(snapshot);
+              },
+            })
+          : undefined;
         const progress =
           args.outputMode === 'json' && !deps.progress
             ? undefined
@@ -715,20 +751,29 @@ export async function runKtxIngest(
                   : io,
                 deps.progress,
               );
-        const result = await executeMetabaseFanout({
-          project: ingestProject,
-          adapters: createAdapters(ingestProject, adapterOptions),
-          metabaseConnectionId: args.connectionId,
-          ...localIngestOptions,
-          queryExecutor,
-          trigger: 'manual_resync',
-          jobIdFactory: deps.jobIdFactory,
-          ...(progress ? { progress } : {}),
-        });
-        if (args.outputMode === 'json') {
-          io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-        } else {
-          writeMetabaseFanoutStatus(result, io);
+        plainProgress?.start();
+        structuredProgress?.start();
+        let result: LocalMetabaseFanoutResult;
+        try {
+          result = await executeMetabaseFanout({
+            project: ingestProject,
+            adapters: createAdapters(ingestProject, adapterOptions),
+            metabaseConnectionId: args.connectionId,
+            ...localIngestOptions,
+            queryExecutor,
+            trigger: 'manual_resync',
+            jobIdFactory: deps.jobIdFactory,
+            ...(memoryFlow ? { memoryFlow } : {}),
+            ...(progress ? { progress } : {}),
+          });
+          plainProgress?.flush();
+          if (args.outputMode === 'json') {
+            io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+          } else {
+            writeMetabaseFanoutStatus(result, io);
+          }
+        } finally {
+          plainProgress?.flush();
         }
         return result.status === 'all_succeeded' ? 0 : 1;
       }

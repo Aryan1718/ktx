@@ -1,4 +1,5 @@
 import type { KtxEmbeddingPort } from '../core/embedding.js';
+import type { SemanticLayerService } from '../sl/index.js';
 import type { MemoryFlowEventSink } from './memory-flow/types.js';
 
 export type IngestTrigger = 'upload' | 'scheduled_pull' | 'manual_resync' | 'manual_override';
@@ -47,6 +48,7 @@ export interface ChunkResult {
 export interface FetchContext {
   connectionId: string;
   sourceKey: string;
+  memoryFlow?: MemoryFlowEventSink;
 }
 
 type SourceFetchIssueKind =
@@ -96,6 +98,26 @@ export interface ClusterWorkUnitsContext {
   embedding: KtxEmbeddingPort;
 }
 
+export interface DeterministicProjectionContext {
+  connectionId: string;
+  sourceKey: string;
+  syncId: string;
+  jobId: string;
+  runId: string;
+  stagedDir: string;
+  workdir: string;
+  parseArtifacts?: unknown;
+  semanticLayerService: SemanticLayerService;
+}
+
+export interface ProjectionResult {
+  warnings: string[];
+  errors: string[];
+  touchedSources: Array<{ connectionId: string; sourceName: string }>;
+  changedWikiPageKeys: string[];
+  result?: unknown;
+}
+
 export interface SourceAdapter {
   readonly source: string;
   readonly skillNames: string[];
@@ -109,6 +131,7 @@ export interface SourceAdapter {
   listTargetConnectionIds?(stagedDir: string): Promise<string[]>;
   chunk(stagedDir: string, diffSet?: DiffSet): Promise<ChunkResult>;
   clusterWorkUnits?(ctx: ClusterWorkUnitsContext): Promise<WorkUnit[]>;
+  project?(ctx: DeterministicProjectionContext): Promise<ProjectionResult>;
   describeScope?(stagedDir: string): Promise<ScopeDescriptor>;
   onPullSucceeded?(ctx: {
     connectionId: string;

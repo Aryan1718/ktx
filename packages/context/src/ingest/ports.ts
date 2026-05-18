@@ -16,6 +16,7 @@ import type {
 import type { ToolContext, ToolSession, TouchedSlSource } from '../tools/index.js';
 import type { KnowledgeIndexPort, KnowledgeWikiService } from '../wiki/index.js';
 import type { CanonicalPin } from './canonical-pins.js';
+import type { IngestTraceLevel } from './ingest-trace.js';
 import type { IngestReportSnapshot } from './reports.js';
 import type {
   ReconcileCandidateForPrompt,
@@ -142,6 +143,7 @@ export interface IngestSettingsPort {
   workUnitMaxConcurrency?: number;
   workUnitStepBudget?: number;
   workUnitFailureMode?: 'abort' | 'continue';
+  ingestTraceLevel?: IngestTraceLevel;
 }
 
 export interface IngestGitAuthor {
@@ -155,6 +157,7 @@ export interface IngestStoragePort {
   resolveUploadDir(uploadId: string): string;
   resolvePullDir(jobId: string): string;
   resolveTranscriptDir(jobId: string): string;
+  resolveTracePath(jobId: string): string;
 }
 
 export interface IngestCommitMessagePort {

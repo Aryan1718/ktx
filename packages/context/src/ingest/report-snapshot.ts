@@ -123,6 +123,12 @@ const sourceFetchReportSchema = z.object({
   warnings: z.array(sourceFetchIssueSchema).default([]),
 });
 
+const ingestReportFailureSchema = z.object({
+  phase: z.string().min(1),
+  message: z.string().min(1),
+  details: z.record(z.string(), z.unknown()).optional(),
+});
+
 export const ingestReportSnapshotSchema = z
   .object({
     id: z.string().min(1),
@@ -133,10 +139,30 @@ export const ingestReportSnapshotSchema = z
     createdAt: z.string().min(1),
     body: z
       .object({
+        status: z.enum(['completed', 'failed']).optional(),
         syncId: z.string().min(1),
         diffSummary: ingestDiffSummarySchema,
         fetch: sourceFetchReportSchema.optional(),
         commitSha: z.string().nullable(),
+        tracePath: z.string().optional(),
+        failure: ingestReportFailureSchema.optional(),
+        isolatedDiff: z
+          .object({
+            enabled: z.boolean(),
+            integrationWorktreePath: z.string().optional(),
+            ingestionBaseSha: z.string().optional(),
+            projectionSha: z.string().nullable().optional(),
+            acceptedPatches: z.number().int().min(0),
+            textualConflicts: z.number().int().min(0),
+            semanticConflicts: z.number().int().min(0),
+            resolverAttempts: z.number().int().min(0).default(0),
+            resolverRepairs: z.number().int().min(0).default(0),
+            resolverFailures: z.number().int().min(0).default(0),
+            gateRepairAttempts: z.number().int().min(0).default(0),
+            gateRepairs: z.number().int().min(0).default(0),
+            gateRepairFailures: z.number().int().min(0).default(0),
+          })
+          .optional(),
         workUnits: z.array(
           z.object({
             unitKey: z.string().min(1),

@@ -48,11 +48,35 @@ export interface IngestReportPostProcessorOutcome {
   touchedSources: TouchedSlSource[];
 }
 
+export interface IngestReportFailure {
+  phase: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
 export interface IngestReportBody {
+  status?: 'completed' | 'failed';
   syncId: string;
   diffSummary: IngestDiffSummary;
   fetch?: SourceFetchReport;
   commitSha: string | null;
+  tracePath?: string;
+  failure?: IngestReportFailure;
+  isolatedDiff?: {
+    enabled: boolean;
+    integrationWorktreePath?: string;
+    ingestionBaseSha?: string;
+    projectionSha?: string | null;
+    acceptedPatches: number;
+    textualConflicts: number;
+    semanticConflicts: number;
+    resolverAttempts?: number;
+    resolverRepairs?: number;
+    resolverFailures?: number;
+    gateRepairAttempts?: number;
+    gateRepairs?: number;
+    gateRepairFailures?: number;
+  };
   workUnits: IngestReportWorkUnit[];
   failedWorkUnits: string[];
   reconciliationSkipped: boolean;

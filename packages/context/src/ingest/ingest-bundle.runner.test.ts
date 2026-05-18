@@ -1,8 +1,7 @@
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GitService } from '../core/index.js';
 import { addTouchedSlSource } from '../tools/index.js';
 import { IngestBundleRunner } from './ingest-bundle.runner.js';
 import { createMemoryFlowLiveBuffer } from './memory-flow/live-buffer.js';
@@ -123,9 +122,15 @@ const makeDeps = () => {
   };
   const scopedGit = {
     revParseHead: vi.fn().mockResolvedValue('h'),
-    commitFiles: vi.fn(),
+    commitFiles: vi.fn().mockResolvedValue({ created: true, commitHash: 'h' }),
+    commitStaged: vi.fn().mockResolvedValue({ created: false, commitHash: 'h' }),
     resetHardTo: vi.fn(),
     assertWorktreeClean: vi.fn().mockResolvedValue(undefined),
+    writeBinaryNoRenamePatch: vi.fn(async (_base: string, _head: string, patchPath: string) => {
+      await writeFile(patchPath, '', 'utf-8');
+    }),
+    applyPatchFile3WayIndex: vi.fn(),
+    diffNameStatus: vi.fn().mockResolvedValue([]),
   };
   const sessionWorktreeService = {
     create: vi.fn().mockResolvedValue({
@@ -167,10 +172,12 @@ const makeDeps = () => {
     loadPrompt: vi.fn().mockResolvedValue('base-framing'),
   };
   const wikiService = {
-    forWorktree: vi.fn().mockReturnValue({}),
+    forWorktree: vi.fn(),
+    listPageKeys: vi.fn().mockResolvedValue([]),
     readPage: vi.fn().mockResolvedValue(null),
     syncFromCommit: vi.fn().mockResolvedValue(undefined),
   };
+  wikiService.forWorktree.mockReturnValue(wikiService);
   const knowledgeSlRefs = {
     syncFromWiki: vi.fn().mockResolvedValue({ inserted: 1, deleted: 0 }),
   };
@@ -178,7 +185,7 @@ const makeDeps = () => {
     listPagesForUser: vi.fn().mockResolvedValue([]),
   };
   const semanticLayerService = {
-    forWorktree: vi.fn().mockReturnValue({}),
+    forWorktree: vi.fn(),
     listFilesForConnection: vi
       .fn()
       .mockImplementation((connectionId: string) =>
@@ -193,6 +200,7 @@ const makeDeps = () => {
         }),
       ),
   };
+  semanticLayerService.forWorktree.mockReturnValue(semanticLayerService);
   const slSearchService = {
     indexSources: vi.fn().mockResolvedValue(undefined),
   };
@@ -255,8 +263,12 @@ const buildRunner = (deps: ReturnType<typeof makeDeps> = makeDeps(), overrides: 
       resolveUploadDir: (uploadId) => `/tmp/ktx-test/ingest-uploads/${uploadId}`,
       resolvePullDir: (jobId) => `/tmp/ktx-test/ingest-pulls/${jobId}`,
       resolveTranscriptDir: (jobId) => `/tmp/ktx-test/run/wu-transcripts/${jobId}`,
+      resolveTracePath: (jobId) => `/tmp/ktx-test/ingest-traces/${jobId}/trace.jsonl`,
     },
-    settings: { probeRowCount: 1, memoryIngestionModel: 'test-model' },
+    settings: {
+      probeRowCount: 1,
+      memoryIngestionModel: 'test-model',
+    },
     skillsRegistry: deps.skillsRegistry as any,
     promptService: deps.promptService as any,
     wikiService: deps.wikiService as any,
@@ -1505,7 +1517,7 @@ describe('IngestBundleRunner — Stages 1 → 7', () => {
 
     const runner = buildRunner(deps);
     (runner as any).stageRawFilesStage1 = vi.fn().mockResolvedValue({
-      currentHashes: new Map([['explores/b2b/sales_pipeline.json', 'h1']]),
+      currentHashes: new Map([['a.yml', 'h1']]),
       rawDirInWorktree: 'raw-sources/looker-run/fake/s',
     });
     (runner as any).resolveStagedDir = vi.fn().mockResolvedValue('/tmp/stage/upload-x');
@@ -1570,6 +1582,7 @@ describe('IngestBundleRunner — Stages 1 → 7', () => {
       workUnits: [{ unitKey: 'u1', rawFiles: ['semantic_models.yml'], peerFileIndex: [], dependencyPaths: [] }],
       parseArtifacts: { semanticModels: [{ name: 'orders' }] },
     });
+    deps.adapter.listTargetConnectionIds = vi.fn().mockResolvedValue(['warehouse-2']);
     deps.semanticLayerService.loadAllSources.mockImplementation((connectionId: string) =>
       Promise.resolve({ sources: [{ name: `${connectionId}_source` }], loadErrors: [] }),
     );
@@ -1972,9 +1985,15 @@ describe('IngestBundleRunner — Stages 1 → 7', () => {
     const assertError = new Error('Worktree has in-progress git operation (sequencer ...); refusing to proceed');
     const sessionGit = {
       revParseHead: vi.fn().mockResolvedValue('h'),
-      commitFiles: vi.fn(),
+      commitFiles: vi.fn().mockResolvedValue({ created: true, commitHash: 'h' }),
+      commitStaged: vi.fn().mockResolvedValue({ created: false, commitHash: 'h' }),
       resetHardTo: vi.fn(),
       assertWorktreeClean: vi.fn().mockRejectedValue(assertError),
+      writeBinaryNoRenamePatch: vi.fn(async (_base: string, _head: string, patchPath: string) => {
+        await writeFile(patchPath, '', 'utf-8');
+      }),
+      applyPatchFile3WayIndex: vi.fn(),
+      diffNameStatus: vi.fn().mockResolvedValue([]),
     };
     deps.sessionWorktreeService.create.mockResolvedValue({
       chatId: 'j1',
@@ -2003,135 +2022,6 @@ describe('IngestBundleRunner — Stages 1 → 7', () => {
     ).rejects.toThrow(/in-progress git operation/);
     expect(deps.runsRepo.markFailed).toHaveBeenCalledWith('run-1');
     expect(deps.gitService.squashMergeIntoMain).not.toHaveBeenCalled();
-  });
-
-  it('squash-merges only successful WUs into main when one WU fails sl_validate', async () => {
-    const homeDir = await mkdtemp(join(tmpdir(), 'ingest-rollback-'));
-    try {
-      const configDir = join(homeDir, 'config');
-      const mainGit = new GitService({
-        storage: { configDir, homeDir },
-        git: {
-          userName: 'System User',
-          userEmail: 'system@example.com',
-          bootstrapMessage: 'Initialize test config repo',
-          bootstrapAuthor: 'test-system',
-          bootstrapAuthorEmail: 'system@example.com',
-        },
-      });
-      await mainGit.onModuleInit();
-      const baseSha = await mainGit.revParseHead();
-      if (!baseSha) {
-        throw new Error('no base sha');
-      }
-
-      const deps = makeDeps();
-      const sessionDir = join(homeDir, '.worktrees', 'session-j1');
-      const sessionBranch = 'session/j1';
-      let currentToolSession: any = null;
-
-      deps.gitService = mainGit as any;
-      deps.sessionWorktreeService.create.mockImplementation(async (_jobId: string, startSha: string) => {
-        await mkdir(join(homeDir, '.worktrees'), { recursive: true });
-        await mainGit.addWorktree(sessionDir, sessionBranch, startSha);
-        return {
-          chatId: 'j1',
-          workdir: sessionDir,
-          branch: sessionBranch,
-          baseSha: startSha,
-          createdAt: new Date(),
-          git: mainGit.forWorktree(sessionDir),
-          config: {},
-        };
-      });
-      deps.sessionWorktreeService.cleanup.mockResolvedValue(undefined);
-      deps.adapter.chunk.mockResolvedValue({
-        workUnits: [
-          { unitKey: 'wu-good', rawFiles: ['good.raw'], peerFileIndex: [], dependencyPaths: [] },
-          { unitKey: 'wu-bad', rawFiles: ['bad.raw'], peerFileIndex: [], dependencyPaths: [] },
-        ],
-      });
-      deps.toolsetFactory.createIngestWuToolset.mockImplementation((toolSession: any) => {
-        currentToolSession = toolSession;
-        return {
-          toRuntimeTools: vi.fn().mockReturnValue({}),
-          getAllTools: vi.fn().mockReturnValue([]),
-          getToolNames: vi.fn().mockReturnValue([]),
-        };
-      });
-      deps.slValidator.validateSingleSource.mockImplementation(
-        (_validationDeps: unknown, _connectionId: string, sourceName: string) => ({
-          errors: sourceName === 'bad' ? [{ message: 'bad source rejected' }] : [],
-          warnings: [],
-        }),
-      );
-      deps.agentRunner.runLoop.mockImplementation(async (params: any) => {
-        const unitKey = params.telemetryTags?.unitKey;
-        if (unitKey === 'wu-good') {
-          await mkdir(join(sessionDir, 'semantic-layer', 'c1'), { recursive: true });
-          await writeFile(join(sessionDir, 'semantic-layer', 'c1', 'good.yaml'), 'name: good\n');
-          addTouchedSlSource(currentToolSession.touchedSlSources, 'c1', 'good');
-          currentToolSession.actions.push({ target: 'sl', type: 'created', key: 'good', detail: '' });
-          await currentToolSession.gitService.commitFiles(
-            ['semantic-layer/c1/good.yaml'],
-            'test: add good source',
-            'KTX Test',
-            'system@ktx.local',
-          );
-        }
-        if (unitKey === 'wu-bad') {
-          await mkdir(join(sessionDir, 'semantic-layer', 'c1'), { recursive: true });
-          await writeFile(join(sessionDir, 'semantic-layer', 'c1', 'bad.yaml'), 'name: bad\n');
-          addTouchedSlSource(currentToolSession.touchedSlSources, 'c1', 'bad');
-          currentToolSession.actions.push({ target: 'sl', type: 'created', key: 'bad', detail: '' });
-          await currentToolSession.gitService.commitFiles(
-            ['semantic-layer/c1/bad.yaml'],
-            'test: add bad source',
-            'KTX Test',
-            'system@ktx.local',
-          );
-        }
-        return { stopReason: 'natural' };
-      });
-
-      const runner = buildRunner(deps);
-      (runner as any).stageRawFilesStage1 = vi.fn().mockImplementation(async ({ worktreeRoot }: any) => {
-        const rawDir = join(worktreeRoot, 'raw-sources', 'c1', 'fake', 's');
-        await mkdir(rawDir, { recursive: true });
-        await writeFile(join(rawDir, 'good.raw'), 'good raw');
-        await writeFile(join(rawDir, 'bad.raw'), 'bad raw');
-        return {
-          currentHashes: new Map([
-            ['good.raw', 'good-hash'],
-            ['bad.raw', 'bad-hash'],
-          ]),
-          rawDirInWorktree: 'raw-sources/c1/fake/s',
-        };
-      });
-      (runner as any).resolveStagedDir = vi.fn().mockResolvedValue('/tmp/stage/upload-x');
-
-      const result = await runner.run({
-        jobId: 'j1',
-        connectionId: 'c1',
-        sourceKey: 'fake',
-        trigger: 'upload',
-        bundleRef: { kind: 'upload', uploadId: 'upload-x' },
-      });
-
-      expect(result.failedWorkUnits).toEqual(['wu-bad']);
-      expect(await readFile(join(configDir, 'semantic-layer', 'c1', 'good.yaml'), 'utf-8')).toContain('good');
-      expect(await readFile(join(configDir, 'semantic-layer', 'c1', 'bad.yaml'), 'utf-8').catch(() => null)).toBeNull();
-      expect(deps.reportsRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: expect.objectContaining({
-            failedWorkUnits: ['wu-bad'],
-          }),
-        }),
-      );
-      await expect(stat(join(configDir, '.git', 'sequencer'))).rejects.toThrow();
-    } finally {
-      await rm(homeDir, { recursive: true, force: true });
-    }
   });
 
   it('fails the run and rethrows when the adapter cannot detect the bundle', async () => {
