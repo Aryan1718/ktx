@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { buildKtxProgram } from './cli-program.js';
-import type { KtxCliIo, KtxCliPackageInfo } from './cli-runtime.js';
+import { getKtxCliPackageInfo, type KtxCliIo } from './cli-runtime.js';
 import { formatCommandTree, walkCommandTree } from './command-tree.js';
 
 function silentIo(): KtxCliIo {
@@ -10,19 +10,11 @@ function silentIo(): KtxCliIo {
   };
 }
 
-function stubPackageInfo(): KtxCliPackageInfo {
-  return {
-    name: '@ktx/cli',
-    version: '0.0.0-docs',
-    contextPackageName: '@ktx/context',
-  };
-}
-
 export function renderKtxCommandTree(): string {
   const program = buildKtxProgram({
     io: silentIo(),
     deps: {},
-    packageInfo: stubPackageInfo(),
+    packageInfo: getKtxCliPackageInfo(),
     runInit: async () => 0,
   });
   return formatCommandTree(walkCommandTree(program));

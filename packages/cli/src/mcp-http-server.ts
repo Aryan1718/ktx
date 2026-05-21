@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { loadKtxProject } from '@ktx/context/project';
+import { loadKtxProject } from './context/project/project.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import type { KtxCliIo } from './cli-runtime.js';
+import { getKtxCliPackageInfo, type KtxCliIo } from './cli-runtime.js';
 import { createKtxMcpServerFactory } from './mcp-server-factory.js';
 
 const DEFAULT_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '::1'] as const;
@@ -25,6 +25,7 @@ export interface McpSecurityConfig {
   allowedOrigins: string[];
 }
 
+/** @internal */
 export type McpAuthorizationResult =
   | { ok: true }
   | { ok: false; status: 401 | 403; message: string };
@@ -34,6 +35,7 @@ function isLoopbackHost(host: string): boolean {
   return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1';
 }
 
+/** @internal */
 export function normalizeHostHeader(value: string): string {
   const trimmed = value.trim().toLowerCase();
   if (trimmed.startsWith('[')) {
@@ -85,6 +87,7 @@ function headerValue(headers: IncomingHttpHeaders | Record<string, string | unde
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** @internal */
 export function isMcpRequestAuthorized(
   request: { path: string; headers: IncomingHttpHeaders | Record<string, string | undefined> },
   config: McpSecurityConfig,
@@ -175,7 +178,7 @@ export async function runKtxMcpHttpServer(options: RunKtxMcpHttpServerOptions): 
     (await createKtxMcpServerFactory({
       project: project!,
       projectDir: options.projectDir,
-      cliVersion: options.cliVersion ?? '0.0.0-private',
+      cliVersion: options.cliVersion ?? getKtxCliPackageInfo().version,
       io: options.io,
     }));
   const sessions = new Map<string, StreamableHTTPServerTransport>();

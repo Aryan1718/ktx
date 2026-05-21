@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readKtxSetupState } from '@ktx/context/project';
+import { readKtxSetupState } from './context/project/setup-config.js';
 import { strFromU8, unzipSync } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -380,7 +380,7 @@ describe('setup agents', () => {
     });
   });
 
-  it('prompts for MCP-first client agent connection mode in interactive setup', async () => {
+  it('prompts for MCP-first agent client connection mode in interactive setup', async () => {
     const io = makeIo();
     const prompts = {
       select: vi.fn(async ({ message }: { message: string }) => (message.startsWith('Where') ? 'project' : 'mcp')),

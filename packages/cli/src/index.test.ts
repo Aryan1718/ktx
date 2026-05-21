@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { initKtxProject } from '@ktx/context/project';
+import { initKtxProject } from './context/project/project.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -19,7 +19,7 @@ import {
 
 const require = createRequire(import.meta.url);
 
-const cliPackageJson = require('@ktx/cli/package.json') as { name: string; version: string };
+const cliPackageJson = require('@kaelio/ktx/package.json') as { name: string; version: string };
 const cliVersion = cliPackageJson.version;
 
 function makeIo(options: { stdoutIsTty?: boolean } = {}) {
@@ -45,19 +45,18 @@ function makeIo(options: { stdoutIsTty?: boolean } = {}) {
 }
 
 describe('getKtxCliPackageInfo', () => {
-  it('identifies the CLI package and its context dependency', () => {
+  it('identifies the CLI package', () => {
     expect(getKtxCliPackageInfo()).toEqual({
-      name: '@ktx/cli',
+      name: '@kaelio/ktx',
       version: cliVersion,
-      contextPackageName: '@ktx/context',
     });
   });
 
   it('exports package metadata for package managers and runtime diagnostics', () => {
-    const packageJson = require('@ktx/cli/package.json') as { name: string; version: string };
+    const packageJson = require('@kaelio/ktx/package.json') as { name: string; version: string };
 
     expect(packageJson).toMatchObject({
-      name: '@ktx/cli',
+      name: '@kaelio/ktx',
       version: cliVersion,
     });
     expect(cliVersion).toMatch(/^\d+\.\d+\.\d+/);
@@ -72,7 +71,6 @@ describe('getKtxCliPackageInfo', () => {
     ).toEqual({
       name: '@kaelio/ktx',
       version: '0.1.0',
-      contextPackageName: '@ktx/context',
     });
   });
 });
@@ -118,7 +116,7 @@ describe('runKtxCli', () => {
 
     await expect(runKtxCli(['--version'], testIo.io)).resolves.toBe(0);
 
-    expect(testIo.stdout()).toBe(`@ktx/cli ${cliVersion}\n`);
+    expect(testIo.stdout()).toBe(`@kaelio/ktx ${cliVersion}\n`);
     expect(testIo.stderr()).toBe('');
   });
 

@@ -1,6 +1,7 @@
-import { createDefaultKtxMcpServer, createLocalProjectMcpContextPorts } from '@ktx/context/mcp';
-import { createLocalProjectMemoryIngest } from '@ktx/context/memory';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDefaultKtxMcpServer } from './context/mcp/server.js';
+import { createLocalProjectMcpContextPorts } from './context/mcp/local-project-ports.js';
+import { createLocalProjectMemoryIngest } from './context/memory/local-memory.js';
 import { resolveProjectEmbeddingProvider } from './embedding-resolution.js';
 import { createKtxCliScanConnector } from './local-scan-connectors.js';
 import { createKtxMcpServerFactory } from './mcp-server-factory.js';
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   memoryIngest: { ingest: vi.fn(), status: vi.fn(), waitForRun: vi.fn() },
 }));
 
-vi.mock('@ktx/context', () => ({
+vi.mock('./context/llm/embedding-port.js', () => ({
   KtxIngestEmbeddingPortAdapter: class {
     readonly maxBatchSize: number;
 
@@ -36,12 +37,15 @@ vi.mock('@ktx/context', () => ({
   },
 }));
 
-vi.mock('@ktx/context/mcp', () => ({
+vi.mock('./context/mcp/server.js', () => ({
   createDefaultKtxMcpServer: vi.fn(() => ({ kind: 'mcp-server' })),
+}));
+
+vi.mock('./context/mcp/local-project-ports.js', () => ({
   createLocalProjectMcpContextPorts: vi.fn(() => ({ context_tool: { name: 'context_tool' } })),
 }));
 
-vi.mock('@ktx/context/memory', () => ({
+vi.mock('./context/memory/local-memory.js', () => ({
   createLocalProjectMemoryIngest: vi.fn(() => mocks.memoryIngest),
 }));
 

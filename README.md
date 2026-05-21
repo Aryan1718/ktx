@@ -153,7 +153,7 @@ ktx wiki "refund policy" --json
 ktx sl query --connection-id warehouse --measure orders.revenue --format sql
 ```
 
-During setup, choose **Ask data questions with ktx MCP** for client agents.
+During setup, choose **Ask data questions with ktx MCP** for agent clients.
 Choose **Ask data questions + manage ktx with CLI commands** when an operator
 agent also needs pinned `ktx` admin commands.
 
@@ -162,20 +162,14 @@ commands to run. If the output includes `ktx mcp start --project-dir ...`, run
 it before opening your agent. Claude Desktop uses its own launcher and prints
 separate skill upload steps under `.ktx/agents/claude/`.
 
-## Workspace packages
+## Workspace layout
 
-| Package | Purpose |
-|---------|---------|
-| `packages/cli` | CLI entry point |
-| `packages/context` | Core context engine |
-| `packages/llm` | LLM and embedding providers |
-| `packages/connector-bigquery` | BigQuery scan connector |
-| `packages/connector-clickhouse` | ClickHouse scan connector |
-| `packages/connector-mysql` | MySQL scan connector |
-| `packages/connector-postgres` | Postgres scan connector |
-| `packages/connector-snowflake` | Snowflake scan connector |
-| `packages/connector-sqlite` | SQLite scan connector |
-| `packages/connector-sqlserver` | SQL Server scan connector |
+| Path | Purpose |
+|------|---------|
+| `packages/cli` | TypeScript CLI package and published npm package source |
+| `packages/cli/src/context` | Core context engine |
+| `packages/cli/src/llm` | LLM and embedding providers |
+| `packages/cli/src/connectors` | Database scan connectors |
 | `python/ktx-sl` | Semantic-layer query planning |
 | `python/ktx-daemon` | Portable compute service |
 

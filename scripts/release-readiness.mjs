@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { packageArtifactLayout, packageReleaseMetadata, verifyArtifactManifest } from './package-artifacts.mjs';
-import { assertPublicNpmPackageVersion, publicNpmPackageVersion } from './public-npm-release-metadata.mjs';
+import { publicNpmPackageVersion } from './public-npm-release-metadata.mjs';
 import { readPublishedPackageSmokeConfig } from './published-package-smoke-config.mjs';
 
 function scriptRootDir() {
@@ -138,8 +138,6 @@ export function validateReleasePolicy(policy) {
     throw new Error(`Unsupported release policy schemaVersion: ${policy.schemaVersion}`);
   }
   assertSupportedReleaseMode(policy.releaseMode);
-  assertString(policy.publicNpmPackageVersion, 'Release policy publicNpmPackageVersion');
-  assertPublicNpmPackageVersion(policy.publicNpmPackageVersion);
   assertPlainObject(policy.npm, 'Release policy npm');
   assertPlainObject(policy.python, 'Release policy python');
   assertPlainObject(policy.publishedPackageSmoke, 'Release policy publishedPackageSmoke');
@@ -228,20 +226,17 @@ function assertNonPublishingArtifactPolicy(policy, metadata, publicPackageVersio
     if (entry.releaseMode !== CI_ARTIFACT_ONLY_RELEASE_MODE) {
       throw new Error(`Package ${entry.packageName} releaseMode must remain ci-artifact-only`);
     }
-    if (entry.ecosystem === 'npm') {
-      const isPublicKtxPackage = entry.packageName === '@kaelio/ktx';
-      if (isPublicKtxPackage) {
-        if (entry.private !== false) {
-          throw new Error(`${policyLabel} npm package @kaelio/ktx must be publishable when npm.publish is false`);
-        }
-        if (entry.packageVersion !== publicPackageVersion) {
-          throw new Error(`${policyLabel} npm package @kaelio/ktx must use public version ${publicPackageVersion}`);
-        }
-      } else if (entry.private !== true) {
-        throw new Error(`${policyLabel} npm package ${entry.packageName} must remain private`);
-      } else if (!entry.packageVersion.endsWith('-private')) {
-        throw new Error(`${policyLabel} npm package ${entry.packageName} must use a private version suffix`);
-      }
+    if (entry.ecosystem !== 'npm') {
+      continue;
+    }
+    if (entry.packageName !== '@kaelio/ktx') {
+      throw new Error(`${policyLabel} unexpected npm package ${entry.packageName}`);
+    }
+    if (entry.private !== false) {
+      throw new Error(`${policyLabel} npm package @kaelio/ktx must be publishable when npm.publish is false`);
+    }
+    if (entry.packageVersion !== publicPackageVersion) {
+      throw new Error(`${policyLabel} npm package @kaelio/ktx must use public version ${publicPackageVersion}`);
     }
   }
 }

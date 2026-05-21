@@ -1,7 +1,9 @@
 import { readFile as fsReadFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
-import { createLocalProjectMemoryIngest, type MemoryAgentInput, type MemoryIngestStatus } from '@ktx/context/memory';
-import { loadKtxProject, type KtxLocalProject } from '@ktx/context/project';
+import { createLocalProjectMemoryIngest } from './context/memory/local-memory.js';
+import type { MemoryAgentInput } from './context/memory/types.js';
+import type { MemoryIngestStatus } from './context/memory/memory-runs.js';
+import { loadKtxProject, type KtxLocalProject } from './context/project/project.js';
 import type { KtxCliIo } from './cli-runtime.js';
 import { createRepainter, initViewState, renderContextBuildView, type ContextBuildTargetState } from './context-build-view.js';
 import { formatDuration } from './demo-metrics.js';
@@ -17,6 +19,7 @@ export interface KtxTextIngestArgs {
   failFast: boolean;
 }
 
+/** @internal */
 export interface TextMemoryIngestPort {
   ingest(input: MemoryAgentInput): Promise<{ runId: string }>;
   waitForRun(runId: string): Promise<void>;

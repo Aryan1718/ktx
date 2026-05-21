@@ -1,11 +1,11 @@
 import { createRequire } from 'node:module';
 
-import type { ReindexSummary } from '@ktx/context/index-sync';
+import type { ReindexSummary } from './context/index-sync/types.js';
 import { describe, expect, it, vi } from 'vitest';
 import { renderReindexJson, renderReindexPlain, reindexHasErrors } from './admin-reindex.js';
 import { runKtxCli } from './index.js';
 
-const cliVersion = (createRequire(import.meta.url)('@ktx/cli/package.json') as { version: string })
+const cliVersion = (createRequire(import.meta.url)('@kaelio/ktx/package.json') as { version: string })
   .version;
 
 function makeIo(options: { stdoutIsTTY?: boolean } = {}) {

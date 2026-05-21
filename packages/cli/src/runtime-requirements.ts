@@ -1,8 +1,4 @@
-import type {
-  KtxProjectConfig,
-  KtxProjectConnectionConfig,
-  KtxProjectEmbeddingConfig,
-} from '@ktx/context/project';
+import type { KtxProjectConfig, KtxProjectConnectionConfig, KtxProjectEmbeddingConfig } from './context/project/config.js';
 import type { KtxRuntimeFeature } from './managed-python-runtime.js';
 import type { KtxPublicIngestPlan } from './public-ingest.js';
 
@@ -29,6 +25,7 @@ export interface KtxProjectRuntimeRequirementOptions {
 }
 
 export interface KtxPublicIngestRuntimeRequirementOptions {
+  config?: KtxProjectConfig;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
 }
 
@@ -151,6 +148,14 @@ export function resolvePublicIngestRuntimeRequirements(
         detail: `${target.connectionId} uses Looker identifier parsing.`,
       });
     }
+  }
+
+  if (options.config && requiresManagedLocalEmbeddings(options.config.ingest.embeddings)) {
+    requirements.push({
+      feature: 'local-embeddings',
+      reason: 'local-embeddings',
+      detail: 'Local sentence-transformers embeddings use the managed Python runtime.',
+    });
   }
 
   return uniqueRequirements(requirements);

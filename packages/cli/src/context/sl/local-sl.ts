@@ -1,0 +1,659 @@
+import { join } from 'node:path';
+import YAML from 'yaml';
+import { z } from 'zod';
+import type { KtxEmbeddingPort } from '../../context/core/embedding.js';
+import type { KtxFileWriteResult } from '../../context/core/file-store.js';
+import type { KtxLocalProject } from '../../context/project/project.js';
+import { HybridSearchCore } from '../../context/search/hybrid-search-core.js';
+import type { SearchCandidateGenerator } from '../../context/search/types.js';
+import { DEFAULT_PRIORITY, resolveDescription } from './descriptions.js';
+import { normalizeSemanticLayerDescriptions } from './description-normalization.js';
+import { sourceDefinitionSchema, sourceOverlaySchema } from './schemas.js';
+import {
+  composeOverlay,
+  type ManifestTableEntry,
+  projectManifestEntry,
+  SemanticLayerService,
+  toResolvedWire,
+} from './semantic-layer.service.js';
+import type { PgliteSlSearchPrototypeOwnerOptions } from './pglite-sl-search-prototype.js';
+import { loadLatestSlDictionaryEntries } from './sl-dictionary-profile.js';
+import { buildSemanticLayerSourceSearchText, SlSearchService } from './sl-search.service.js';
+import { SqliteSlSourcesIndex } from './sqlite-sl-sources-index.js';
+import type { SemanticLayerSource, SlDictionaryMatch, SlSearchLaneSummary, SlSearchMatchReason } from './types.js';
+
+export interface LocalSlSourceSummary {
+  connectionId: string;
+  name: string;
+  path: string;
+  description?: string;
+  columnCount: number;
+  measureCount: number;
+  joinCount: number;
+}
+
+export interface LocalSlSourceSearchResult extends LocalSlSourceSummary {
+  score: number;
+  frequencyTier?: NonNullable<SemanticLayerSource['usage']>['frequencyTier'];
+  snippet?: string;
+  matchReasons?: SlSearchMatchReason[];
+  dictionaryMatches?: SlDictionaryMatch[];
+  lanes?: SlSearchLaneSummary[];
+}
+
+export interface LocalSlSearchInput {
+  connectionId?: string;
+  query: string;
+  embeddingService?: KtxEmbeddingPort | null;
+  limit?: number;
+  backend?: 'pglite-owner-prototype';
+  pglite?: PgliteSlSearchPrototypeOwnerOptions;
+}
+
+export interface LocalSlSource extends LocalSlSourceSummary {
+  yaml: string;
+}
+
+export interface LocalSlSourceRecord extends LocalSlSource {
+  source: SemanticLayerSource;
+}
+
+export interface LocalSlValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+const LOCAL_AUTHOR = 'ktx';
+const LOCAL_AUTHOR_EMAIL = 'ktx@example.com';
+
+function assertSafePathToken(kind: string, value: string): string {
+  if (
+    value.trim().length === 0 ||
+    value.includes('..') ||
+    value.includes('\\') ||
+    value.startsWith('/') ||
+    value.startsWith('.') ||
+    value.includes('//')
+  ) {
+    throw new Error(`Unsafe ${kind}: ${value}`);
+  }
+  return value;
+}
+
+function assertSafeConnectionId(connectionId: string): string {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(connectionId)) {
+    throw new Error(`Unsafe connection id: ${connectionId}`);
+  }
+  return assertSafePathToken('connection id', connectionId);
+}
+
+function isSafeConnectionId(connectionId: string | undefined): connectionId is string {
+  return typeof connectionId === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(connectionId);
+}
+
+function assertSafeSourceName(sourceName: string): string {
+  if (!/^[a-z0-9][a-z0-9_]*$/.test(sourceName)) {
+    throw new Error(`Unsafe semantic-layer source name: ${sourceName}`);
+  }
+  return assertSafePathToken('semantic-layer source name', sourceName);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function slPath(connectionId: string, sourceName: string): string {
+  return `semantic-layer/${assertSafeConnectionId(connectionId)}/${assertSafeSourceName(sourceName)}.yaml`;
+}
+
+function sourceNameFromPath(path: string): string {
+  return (
+    path
+      .split('/')
+      .at(-1)
+      ?.replace(/\.ya?ml$/, '') ?? path
+  );
+}
+
+function parseYamlRecord(raw: string): Record<string, unknown> {
+  const parsed = YAML.parse(raw) as unknown;
+  if (!isRecord(parsed)) {
+    throw new Error('Semantic-layer source YAML must contain an object');
+  }
+  return parsed;
+}
+
+function descriptionMap(value: Record<string, unknown>): Record<string, string> | undefined {
+  const result: Record<string, string> = {};
+  const descriptions = value.descriptions;
+  if (isRecord(descriptions)) {
+    for (const [key, text] of Object.entries(descriptions)) {
+      if (typeof text === 'string' && text.trim().length > 0) {
+        result[key] = text;
+      }
+    }
+  }
+
+  const flatDescription = value.description;
+  if (!result.user && typeof flatDescription === 'string' && flatDescription.trim().length > 0) {
+    result.user = flatDescription;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function validationErrors(error: unknown): string[] {
+  if (error instanceof z.ZodError) {
+    return error.issues.map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`);
+  }
+  return [error instanceof Error ? error.message : String(error)];
+}
+
+function summarizeSource(args: { connectionId: string; path: string; raw: string }): LocalSlSourceSummary {
+  const parsed = parseYamlRecord(args.raw);
+  const name = typeof parsed.name === 'string' && parsed.name.length > 0 ? parsed.name : sourceNameFromPath(args.path);
+  const description = resolveDescription(descriptionMap(parsed), { priority: DEFAULT_PRIORITY }) ?? undefined;
+  return {
+    connectionId: args.connectionId,
+    name,
+    path: args.path,
+    ...(description ? { description } : {}),
+    columnCount: Array.isArray(parsed.columns) ? parsed.columns.length : 0,
+    measureCount: Array.isArray(parsed.measures) ? parsed.measures.length : 0,
+    joinCount: Array.isArray(parsed.joins) ? parsed.joins.length : 0,
+  };
+}
+
+function sourceToYaml(source: SemanticLayerSource): string {
+  return YAML.stringify(source, { indent: 2, lineWidth: 0, version: '1.1' });
+}
+
+function summarizeSemanticSource(args: {
+  connectionId: string;
+  path: string;
+  source: SemanticLayerSource;
+}): LocalSlSourceSummary {
+  const description = resolveDescription(args.source.descriptions, { priority: DEFAULT_PRIORITY }) ?? undefined;
+  return {
+    connectionId: args.connectionId,
+    name: args.source.name,
+    path: args.path,
+    ...(description ? { description } : {}),
+    columnCount: args.source.columns.length,
+    measureCount: args.source.measures.length,
+    joinCount: args.source.joins.length,
+  };
+}
+
+function manifestTables(value: Record<string, unknown>): Record<string, ManifestTableEntry> | null {
+  return isRecord(value.tables) ? (value.tables as Record<string, ManifestTableEntry>) : null;
+}
+
+function parsedStandaloneSource(parsed: Record<string, unknown>, name: string): SemanticLayerSource {
+  const source = parsed as Partial<SemanticLayerSource>;
+  return normalizeSemanticLayerDescriptions({
+    ...source,
+    name,
+    grain: Array.isArray(parsed.grain) ? (parsed.grain.filter((item) => typeof item === 'string') as string[]) : [],
+    columns: Array.isArray(parsed.columns) ? (parsed.columns as SemanticLayerSource['columns']) : [],
+    joins: Array.isArray(parsed.joins) ? (parsed.joins as SemanticLayerSource['joins']) : [],
+    measures: Array.isArray(parsed.measures) ? (parsed.measures as SemanticLayerSource['measures']) : [],
+  });
+}
+
+export async function loadLocalSlSourceRecords(
+  project: KtxLocalProject,
+  input: { connectionId: string },
+): Promise<LocalSlSourceRecord[]> {
+  const connectionId = assertSafeConnectionId(input.connectionId);
+  const dir = `semantic-layer/${connectionId}`;
+  const schemaDir = `${dir}/_schema`;
+  const listed = await project.fileStore.listFiles(dir);
+  const paths = listed.files.filter((file) => file.endsWith('.yaml') || file.endsWith('.yml')).sort();
+  const sources = new Map<string, LocalSlSourceRecord>();
+
+  for (const path of paths.filter((file) => file.startsWith(`${schemaDir}/`))) {
+    const raw = await project.fileStore.readFile(path);
+    const tables = manifestTables(parseYamlRecord(raw.content));
+    if (!tables) {
+      continue;
+    }
+    for (const [name, entry] of Object.entries(tables)) {
+      const source = projectManifestEntry(name, entry);
+      const projectedPath = `${path}#${name}`;
+      sources.set(name, {
+        ...summarizeSemanticSource({ connectionId, path: projectedPath, source }),
+        yaml: sourceToYaml(source),
+        source,
+      });
+    }
+  }
+
+  for (const path of paths.filter((file) => !file.startsWith(`${schemaDir}/`))) {
+    const raw = await project.fileStore.readFile(path);
+    const parsed = parseYamlRecord(raw.content);
+    const name = typeof parsed.name === 'string' && parsed.name.length > 0 ? parsed.name : sourceNameFromPath(path);
+    if (parsed.table || parsed.sql) {
+      const source = parsedStandaloneSource(parsed, name);
+      sources.set(name, { ...summarizeSource({ connectionId, path, raw: raw.content }), yaml: raw.content, source });
+      continue;
+    }
+
+    const base = sources.get(name);
+    if (!base) {
+      continue;
+    }
+    let source: SemanticLayerSource;
+    try {
+      source = composeOverlay(base.source, parsed);
+    } catch (error) {
+      throw new Error(`${path}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    sources.set(name, {
+      ...summarizeSemanticSource({ connectionId, path, source }),
+      yaml: sourceToYaml(source),
+      source,
+    });
+  }
+
+  return [...sources.values()].sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export async function validateLocalSlSource(
+  rawYaml: string,
+  options?: { project?: KtxLocalProject; connectionId?: string; sourceName?: string },
+): Promise<LocalSlValidationResult> {
+  try {
+    const parsed = parseYamlRecord(rawYaml);
+    const schema = parsed.table || parsed.sql ? sourceDefinitionSchema : sourceOverlaySchema;
+    if (schema === sourceOverlaySchema && Array.isArray(parsed.columns)) {
+      const sourceName = options?.sourceName ?? (typeof parsed.name === 'string' ? parsed.name : 'source');
+      const path =
+        options?.connectionId && isSafeConnectionId(options.connectionId)
+          ? `semantic-layer/${options.connectionId}/${sourceName}.yaml`
+          : `${sourceName}.yaml`;
+      const legacyColumnPatchErrors = parsed.columns
+        .filter((column): column is Record<string, unknown> => isRecord(column))
+        .filter((column) => typeof column.name === 'string' && (!column.expr || !column.type))
+        .map(
+          (column) =>
+            `${path}: column '${column.name}' patches a manifest column but is in 'columns:' — move it to 'column_overrides:'`,
+        );
+      if (legacyColumnPatchErrors.length > 0) {
+        return { valid: false, errors: legacyColumnPatchErrors };
+      }
+    }
+    const result = schema.parse(parsed);
+    const errors: string[] = [];
+
+    if (options?.project && options.connectionId && 'table' in result && result.table) {
+      const service = new SemanticLayerService(options.project.fileStore, {} as never, {} as never);
+      errors.push(
+        ...(await service.validatePhysicalTableReferences(options.connectionId, [result as SemanticLayerSource])),
+      );
+    }
+
+    if ('table' in result || 'sql' in result) {
+      toResolvedWire(result as SemanticLayerSource);
+    }
+
+    return { valid: errors.length === 0, errors };
+  } catch (error) {
+    return { valid: false, errors: validationErrors(error) };
+  }
+}
+
+/** @internal */
+export async function writeLocalSlSource(
+  project: KtxLocalProject,
+  input: { connectionId: string; sourceName: string; yaml: string },
+): Promise<KtxFileWriteResult> {
+  const validation = await validateLocalSlSource(input.yaml, { project, connectionId: input.connectionId });
+  if (!validation.valid) {
+    throw new Error(`Invalid semantic-layer source: ${validation.errors.join('; ')}`);
+  }
+
+  const parsed = parseYamlRecord(input.yaml);
+  if (typeof parsed.name === 'string' && parsed.name !== input.sourceName) {
+    throw new Error(`Semantic-layer source name "${parsed.name}" does not match requested path "${input.sourceName}"`);
+  }
+
+  const path = slPath(input.connectionId, input.sourceName);
+  return project.fileStore.writeFile(
+    path,
+    input.yaml.endsWith('\n') ? input.yaml : `${input.yaml}\n`,
+    LOCAL_AUTHOR,
+    LOCAL_AUTHOR_EMAIL,
+    `Write semantic-layer source: ${input.connectionId}/${input.sourceName}`,
+  );
+}
+
+export async function readLocalSlSource(
+  project: KtxLocalProject,
+  input: { connectionId: string; sourceName: string },
+): Promise<LocalSlSource | null> {
+  const path = slPath(input.connectionId, input.sourceName);
+  try {
+    const result = await project.fileStore.readFile(path);
+    return {
+      ...summarizeSource({ connectionId: input.connectionId, path, raw: result.content }),
+      yaml: result.content,
+    };
+  } catch {
+    const records = await loadLocalSlSourceRecords(project, {
+      connectionId: input.connectionId,
+    });
+    const record = records.find((source) => source.name === input.sourceName);
+    return record ? { ...record } : null;
+  }
+}
+
+export async function listLocalSlSources(
+  project: KtxLocalProject,
+  input: { connectionId?: string } = {},
+): Promise<LocalSlSourceSummary[]> {
+  if (input.connectionId) {
+    return (await loadLocalSlSourceRecords(project, { connectionId: input.connectionId })).map(
+      ({ source: _source, yaml: _yaml, ...summary }) => summary,
+    );
+  }
+  const listed = await project.fileStore.listFiles('semantic-layer');
+  const connectionIds = [...new Set(listed.files.map((path) => path.split('/')[1]).filter(isSafeConnectionId))].sort();
+  const summaries: LocalSlSourceSummary[] = [];
+  for (const connectionId of connectionIds) {
+    const records = await loadLocalSlSourceRecords(project, { connectionId });
+    summaries.push(...records.map(({ source: _source, yaml: _yaml, ...summary }) => summary));
+  }
+  return summaries.sort(
+    (left, right) => left.connectionId.localeCompare(right.connectionId) || left.name.localeCompare(right.name),
+  );
+}
+
+interface LocalSlSearchCandidate {
+  summary: LocalSlSourceSummary;
+  source: SemanticLayerSource;
+  searchText: string;
+}
+
+function sqliteSlDbPath(project: KtxLocalProject): string {
+  return join(project.projectDir, '.ktx', 'db.sqlite');
+}
+
+async function loadLocalSlSearchCandidates(
+  project: KtxLocalProject,
+  input: { connectionId?: string } = {},
+): Promise<LocalSlSearchCandidate[]> {
+  if (input.connectionId) {
+    return (await loadLocalSlSourceRecords(project, { connectionId: input.connectionId })).map((record) => ({
+      summary: {
+        connectionId: record.connectionId,
+        name: record.name,
+        path: record.path,
+        ...(record.description ? { description: record.description } : {}),
+        columnCount: record.columnCount,
+        measureCount: record.measureCount,
+        joinCount: record.joinCount,
+      },
+      source: record.source,
+      searchText: buildSemanticLayerSourceSearchText(record.source),
+    }));
+  }
+
+  const listed = await project.fileStore.listFiles('semantic-layer');
+  const connectionIds = [...new Set(listed.files.map((path) => path.split('/')[1]).filter(isSafeConnectionId))].sort();
+  const candidates: LocalSlSearchCandidate[] = [];
+  for (const connectionId of connectionIds) {
+    candidates.push(...(await loadLocalSlSearchCandidates(project, { connectionId })));
+  }
+  return candidates.sort(
+    (left, right) =>
+      left.summary.connectionId.localeCompare(right.summary.connectionId) ||
+      left.summary.name.localeCompare(right.summary.name),
+  );
+}
+
+function candidateKey(summary: LocalSlSourceSummary): string {
+  return `${summary.connectionId}/${summary.name}`;
+}
+
+function searchResultUsageFields(source: SemanticLayerSource): Pick<LocalSlSourceSearchResult, 'frequencyTier'> {
+  return source.usage?.frequencyTier ? { frequencyTier: source.usage.frequencyTier } : {};
+}
+
+function tokenLaneCandidates(candidates: LocalSlSearchCandidate[], terms: readonly string[]) {
+  if (terms.length === 0) {
+    return [];
+  }
+  return candidates
+    .map((candidate) => {
+      const haystack = candidate.searchText.toLowerCase();
+      const matchedTerms = terms.filter((term) => haystack.includes(term));
+      return {
+        candidate,
+        score: matchedTerms.length / terms.length,
+      };
+    })
+    .filter((result) => result.score > 0)
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.candidate.summary.connectionId.localeCompare(right.candidate.summary.connectionId) ||
+        left.candidate.summary.name.localeCompare(right.candidate.summary.name),
+    );
+}
+
+async function refreshHybridSlIndexes(input: {
+  index: SqliteSlSourcesIndex;
+  project: KtxLocalProject;
+  candidates: LocalSlSearchCandidate[];
+  embeddingService?: KtxEmbeddingPort | null;
+}): Promise<void> {
+  const candidatesByConnection = new Map<string, LocalSlSearchCandidate[]>();
+  for (const candidate of input.candidates) {
+    candidatesByConnection.set(candidate.summary.connectionId, [
+      ...(candidatesByConnection.get(candidate.summary.connectionId) ?? []),
+      candidate,
+    ]);
+  }
+
+  for (const [connectionId, group] of candidatesByConnection) {
+    if (input.embeddingService) {
+      const service = new SlSearchService(input.embeddingService, input.index);
+      await service.indexSources(
+        connectionId,
+        group.map((candidate) => candidate.source),
+      );
+    } else {
+      await input.index.upsertSources(
+        connectionId,
+        group.map((candidate) => ({
+          sourceName: candidate.summary.name,
+          searchText: candidate.searchText,
+          embedding: null,
+        })),
+      );
+      await input.index.deleteStale(
+        connectionId,
+        group.map((candidate) => candidate.summary.name),
+      );
+    }
+  }
+
+  const dictionaryEntries = await loadLatestSlDictionaryEntries(input.project, [...candidatesByConnection.keys()]);
+  for (const connectionId of candidatesByConnection.keys()) {
+    await input.index.replaceDictionaryEntries(
+      connectionId,
+      dictionaryEntries.filter((entry) => entry.connectionId === connectionId),
+    );
+  }
+}
+
+export async function searchLocalSlSources(
+  project: KtxLocalProject,
+  input: LocalSlSearchInput,
+): Promise<LocalSlSourceSearchResult[]> {
+  const query = input.query.trim();
+  if (!query) {
+    return (await listLocalSlSources(project, { connectionId: input.connectionId })).map((source) => ({
+      ...source,
+      score: 1,
+    }));
+  }
+
+  if (input.backend === 'pglite-owner-prototype') {
+    if (!input.pglite) {
+      throw new Error('PGlite semantic-layer search prototype requires pglite owner-process options.');
+    }
+    const { searchLocalSlSourcesWithPglitePrototype } = await import('./pglite-sl-search-prototype.js');
+    return searchLocalSlSourcesWithPglitePrototype(project, {
+      connectionId: input.connectionId,
+      query,
+      embeddingService: input.embeddingService ?? null,
+      limit: input.limit,
+      pglite: input.pglite,
+    });
+  }
+
+  const candidates = await loadLocalSlSearchCandidates(project, { connectionId: input.connectionId });
+  if (project.config.storage.search !== 'sqlite-fts5') {
+    return candidates
+      .map((candidate) => {
+        const terms = query
+          .toLowerCase()
+          .split(/\s+/)
+          .map((term) => term.trim())
+          .filter(Boolean);
+        return {
+          candidate,
+          score:
+            terms.length === 0
+              ? 0
+              : terms.filter((term) => candidate.searchText.toLowerCase().includes(term)).length / terms.length,
+        };
+      })
+      .filter((result) => result.score > 0)
+      .map((result) => ({
+        ...result.candidate.summary,
+        score: result.score,
+        matchReasons: ['token'],
+        ...searchResultUsageFields(result.candidate.source),
+      }))
+      .sort(
+        (left, right) =>
+          right.score - left.score ||
+          left.connectionId.localeCompare(right.connectionId) ||
+          left.path.localeCompare(right.path),
+      );
+  }
+
+  const index = new SqliteSlSourcesIndex({ dbPath: sqliteSlDbPath(project) });
+  await refreshHybridSlIndexes({ index, project, candidates, embeddingService: input.embeddingService ?? null });
+
+  const candidateById = new Map(candidates.map((candidate) => [candidateKey(candidate.summary), candidate]));
+  const connectionIds = input.connectionId ? [input.connectionId] : undefined;
+  const finalLimit = input.limit ?? candidates.length;
+  const core = new HybridSearchCore();
+  const dictionaryEvidence = new Map<string, SlDictionaryMatch[]>();
+  const lexicalSnippets = new Map<string, string>();
+
+  const generators: SearchCandidateGenerator[] = [
+    {
+      lane: 'lexical',
+      async generate(args) {
+        const rows = await index.searchLexicalCandidates({
+          connectionIds,
+          queryText: args.queryText,
+          limit: args.laneCandidatePoolLimit,
+        });
+        for (const row of rows) {
+          if (row.snippet) {
+            lexicalSnippets.set(row.id, row.snippet);
+          }
+        }
+        return {
+          candidates: rows.map((row) => ({ id: row.id, rank: row.rank, rawScore: row.rawScore })),
+        };
+      },
+    },
+    {
+      lane: 'dictionary',
+      async generate(args) {
+        const rows = await index.searchDictionaryCandidates({
+          connectionIds,
+          queryText: args.queryText,
+          limit: args.laneCandidatePoolLimit,
+        });
+        for (const row of rows) {
+          dictionaryEvidence.set(row.id, row.matches);
+        }
+        return {
+          candidates: rows.map((row) => ({
+            id: row.id,
+            rank: row.rank,
+            rawScore: row.rawScore,
+            evidence: row.matches,
+          })),
+        };
+      },
+    },
+    {
+      lane: 'token',
+      async generate(args) {
+        const rows = tokenLaneCandidates(candidates, args.normalizedQuery.terms).slice(0, args.laneCandidatePoolLimit);
+        return {
+          candidates: rows.map((row, index) => ({
+            id: candidateKey(row.candidate.summary),
+            rank: index + 1,
+            rawScore: row.score,
+          })),
+        };
+      },
+    },
+    {
+      lane: 'semantic',
+      async generate(args) {
+        if (!input.embeddingService) {
+          return { status: 'skipped', candidates: [], reason: 'embedding_unconfigured' };
+        }
+        try {
+          const queryEmbedding = await input.embeddingService.computeEmbedding(args.queryText);
+          const rows = await index.searchSemanticCandidates({
+            connectionIds,
+            queryEmbedding,
+            limit: args.laneCandidatePoolLimit,
+          });
+          return {
+            candidates: rows.map((row) => ({ id: row.id, rank: row.rank, rawScore: row.rawScore })),
+          };
+        } catch (error) {
+          return {
+            status: 'skipped',
+            candidates: [],
+            reason: `embedding_unhealthy:${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      },
+    },
+  ];
+
+  const result = await core.search({ queryText: query, limit: finalLimit, generators });
+  const hydrated: LocalSlSourceSearchResult[] = [];
+  for (const fused of result.results) {
+    const candidate = candidateById.get(fused.id);
+    if (!candidate) {
+      continue;
+    }
+    const dictionaryMatches = dictionaryEvidence.get(fused.id);
+    const snippet = lexicalSnippets.get(fused.id);
+    hydrated.push({
+      ...candidate.summary,
+      score: fused.score,
+      ...searchResultUsageFields(candidate.source),
+      ...(snippet ? { snippet } : {}),
+      matchReasons: fused.matchReasons as SlSearchMatchReason[],
+      ...(dictionaryMatches && dictionaryMatches.length > 0 ? { dictionaryMatches } : {}),
+      lanes: result.lanes,
+    });
+  }
+  return hydrated;
+}

@@ -2,14 +2,9 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import {
-  initKtxProject,
-  type KtxLocalProject,
-  loadKtxProject,
-  markKtxSetupStateStepComplete,
-  mergeKtxSetupGitignoreEntries,
-  serializeKtxProjectConfig,
-} from '@ktx/context/project';
+import { initKtxProject, type KtxLocalProject, loadKtxProject } from './context/project/project.js';
+import { markKtxSetupStateStepComplete, mergeKtxSetupGitignoreEntries } from './context/project/setup-config.js';
+import { serializeKtxProjectConfig } from './context/project/config.js';
 import type { KtxCliIo } from './cli-runtime.js';
 import { gray } from './io/symbols.js';
 import { withTextInputNavigation } from './prompt-navigation.js';
@@ -18,8 +13,8 @@ import {
   type KtxSetupPromptOption,
 } from './setup-prompts.js';
 
-export type KtxSetupProjectMode = 'auto' | 'prompt-new';
-export type KtxSetupInputMode = 'auto' | 'disabled';
+type KtxSetupProjectMode = 'auto' | 'prompt-new';
+type KtxSetupInputMode = 'auto' | 'disabled';
 
 export interface KtxSetupProjectArgs {
   projectDir: string;
@@ -45,6 +40,7 @@ export type KtxSetupProjectResult =
   | { status: 'cancelled'; projectDir: string }
   | { status: 'missing-input'; projectDir: string };
 
+/** @internal */
 export interface KtxSetupProjectPromptAdapter {
   select(options: { message: string; options: KtxSetupPromptOption[] }): Promise<string>;
   text(options: { message: string; placeholder?: string }): Promise<string | undefined>;

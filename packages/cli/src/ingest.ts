@@ -1,24 +1,14 @@
-import {
-  buildMemoryFlowViewModel,
-  createMemoryFlowLiveBuffer,
-  formatMemoryFlowFinalSummary,
-  getLatestLocalIngestStatus,
-  getLocalIngestStatus,
-  type IngestReportSnapshot,
-  ingestReportToMemoryFlowReplay,
-  type LocalMetabaseFanoutResult,
-  type LocalMetabaseFanoutProgress,
-  type MemoryFlowEvent,
-  type MemoryFlowReplayInput,
-  type RunLocalIngestOptions,
-  renderMemoryFlowReplay,
-  runLocalIngest,
-  runLocalMetabaseIngest,
-  savedMemoryCountsForReport,
-  sanitizeMemoryFlowError,
-} from '@ktx/context/ingest';
-import type { KtxSqlQueryExecutorPort } from '@ktx/context/connections';
-import { loadKtxProject, type KtxLocalProject } from '@ktx/context/project';
+import { buildMemoryFlowViewModel } from './context/ingest/memory-flow/view-model.js';
+import { createMemoryFlowLiveBuffer, sanitizeMemoryFlowError } from './context/ingest/memory-flow/live-buffer.js';
+import { formatMemoryFlowFinalSummary } from './context/ingest/memory-flow/summary.js';
+import { getLatestLocalIngestStatus, getLocalIngestStatus, type LocalMetabaseFanoutResult, type LocalMetabaseFanoutProgress, type RunLocalIngestOptions, runLocalIngest, runLocalMetabaseIngest } from './context/ingest/local-ingest.js';
+import { type IngestReportSnapshot, savedMemoryCountsForReport } from './context/ingest/reports.js';
+import { ingestReportToMemoryFlowReplay } from './context/ingest/memory-flow/events.js';
+import type { MemoryFlowEvent, MemoryFlowReplayInput } from './context/ingest/memory-flow/types.js';
+import { renderMemoryFlowReplay } from './context/ingest/memory-flow/render.js';
+import type { KtxSqlQueryExecutorPort } from './context/connections/query-executor.js';
+import { loadKtxProject, type KtxLocalProject } from './context/project/project.js';
+import { getKtxCliPackageInfo } from './cli-runtime.js';
 import { resolveProjectEmbeddingProvider } from './embedding-resolution.js';
 import { createKtxCliIngestQueryExecutor } from './ingest-query-executor.js';
 import { readIngestReportSnapshotFile } from './ingest-report-file.js';
@@ -82,6 +72,7 @@ export interface KtxIngestDeps {
   now?: () => Date;
   createAdapters?: typeof createKtxCliLocalIngestAdapters;
   createQueryExecutor?: (project: KtxLocalProject) => KtxSqlQueryExecutorPort;
+  resolveEmbeddingProvider?: typeof resolveProjectEmbeddingProvider;
   runLocalIngest?: typeof runLocalIngest;
   runLocalMetabaseIngest?: typeof runLocalMetabaseIngest;
   readReportFile?: typeof readIngestReportSnapshotFile;
@@ -685,11 +676,12 @@ export async function runKtxIngest(
     const project = await loadKtxProject({ projectDir: args.projectDir });
     const env = deps.env ?? process.env;
     if (args.command === 'run') {
-      const resolution = await resolveProjectEmbeddingProvider(project, {
+      const resolveEmbeddingProvider = deps.resolveEmbeddingProvider ?? resolveProjectEmbeddingProvider;
+      const resolution = await resolveEmbeddingProvider(project, {
         mode: 'ensure',
         installPolicy: args.runtimeInstallPolicy ?? 'never',
-        cliVersion: args.cliVersion ?? '0.0.0-private',
-        io,
+        cliVersion: args.cliVersion ?? getKtxCliPackageInfo().version,
+        io: deps.runtimeIo ?? io,
       });
       const embeddingProvider =
         resolution.kind === 'disabled' || resolution.kind === 'managed-unavailable' ? null : resolution.provider;

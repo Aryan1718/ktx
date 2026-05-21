@@ -1,5 +1,5 @@
-import type { KtxLocalProject } from '@ktx/context/project';
-import type { KtxScanConnector } from '@ktx/context/scan';
+import type { KtxLocalProject } from './context/project/project.js';
+import type { KtxScanConnector } from './context/scan/types.js';
 
 const SUPPORTED_DRIVERS = 'sqlite, postgres, mysql, clickhouse, sqlserver, bigquery, snowflake';
 
@@ -18,49 +18,49 @@ export async function createKtxCliScanConnector(
     );
   }
   if (driver === 'sqlite' || driver === 'sqlite3') {
-    const { KtxSqliteScanConnector, isKtxSqliteConnectionConfig } = await import('@ktx/connector-sqlite');
+    const { KtxSqliteScanConnector, isKtxSqliteConnectionConfig } = await import('./connectors/sqlite/connector.js');;
     if (!isKtxSqliteConnectionConfig(connection)) {
       throw invalidConnectionConfigError(connectionId, driver);
     }
     return new KtxSqliteScanConnector({ connectionId, connection, projectDir: project.projectDir });
   }
   if (driver === 'postgres' || driver === 'postgresql') {
-    const { KtxPostgresScanConnector, isKtxPostgresConnectionConfig } = await import('@ktx/connector-postgres');
+    const { KtxPostgresScanConnector, isKtxPostgresConnectionConfig } = await import('./connectors/postgres/connector.js');;
     if (!isKtxPostgresConnectionConfig(connection)) {
       throw invalidConnectionConfigError(connectionId, driver);
     }
     return new KtxPostgresScanConnector({ connectionId, connection });
   }
   if (driver === 'mysql') {
-    const { KtxMysqlScanConnector, isKtxMysqlConnectionConfig } = await import('@ktx/connector-mysql');
+    const { KtxMysqlScanConnector, isKtxMysqlConnectionConfig } = await import('./connectors/mysql/connector.js');;
     if (!isKtxMysqlConnectionConfig(connection)) {
       throw invalidConnectionConfigError(connectionId, driver);
     }
     return new KtxMysqlScanConnector({ connectionId, connection });
   }
   if (driver === 'clickhouse') {
-    const { KtxClickHouseScanConnector, isKtxClickHouseConnectionConfig } = await import('@ktx/connector-clickhouse');
+    const { KtxClickHouseScanConnector, isKtxClickHouseConnectionConfig } = await import('./connectors/clickhouse/connector.js');;
     if (!isKtxClickHouseConnectionConfig(connection)) {
       throw invalidConnectionConfigError(connectionId, driver);
     }
     return new KtxClickHouseScanConnector({ connectionId, connection });
   }
   if (driver === 'sqlserver') {
-    const { KtxSqlServerScanConnector, isKtxSqlServerConnectionConfig } = await import('@ktx/connector-sqlserver');
+    const { KtxSqlServerScanConnector, isKtxSqlServerConnectionConfig } = await import('./connectors/sqlserver/connector.js');;
     if (!isKtxSqlServerConnectionConfig(connection)) {
       throw invalidConnectionConfigError(connectionId, driver);
     }
     return new KtxSqlServerScanConnector({ connectionId, connection });
   }
   if (driver === 'bigquery') {
-    const { KtxBigQueryScanConnector, isKtxBigQueryConnectionConfig } = await import('@ktx/connector-bigquery');
+    const { KtxBigQueryScanConnector, isKtxBigQueryConnectionConfig } = await import('./connectors/bigquery/connector.js');;
     if (!isKtxBigQueryConnectionConfig(connection)) {
       throw invalidConnectionConfigError(connectionId, driver);
     }
     return new KtxBigQueryScanConnector({ connectionId, connection });
   }
   if (driver === 'snowflake') {
-    const { KtxSnowflakeScanConnector, isKtxSnowflakeConnectionConfig } = await import('@ktx/connector-snowflake');
+    const { KtxSnowflakeScanConnector, isKtxSnowflakeConnectionConfig } = await import('./connectors/snowflake/connector.js');;
     if (!isKtxSnowflakeConnectionConfig(connection)) {
       throw invalidConnectionConfigError(connectionId, driver);
     }

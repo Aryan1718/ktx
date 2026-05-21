@@ -1,18 +1,11 @@
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { URL } from 'node:url';
-import {
-  createDaemonLookerTableIdentifierParser,
-  type DaemonLiveDatabaseIntrospectionOptions,
-  type KtxDaemonDatabaseHttpJsonRunner,
-  type KtxDaemonTableIdentifierHttpJsonRunner,
-  type LookerTableIdentifierParser,
-} from '@ktx/context/ingest';
-import {
-  createHttpSqlAnalysisPort,
-  type KtxSqlAnalysisHttpJsonRunner,
-  type SqlAnalysisPort,
-} from '@ktx/context/sql-analysis';
+import { createDaemonLookerTableIdentifierParser, type KtxDaemonTableIdentifierHttpJsonRunner } from './context/ingest/adapters/looker/daemon-table-identifier-parser.js';
+import type { DaemonLiveDatabaseIntrospectionOptions, KtxDaemonDatabaseHttpJsonRunner } from './context/ingest/adapters/live-database/daemon-introspection.js';
+import type { LookerTableIdentifierParser } from './context/ingest/adapters/looker/mapping.js';
+import { createHttpSqlAnalysisPort, type KtxSqlAnalysisHttpJsonRunner } from './context/sql-analysis/http-sql-analysis-port.js';
+import type { SqlAnalysisPort } from './context/sql-analysis/ports.js';
 import type { KtxCliIo } from './cli-runtime.js';
 import {
   ensureManagedPythonCommandRuntime,
@@ -21,12 +14,13 @@ import {
 } from './managed-python-command.js';
 import { startManagedPythonDaemon, type ManagedPythonDaemonStartResult } from './managed-python-daemon.js';
 
+/** @internal */
 export type ManagedPythonHttpJsonRunner = (
   path: string,
   payload: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
 
-export type ManagedPythonHttpPostJson = (
+type ManagedPythonHttpPostJson = (
   baseUrl: string,
   path: string,
   payload: Record<string, unknown>,
@@ -75,7 +69,7 @@ function parseJsonObject(raw: string, path: string): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
-export async function postManagedDaemonJson(
+async function postManagedDaemonJson(
   baseUrl: string,
   path: string,
   payload: Record<string, unknown>,
@@ -117,6 +111,7 @@ export async function postManagedDaemonJson(
   });
 }
 
+/** @internal */
 export function createManagedPythonDaemonBaseUrlResolver(
   options: ManagedPythonCoreDaemonOptions,
 ): () => Promise<string> {
@@ -158,6 +153,7 @@ function isResolveBaseUrlOnly(
   return 'resolveBaseUrl' in options;
 }
 
+/** @internal */
 export function createManagedDaemonHttpJsonRunner(
   options: ManagedPythonDaemonHttpOptions,
 ): ManagedPythonHttpJsonRunner {

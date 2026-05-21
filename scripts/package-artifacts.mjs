@@ -15,27 +15,14 @@ import {
 import {
   PUBLIC_NPM_PACKAGE_NAME,
   publicNpmPackageTarballName,
-} from './build-public-npm-package.mjs';
-import { publicNpmPackageVersion } from './public-npm-release-metadata.mjs';
+  publicNpmPackageVersion,
+} from './public-npm-release-metadata.mjs';
 
 export {
   RUNTIME_WHEEL_DISTRIBUTION_NAME,
   RUNTIME_WHEEL_NORMALIZED_NAME,
   RUNTIME_WHEEL_PACKAGE_VERSION,
 };
-
-export const INTERNAL_NPM_WORKSPACE_PACKAGES = [
-  { name: '@ktx/context', packageRoot: 'packages/context' },
-  { name: '@ktx/llm', packageRoot: 'packages/llm' },
-  { name: '@ktx/connector-bigquery', packageRoot: 'packages/connector-bigquery' },
-  { name: '@ktx/connector-clickhouse', packageRoot: 'packages/connector-clickhouse' },
-  { name: '@ktx/connector-mysql', packageRoot: 'packages/connector-mysql' },
-  { name: '@ktx/connector-postgres', packageRoot: 'packages/connector-postgres' },
-  { name: '@ktx/connector-snowflake', packageRoot: 'packages/connector-snowflake' },
-  { name: '@ktx/connector-sqlite', packageRoot: 'packages/connector-sqlite' },
-  { name: '@ktx/connector-sqlserver', packageRoot: 'packages/connector-sqlserver' },
-  { name: '@ktx/cli', packageRoot: 'packages/cli' },
-];
 
 export const NPM_ARTIFACT_PACKAGES = [{ name: PUBLIC_NPM_PACKAGE_NAME, packageRoot: 'packages/cli' }];
 
@@ -81,33 +68,22 @@ export function packageArtifactLayout(rootDir = scriptRootDir(), version = publi
 }
 
 export function buildArtifactCommands(layout) {
-  // One recursive pnpm invocation; topology comes from workspace deps in
-  // each package.json, parallelism from --workspace-concurrency.
-  const npmBuildCommand = {
-    command: 'pnpm',
-    args: [
-      '--filter',
-      './packages/*',
-      '--workspace-concurrency=10',
-      'run',
-      'build',
-    ],
-    cwd: layout.rootDir,
-  };
-  const publicPackageCommand = {
-    command: process.execPath,
-    args: ['scripts/build-public-npm-package.mjs'],
-    cwd: layout.rootDir,
-  };
-
   return [
-    npmBuildCommand,
+    {
+      command: 'pnpm',
+      args: ['--filter', PUBLIC_NPM_PACKAGE_NAME, 'run', 'build'],
+      cwd: layout.rootDir,
+    },
     {
       command: process.execPath,
       args: ['scripts/build-python-runtime-wheel.mjs'],
       cwd: layout.rootDir,
     },
-    publicPackageCommand,
+    {
+      command: 'pnpm',
+      args: ['pack', '--out', layout.cliTarball],
+      cwd: join(layout.rootDir, 'packages', 'cli'),
+    },
   ];
 }
 
@@ -175,19 +151,17 @@ function releaseMetadataEntry({ ecosystem, packageName, packageRoot, packageVers
 
 async function readNpmPackageMetadata(rootDir, packageInfo, version) {
   const packageJson = await readJson(join(rootDir, packageInfo.packageRoot, 'package.json'));
-  const expectedSourceName = packageInfo.name === PUBLIC_NPM_PACKAGE_NAME ? '@ktx/cli' : packageInfo.name;
-  if (packageJson.name !== expectedSourceName) {
+  if (packageJson.name !== packageInfo.name) {
     throw new Error(
-      `Unexpected package name in ${packageInfo.packageRoot}/package.json: expected ${expectedSourceName}, got ${packageJson.name}`,
+      `Unexpected package name in ${packageInfo.packageRoot}/package.json: expected ${packageInfo.name}, got ${packageJson.name}`,
     );
   }
-  const isPublicKtxPackage = packageInfo.name === PUBLIC_NPM_PACKAGE_NAME;
   return releaseMetadataEntry({
     ecosystem: 'npm',
     packageName: packageInfo.name,
     packageRoot: packageInfo.packageRoot,
-    packageVersion: isPublicKtxPackage ? version : packageJson.version,
-    privatePackage: isPublicKtxPackage ? false : packageJson.private === true,
+    packageVersion: version,
+    privatePackage: false,
   });
 }
 
@@ -934,13 +908,13 @@ async function buildArtifacts(layout) {
   await mkdir(layout.npmDir, { recursive: true });
   await mkdir(layout.pythonDir, { recursive: true });
 
-  const [npmBuildCommand, wheelCommand, publicPackageCommand] = buildArtifactCommands(layout);
+  const [npmBuildCommand, wheelCommand, packCommand] = buildArtifactCommands(layout);
 
   await runCommand(npmBuildCommand.command, npmBuildCommand.args, { cwd: npmBuildCommand.cwd });
   await runCommand(wheelCommand.command, wheelCommand.args, { cwd: wheelCommand.cwd });
   const pythonArtifacts = await findPythonArtifacts(layout.pythonDir);
   await copyRuntimeWheelAssets(layout, pythonArtifacts);
-  await runCommand(publicPackageCommand.command, publicPackageCommand.args, { cwd: publicPackageCommand.cwd });
+  await runCommand(packCommand.command, packCommand.args, { cwd: packCommand.cwd });
 
   for (const packageInfo of NPM_ARTIFACT_PACKAGES) {
     await assertPathExists(layout.npmTarballs[packageInfo.name], `${packageInfo.name} tarball`);

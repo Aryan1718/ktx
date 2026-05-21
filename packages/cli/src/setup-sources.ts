@@ -2,32 +2,20 @@ import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import {
-  localConnectionTypeForConfig,
-  resolveNotionConnectionAuthToken,
-} from '@ktx/context/connections';
-import { resolveKtxConfigReference } from '@ktx/context/core';
-import {
-  cloneOrPull,
-  DEFAULT_METABASE_CLIENT_CONFIG,
-  discoverMetabaseDatabases,
-  type DiscoveredMetabaseDatabase,
-  loadDbtSchemaFiles,
-  loadProjectInfo,
-  MetabaseClient,
-  type NotionApi,
-  NotionClient,
-  parseLookmlStagedDir,
-  parseMetricflowFiles,
-  testRepoConnection,
-} from '@ktx/context/ingest';
-import {
-  type KtxProjectConfig,
-  type KtxProjectConnectionConfig,
-  loadKtxProject,
-  markKtxSetupStateStepComplete,
-  serializeKtxProjectConfig,
-} from '@ktx/context/project';
+import { localConnectionTypeForConfig } from './context/connections/local-warehouse-descriptor.js';
+import { resolveNotionConnectionAuthToken } from './context/connections/notion-config.js';
+import { resolveKtxConfigReference } from './context/core/config-reference.js';
+import { cloneOrPull, testRepoConnection } from './context/ingest/repo-fetch.js';
+import { DEFAULT_METABASE_CLIENT_CONFIG, MetabaseClient } from './context/ingest/adapters/metabase/client.js';
+import { discoverMetabaseDatabases, type DiscoveredMetabaseDatabase } from './context/ingest/adapters/metabase/mapping.js';
+import { loadDbtSchemaFiles } from './context/ingest/dbt-shared/schema-files.js';
+import { loadProjectInfo } from './context/ingest/dbt-shared/project-vars.js';
+import { type NotionApi, NotionClient } from './context/ingest/adapters/notion/notion-client.js';
+import { parseLookmlStagedDir } from './context/ingest/adapters/lookml/parse.js';
+import { parseMetricflowFiles } from './context/ingest/adapters/metricflow/deep-parse.js';
+import { type KtxProjectConfig, type KtxProjectConnectionConfig, serializeKtxProjectConfig } from './context/project/config.js';
+import { loadKtxProject } from './context/project/project.js';
+import { markKtxSetupStateStepComplete } from './context/project/setup-config.js';
 import type { KtxCliIo } from './cli-runtime.js';
 import { pickNotionRootPages } from './notion-page-picker.js';
 import { runKtxSourceMapping } from './source-mapping.js';
@@ -89,7 +77,7 @@ export interface KtxSetupSourcesPromptAdapter {
   log?(message: string): void;
 }
 
-export type SourceValidationResult = { ok: true; detail?: string } | { ok: false; message: string };
+type SourceValidationResult = { ok: true; detail?: string } | { ok: false; message: string };
 
 export interface KtxSetupSourcesDeps {
   prompts?: KtxSetupSourcesPromptAdapter;

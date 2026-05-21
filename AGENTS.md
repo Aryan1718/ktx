@@ -1,6 +1,6 @@
 # ktx Development Notes
 
-**ktx** is a standalone open-source context layer for database agents. These
+**ktx** is a standalone open-source context layer for data agents. These
 instructions apply to all agents working in this repository (Codex, Claude,
 Gemini, and similar tools). Do not assume an external app server, frontend,
 database migrations, ORPC contracts, or `python-service/` layout exist here.
@@ -63,11 +63,10 @@ When rules conflict, follow this order:
 
 **ktx** is a pnpm + uv workspace.
 
-- TypeScript packages: `packages/*`
-- CLI package: `packages/cli`
-- Core context package: `packages/context`
-- LLM package: `packages/llm`
-- Database connectors: `packages/connector-*`
+- TypeScript package: `packages/cli` (the sole npm-published package source)
+- Core context modules: `packages/cli/src/context/`
+- LLM provider modules: `packages/cli/src/llm/`
+- Database connector modules: `packages/cli/src/connectors/<driver>/`
 - Python semantic layer: `python/ktx-sl`
 - **ktx** daemon: `python/ktx-daemon`
 - Examples and fixtures: `examples/`
@@ -76,9 +75,8 @@ When rules conflict, follow this order:
   commit `.agents/`, `.claude/`, or `docs/superpowers/` to this public
   repository.
 
-Some package names still contain `ktx` during the split. Do not mass-rename
-symbols, package names, paths, or docs to `ktx` unless the task asks for that
-rename.
+Some source identifiers still contain historical package-oriented names. Do not
+mass-rename symbols, paths, or docs unless the task asks for that rename.
 
 ## Quick Commands
 
@@ -91,7 +89,7 @@ pnpm run type-check
 pnpm run test
 pnpm run check
 pnpm run dead-code
-pnpm --filter @ktx/cli run smoke
+pnpm --filter @kaelio/ktx run smoke
 pnpm --filter './packages/*' run build
 pnpm --filter './packages/*' run test
 pnpm --filter './packages/*' run type-check
@@ -165,11 +163,11 @@ rules there with the same weight as the ones in this file.
 - Keep package exports, `types`, and built `dist` expectations aligned when
   changing public APIs.
 - Use `zod` schemas for runtime validation at CLI/config/API boundaries.
-- Keep connector packages thin: connector-specific scanning/auth behavior
-  belongs in `packages/connector-*`; shared types and orchestration belong in
-  `packages/context`.
-- Avoid circular package dependencies. Shared code should move to the lowest
-  sensible package, not be duplicated across connectors.
+- Keep connector modules thin: connector-specific scanning/auth behavior
+  belongs in `packages/cli/src/connectors/<driver>/`; shared types and
+  orchestration belong in `packages/cli/src/context/`.
+- Avoid circular module dependencies. Shared code should move to the lowest
+  sensible module, not be duplicated across connectors.
 - Do not manually edit generated or built output under `dist/`; edit source and
   rebuild.
 
@@ -179,7 +177,16 @@ rules there with the same weight as the ones in this file.
 analysis. These checks are intentionally part of CI and pre-commit because the
 normal development workflow is agent-based.
 
-- Run `pnpm run dead-code` after TypeScript changes.
+- `pnpm run dead-code` runs three checks: Biome (`dead-code:biome`), Knip
+  default-mode (`dead-code:knip`), and Knip production-mode
+  (`dead-code:knip:production`). All three must pass.
+- Default-mode Knip catches dead code reachable from no entry at all (broken
+  graph). Production-mode Knip catches code reachable only via tests —
+  i.e. code that's tested but doesn't ship.
+- Pre-commit runs `knip --fix` (auto-removes the `export` keyword from
+  symbols that are exported but unused) plus `knip --production` (alerts on
+  test-only paths). CI runs the same checks without `--fix` and fails on any
+  finding.
 - Treat Knip findings as investigation prompts, not automatic deletion orders.
 - Remove private dead code when you confirm there are no imports, dynamic
   references, generated references, or tests that still need it.
@@ -189,6 +196,26 @@ normal development workflow is agent-based.
   Do not add broad package-level ignores to silence unrelated findings.
 - Update `knip.json` when adding dynamic entrypoints, generated files, package
   exports, CLI bins, or framework files that Knip cannot infer.
+
+#### Internal exports for testability
+
+When a function, type, or constant must be exported solely so a unit test can
+import it (i.e. it has no production cross-file consumer), annotate the
+declaration with `/** @internal */` JSDoc. Knip's production-mode check
+ignores `@internal` exports, so the convention keeps the gate clean without
+silencing the rest of the file.
+
+```typescript
+/** @internal */
+export function reindexHasErrors(result: ReindexResult): boolean { ... }
+```
+
+Do NOT use Vitest in-source testing (`if (import.meta.vitest)` blocks). Keep
+tests in separate `*.test.ts(x)` files.
+
+If the only consumer of an export is its own test and the underlying behavior
+isn't used in production, delete both the export AND the test — testing dead
+code is still dead code.
 
 ### CLI Standards
 

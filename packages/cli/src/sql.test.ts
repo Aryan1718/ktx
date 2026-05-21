@@ -1,9 +1,10 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { initKtxProject, parseKtxProjectConfig, serializeKtxProjectConfig } from '@ktx/context/project';
-import type { KtxScanConnector } from '@ktx/context/scan';
-import type { SqlAnalysisPort } from '@ktx/context/sql-analysis';
+import { initKtxProject } from './context/project/project.js';
+import { parseKtxProjectConfig, serializeKtxProjectConfig } from './context/project/config.js';
+import type { KtxScanConnector } from './context/scan/types.js';
+import type { SqlAnalysisPort } from './context/sql-analysis/ports.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runKtxSql } from './sql.js';
 

@@ -1,14 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolveKtxConfigReference } from '@ktx/context/core';
-import {
-  type KtxProjectConfig,
-  type KtxProjectEmbeddingConfig,
-  loadKtxProject,
-  markKtxSetupStateStepComplete,
-  readKtxSetupState,
-  serializeKtxProjectConfig,
-} from '@ktx/context/project';
-import { type KtxEmbeddingConfig, type KtxEmbeddingHealthCheckResult, runKtxEmbeddingHealthCheck } from '@ktx/llm';
+import { resolveKtxConfigReference } from './context/core/config-reference.js';
+import { type KtxProjectConfig, type KtxProjectEmbeddingConfig, serializeKtxProjectConfig } from './context/project/config.js';
+import { loadKtxProject } from './context/project/project.js';
+import { markKtxSetupStateStepComplete, readKtxSetupState } from './context/project/setup-config.js';
+import type { KtxEmbeddingConfig } from './llm/types.js';
+import { type KtxEmbeddingHealthCheckResult, runKtxEmbeddingHealthCheck } from './llm/embedding-health.js';
 import type { KtxCliIo } from './cli-runtime.js';
 import { createStaticCliSpinner, type KtxCliSpinner } from './clack.js';
 import {
@@ -46,6 +42,7 @@ export type KtxSetupEmbeddingsResult =
   | { status: 'missing-input'; projectDir: string }
   | { status: 'failed'; projectDir: string };
 
+/** @internal */
 export interface KtxSetupEmbeddingsPromptAdapter {
   select(options: { message: string; options: KtxSetupPromptOption[] }): Promise<string>;
   password(options: { message: string }): Promise<string | undefined>;

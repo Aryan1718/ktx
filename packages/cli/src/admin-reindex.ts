@@ -1,6 +1,8 @@
-import { KtxIngestEmbeddingPortAdapter, type KtxEmbeddingPort } from '@ktx/context';
-import { reindexLocalIndexes, type ReindexScopeResult, type ReindexSummary } from '@ktx/context/index-sync';
-import { loadKtxProject } from '@ktx/context/project';
+import { KtxIngestEmbeddingPortAdapter } from './context/llm/embedding-port.js';
+import type { KtxEmbeddingPort } from './context/core/embedding.js';
+import { reindexLocalIndexes } from './context/index-sync/reindex.js';
+import type { ReindexScopeResult, ReindexSummary } from './context/index-sync/types.js';
+import { loadKtxProject } from './context/project/project.js';
 import { Option, type Command } from '@commander-js/extra-typings';
 import { cancel, intro, log, note, outro } from '@clack/prompts';
 import type { KtxCliCommandContext } from './cli-program.js';
@@ -55,10 +57,12 @@ function quotePlainValue(value: string): string {
   return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
 }
 
+/** @internal */
 export function reindexHasErrors(summary: ReindexSummary): boolean {
   return summary.scopes.some((scope) => scope.error);
 }
 
+/** @internal */
 export function renderReindexPlain(summary: ReindexSummary, io: KtxCliIo): void {
   const updateKey = summary.force ? 'rebuilt' : 'updated';
   for (const scope of summary.scopes) {
@@ -88,6 +92,7 @@ export function renderReindexPlain(summary: ReindexSummary, io: KtxCliIo): void 
   );
 }
 
+/** @internal */
 export function renderReindexJson(summary: ReindexSummary, io: KtxCliIo): void {
   io.stdout.write(`${JSON.stringify({ kind: 'reindex', data: summary, meta: { command: 'admin reindex' } }, null, 2)}\n`);
 }

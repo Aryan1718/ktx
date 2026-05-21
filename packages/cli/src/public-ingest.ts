@@ -1,5 +1,7 @@
-import { loadKtxProject, type KtxLocalProject, type KtxProjectConnectionConfig } from '@ktx/context/project';
-import type { KtxProgressPort } from '@ktx/context/scan';
+import { getKtxCliPackageInfo } from './cli-runtime.js';
+import { loadKtxProject, type KtxLocalProject } from './context/project/project.js';
+import type { KtxProjectConnectionConfig } from './context/project/config.js';
+import type { KtxProgressPort } from './context/scan/types.js';
 import type { KtxCliIo } from './index.js';
 import type { KtxIngestArgs, KtxIngestDeps, KtxIngestProgressUpdate } from './ingest.js';
 import {
@@ -872,12 +874,15 @@ export async function runKtxPublicIngest(
   const project = await loadProject({ projectDir: args.projectDir });
   if (shouldUseForegroundContextBuildView(args, io)) {
     const plan = buildPublicIngestPlan(project, args);
-    const requirements = resolvePublicIngestRuntimeRequirements(plan, { env: deps.env ?? process.env });
+    const requirements = resolvePublicIngestRuntimeRequirements(plan, {
+      config: project.config,
+      env: deps.env ?? process.env,
+    });
     const ensureRuntime = deps.ensureRuntime ?? ensureManagedPythonCommandRuntime;
     for (const feature of requirements.features) {
       try {
         await ensureRuntime({
-          cliVersion: args.cliVersion ?? '0.0.0-private',
+          cliVersion: args.cliVersion ?? getKtxCliPackageInfo().version,
           installPolicy: args.runtimeInstallPolicy ?? 'prompt',
           io,
           feature,

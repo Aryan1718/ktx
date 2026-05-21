@@ -1,11 +1,7 @@
-import { KtxIngestEmbeddingPortAdapter, type KtxEmbeddingPort } from '@ktx/context';
-import { loadKtxProject } from '@ktx/context/project';
-import {
-  type LocalKnowledgeSearchResult,
-  type LocalKnowledgeSummary,
-  listLocalKnowledgePages,
-  searchLocalKnowledgePages as defaultSearchLocalKnowledgePages,
-} from '@ktx/context/wiki';
+import { KtxIngestEmbeddingPortAdapter } from './context/llm/embedding-port.js';
+import type { KtxEmbeddingPort } from './context/core/embedding.js';
+import { loadKtxProject } from './context/project/project.js';
+import { type LocalKnowledgeSearchResult, type LocalKnowledgeSummary, listLocalKnowledgePages, searchLocalKnowledgePages as defaultSearchLocalKnowledgePages } from './context/wiki/local-knowledge.js';
 import {
   resolveProjectEmbeddingProvider,
   type EmbeddingProviderResolution,

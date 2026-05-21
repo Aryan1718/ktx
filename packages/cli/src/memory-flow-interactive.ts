@@ -1,13 +1,8 @@
 import { emitKeypressEvents } from 'node:readline';
-import {
-  buildMemoryFlowViewModel,
-  createInitialMemoryFlowInteractionState,
-  reduceMemoryFlowInteractionState,
-  renderMemoryFlowInteractive,
-  type MemoryFlowInteractionCommand,
-  type MemoryFlowInteractionState,
-  type MemoryFlowReplayInput,
-} from '@ktx/context/ingest';
+import { buildMemoryFlowViewModel } from './context/ingest/memory-flow/view-model.js';
+import { createInitialMemoryFlowInteractionState, reduceMemoryFlowInteractionState } from './context/ingest/memory-flow/interaction.js';
+import { renderMemoryFlowInteractive } from './context/ingest/memory-flow/interactive-render.js';
+import type { MemoryFlowInteractionCommand, MemoryFlowInteractionState, MemoryFlowReplayInput } from './context/ingest/memory-flow/types.js';
 
 interface KtxMemoryFlowKey {
   name?: string;
@@ -42,6 +37,7 @@ function defaultPrepareKeypressEvents(stdin: KtxMemoryFlowStdin): void {
   emitKeypressEvents(stdin as Parameters<typeof emitKeypressEvents>[0]);
 }
 
+/** @internal */
 export function memoryFlowCommandForKey(
   chunk: string,
   search: MemoryFlowInteractionState['search'],

@@ -1,4 +1,4 @@
-import { createPythonSemanticLayerComputePort, type KtxSemanticLayerComputePort } from '@ktx/context/daemon';
+import { createPythonSemanticLayerComputePort, type KtxSemanticLayerComputePort } from './context/daemon/semantic-layer-compute.js';
 import type { KtxCliIo } from './cli-runtime.js';
 import { createClackPromptAdapter, createStaticCliSpinner, type KtxCliSpinner } from './clack.js';
 import {
@@ -33,7 +33,7 @@ export interface ManagedPythonCommandRuntime {
   manifest: InstalledKtxRuntimeManifest;
 }
 
-export interface ManagedPythonCommandDeps {
+interface ManagedPythonCommandDeps {
   readStatus?: (options: ManagedPythonRuntimeLayoutOptions) => Promise<ManagedPythonRuntimeStatus>;
   installRuntime?: (options: ManagedPythonRuntimeInstallOptions) => Promise<ManagedPythonRuntimeInstallResult>;
   confirmInstall?: (message: string, io: KtxCliIo) => Promise<boolean>;
@@ -51,6 +51,7 @@ export interface ManagedPythonSemanticLayerComputeOptions extends ManagedPythonC
   createPythonCompute?: typeof createPythonSemanticLayerComputePort;
 }
 
+/** @internal */
 export function managedRuntimeInstallCommand(feature: KtxRuntimeFeature): string {
   return feature === 'local-embeddings'
     ? 'ktx admin runtime install --feature local-embeddings --yes'

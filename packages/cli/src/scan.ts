@@ -1,11 +1,7 @@
-import {
-  type KtxProgressPort,
-  type KtxScanMode,
-  type KtxScanReport,
-  type KtxScanWarning,
-  runLocalScan,
-} from '@ktx/context/scan';
-import { loadKtxProject } from '@ktx/context/project';
+import type { KtxProgressPort, KtxScanMode, KtxScanReport, KtxScanWarning } from './context/scan/types.js';
+import { runLocalScan } from './context/scan/local-scan.js';
+import { loadKtxProject } from './context/project/project.js';
+import { getKtxCliPackageInfo } from './cli-runtime.js';
 import { resolveProjectEmbeddingProvider } from './embedding-resolution.js';
 import type { KtxCliIo } from './index.js';
 import { createKtxCliLocalIngestAdapters } from './local-adapters.js';
@@ -30,6 +26,7 @@ export interface KtxScanArgs {
 export interface KtxScanDeps {
   runLocalScan?: typeof runLocalScan;
   createLocalIngestAdapters?: typeof createKtxCliLocalIngestAdapters;
+  resolveEmbeddingProvider?: typeof resolveProjectEmbeddingProvider;
   progress?: KtxProgressPort;
   runtimeIo?: KtxCliIo;
 }
@@ -274,6 +271,7 @@ interface KtxCliScanProgress extends Omit<KtxProgressPort, 'update'> {
   flush(): void;
 }
 
+/** @internal */
 export function createCliScanProgress(
   io: KtxCliIo,
   state: KtxCliScanProgressState = { progress: 0, hasPendingTransient: false },
@@ -315,11 +313,12 @@ export function createCliScanProgress(
 export async function runKtxScan(args: KtxScanArgs, io: KtxCliIo = process, deps: KtxScanDeps = {}): Promise<number> {
   try {
     const project = await loadKtxProject({ projectDir: args.projectDir });
-    const resolution = await resolveProjectEmbeddingProvider(project, {
+    const resolveEmbeddingProvider = deps.resolveEmbeddingProvider ?? resolveProjectEmbeddingProvider;
+    const resolution = await resolveEmbeddingProvider(project, {
       mode: 'ensure',
       installPolicy: args.runtimeInstallPolicy ?? 'never',
-      cliVersion: args.cliVersion ?? '0.0.0-private',
-      io,
+      cliVersion: args.cliVersion ?? getKtxCliPackageInfo().version,
+      io: deps.runtimeIo ?? io,
     });
     const embeddingProvider =
       resolution.kind === 'disabled' || resolution.kind === 'managed-unavailable' ? null : resolution.provider;

@@ -3,15 +3,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import type { HistoricSqlDialect } from '@ktx/context/ingest';
-import {
-  type KtxProjectConnectionConfig,
-  loadKtxProject,
-  markKtxSetupStateStepComplete,
-  serializeKtxProjectConfig,
-  setKtxSetupDatabaseConnectionIds,
-} from '@ktx/context/project';
-import type { KtxTableListEntry } from '@ktx/context/scan';
+import type { HistoricSqlDialect } from './context/ingest/adapters/historic-sql/types.js';
+import { type KtxProjectConnectionConfig, serializeKtxProjectConfig } from './context/project/config.js';
+import { loadKtxProject } from './context/project/project.js';
+import { markKtxSetupStateStepComplete, setKtxSetupDatabaseConnectionIds } from './context/project/setup-config.js';
+import type { KtxTableListEntry } from './context/scan/types.js';
 import type { KtxCliIo } from './cli-runtime.js';
 import { runKtxConnection } from './connection.js';
 import {
@@ -64,6 +60,7 @@ export type KtxSetupDatabasesResult =
   | { status: 'missing-input'; projectDir: string }
   | { status: 'failed'; projectDir: string };
 
+/** @internal */
 export interface KtxSetupDatabasesPromptAdapter {
   multiselect(options: {
     message: string;
@@ -327,8 +324,12 @@ async function defaultHistoricSqlProbe(input: KtxSetupHistoricSqlProbeInput): Pr
 
   const project = await loadKtxProject({ projectDir: input.projectDir });
   const connection = project.config.connections[input.connectionId];
-  const [{ PostgresPgssReader }, { KtxPostgresHistoricSqlQueryClient, isKtxPostgresConnectionConfig }] =
-    await Promise.all([import('@ktx/context/ingest'), import('@ktx/connector-postgres')]);
+  const [{ PostgresPgssReader }, { KtxPostgresHistoricSqlQueryClient }, { isKtxPostgresConnectionConfig }] =
+    await Promise.all([
+      import('./context/ingest/adapters/historic-sql/postgres-pgss-reader.js'),
+      import('./connectors/postgres/historic-sql-query-client.js'),
+      import('./connectors/postgres/connector.js'),
+    ]);
 
   const postgresConnection = connection as Parameters<typeof isKtxPostgresConnectionConfig>[0];
   if (!isKtxPostgresConnectionConfig(postgresConnection)) {
@@ -364,7 +365,7 @@ async function defaultListSchemas(projectDir: string, connectionId: string): Pro
   const driver = normalizeDriver(connection?.driver);
 
   if (driver === 'postgres') {
-    const { KtxPostgresScanConnector, isKtxPostgresConnectionConfig } = await import('@ktx/connector-postgres');
+    const { KtxPostgresScanConnector, isKtxPostgresConnectionConfig } = await import('./connectors/postgres/connector.js');;
     if (!isKtxPostgresConnectionConfig(connection)) return [];
     const connector = new KtxPostgresScanConnector({ connectionId, connection });
     try {
@@ -375,7 +376,7 @@ async function defaultListSchemas(projectDir: string, connectionId: string): Pro
   }
 
   if (driver === 'sqlserver') {
-    const { KtxSqlServerScanConnector, isKtxSqlServerConnectionConfig } = await import('@ktx/connector-sqlserver');
+    const { KtxSqlServerScanConnector, isKtxSqlServerConnectionConfig } = await import('./connectors/sqlserver/connector.js');;
     if (!isKtxSqlServerConnectionConfig(connection)) return [];
     const connector = new KtxSqlServerScanConnector({ connectionId, connection });
     try {
@@ -386,7 +387,7 @@ async function defaultListSchemas(projectDir: string, connectionId: string): Pro
   }
 
   if (driver === 'bigquery') {
-    const { KtxBigQueryScanConnector, isKtxBigQueryConnectionConfig } = await import('@ktx/connector-bigquery');
+    const { KtxBigQueryScanConnector, isKtxBigQueryConnectionConfig } = await import('./connectors/bigquery/connector.js');;
     if (!isKtxBigQueryConnectionConfig(connection)) return [];
     const connector = new KtxBigQueryScanConnector({ connectionId, connection });
     try {
@@ -397,7 +398,7 @@ async function defaultListSchemas(projectDir: string, connectionId: string): Pro
   }
 
   if (driver === 'snowflake') {
-    const { KtxSnowflakeScanConnector, isKtxSnowflakeConnectionConfig } = await import('@ktx/connector-snowflake');
+    const { KtxSnowflakeScanConnector, isKtxSnowflakeConnectionConfig } = await import('./connectors/snowflake/connector.js');;
     if (!isKtxSnowflakeConnectionConfig(connection)) return [];
     const connector = new KtxSnowflakeScanConnector({ connectionId, connection });
     try {
@@ -429,7 +430,7 @@ async function defaultListTables(
   const schemas = schemasOverride ?? (driver ? configuredSchemas(connection, driver) : undefined);
 
   if (driver === 'postgres') {
-    const { KtxPostgresScanConnector, isKtxPostgresConnectionConfig } = await import('@ktx/connector-postgres');
+    const { KtxPostgresScanConnector, isKtxPostgresConnectionConfig } = await import('./connectors/postgres/connector.js');;
     if (!isKtxPostgresConnectionConfig(connection)) return [];
     const connector = new KtxPostgresScanConnector({ connectionId, connection });
     try {
@@ -440,7 +441,7 @@ async function defaultListTables(
   }
 
   if (driver === 'mysql') {
-    const { KtxMysqlScanConnector, isKtxMysqlConnectionConfig } = await import('@ktx/connector-mysql');
+    const { KtxMysqlScanConnector, isKtxMysqlConnectionConfig } = await import('./connectors/mysql/connector.js');;
     if (!isKtxMysqlConnectionConfig(connection)) return [];
     const connector = new KtxMysqlScanConnector({ connectionId, connection });
     try {
@@ -451,7 +452,7 @@ async function defaultListTables(
   }
 
   if (driver === 'sqlserver') {
-    const { KtxSqlServerScanConnector, isKtxSqlServerConnectionConfig } = await import('@ktx/connector-sqlserver');
+    const { KtxSqlServerScanConnector, isKtxSqlServerConnectionConfig } = await import('./connectors/sqlserver/connector.js');;
     if (!isKtxSqlServerConnectionConfig(connection)) return [];
     const connector = new KtxSqlServerScanConnector({ connectionId, connection });
     try {
@@ -462,7 +463,7 @@ async function defaultListTables(
   }
 
   if (driver === 'bigquery') {
-    const { KtxBigQueryScanConnector, isKtxBigQueryConnectionConfig } = await import('@ktx/connector-bigquery');
+    const { KtxBigQueryScanConnector, isKtxBigQueryConnectionConfig } = await import('./connectors/bigquery/connector.js');;
     if (!isKtxBigQueryConnectionConfig(connection)) return [];
     const connector = new KtxBigQueryScanConnector({ connectionId, connection });
     try {
@@ -473,7 +474,7 @@ async function defaultListTables(
   }
 
   if (driver === 'snowflake') {
-    const { KtxSnowflakeScanConnector, isKtxSnowflakeConnectionConfig } = await import('@ktx/connector-snowflake');
+    const { KtxSnowflakeScanConnector, isKtxSnowflakeConnectionConfig } = await import('./connectors/snowflake/connector.js');;
     if (!isKtxSnowflakeConnectionConfig(connection)) return [];
     const connector = new KtxSnowflakeScanConnector({ connectionId, connection });
     try {
@@ -484,7 +485,7 @@ async function defaultListTables(
   }
 
   if (driver === 'clickhouse') {
-    const { KtxClickHouseScanConnector, isKtxClickHouseConnectionConfig } = await import('@ktx/connector-clickhouse');
+    const { KtxClickHouseScanConnector, isKtxClickHouseConnectionConfig } = await import('./connectors/clickhouse/connector.js');;
     if (!isKtxClickHouseConnectionConfig(connection)) return [];
     const connector = new KtxClickHouseScanConnector({ connectionId, connection });
     try {

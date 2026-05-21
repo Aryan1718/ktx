@@ -1,13 +1,10 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { SourceAdapter } from '@ktx/context/ingest';
-import { initKtxProject } from '@ktx/context/project';
-import type {
-  KtxScanReport,
-  LocalScanRunResult,
-  RunLocalScanOptions,
-} from '@ktx/context/scan';
+import type { SourceAdapter } from './context/ingest/types.js';
+import { initKtxProject } from './context/project/project.js';
+import type { KtxScanReport } from './context/scan/types.js';
+import type { LocalScanRunResult, RunLocalScanOptions } from './context/scan/local-scan.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCliScanProgress, runKtxScan, type KtxScanDeps } from './scan.js';
 
@@ -138,28 +135,36 @@ const KtxPostgresScanConnector = vi.hoisted(
     },
 );
 
-vi.mock('@ktx/connector-sqlserver', () => ({
-  createSqlServerLiveDatabaseIntrospection,
+vi.mock('./connectors/sqlserver/connector.js', () => ({
   isKtxSqlServerConnectionConfig,
   KtxSqlServerScanConnector,
 }));
+vi.mock('./connectors/sqlserver/live-database-introspection.js', () => ({
+  createSqlServerLiveDatabaseIntrospection,
+}));
 
-vi.mock('@ktx/connector-bigquery', () => ({
-  createBigQueryLiveDatabaseIntrospection,
+vi.mock('./connectors/bigquery/connector.js', () => ({
   isKtxBigQueryConnectionConfig,
   KtxBigQueryScanConnector,
 }));
+vi.mock('./connectors/bigquery/live-database-introspection.js', () => ({
+  createBigQueryLiveDatabaseIntrospection,
+}));
 
-vi.mock('@ktx/connector-snowflake', () => ({
-  createSnowflakeLiveDatabaseIntrospection,
+vi.mock('./connectors/snowflake/connector.js', () => ({
   isKtxSnowflakeConnectionConfig,
   KtxSnowflakeScanConnector,
 }));
+vi.mock('./connectors/snowflake/live-database-introspection.js', () => ({
+  createSnowflakeLiveDatabaseIntrospection,
+}));
 
-vi.mock('@ktx/connector-postgres', () => ({
-  createPostgresLiveDatabaseIntrospection,
+vi.mock('./connectors/postgres/connector.js', () => ({
   isKtxPostgresConnectionConfig,
   KtxPostgresScanConnector,
+}));
+vi.mock('./connectors/postgres/live-database-introspection.js', () => ({
+  createPostgresLiveDatabaseIntrospection,
 }));
 
 function makeIo(options: { isTTY?: boolean } = {}) {
@@ -421,6 +426,55 @@ describe('runKtxScan', () => {
         io: runtimeIo.io,
       },
     });
+  });
+
+  it('uses runtime IO when resolving managed embedding runtime', async () => {
+    await initKtxProject({ projectDir: tempDir });
+    const runLocalScan = vi.fn(
+      async (_input: RunLocalScanOptions): Promise<LocalScanRunResult> => ({
+        runId: 'scan-run-1',
+        status: 'done',
+        done: true,
+        connectionId: 'warehouse',
+        mode: 'structural',
+        dryRun: false,
+        syncId: 'sync-1',
+        report,
+      }),
+    );
+    const resolveEmbeddingProvider = vi.fn(async () => ({ kind: 'disabled' as const }));
+    const io = makeIo();
+    const runtimeIo = makeIo({ isTTY: true });
+
+    await expect(
+      runKtxScan(
+        {
+          command: 'run',
+          projectDir: tempDir,
+          connectionId: 'warehouse',
+          mode: 'structural',
+          detectRelationships: false,
+          dryRun: false,
+          cliVersion: '0.2.0',
+          runtimeInstallPolicy: 'auto',
+        },
+        io.io,
+        {
+          runLocalScan,
+          createLocalIngestAdapters: noLocalIngestAdapters,
+          runtimeIo: runtimeIo.io,
+          resolveEmbeddingProvider,
+        },
+      ),
+    ).resolves.toBe(0);
+
+    expect(resolveEmbeddingProvider).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        installPolicy: 'auto',
+        io: runtimeIo.io,
+      }),
+    );
   });
 
   it('explains warnings, capability gaps, and relationships in human scan summaries', async () => {
