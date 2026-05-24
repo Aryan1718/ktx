@@ -28,6 +28,20 @@ export const NPM_ARTIFACT_PACKAGES = [{ name: PUBLIC_NPM_PACKAGE_NAME, packageRo
 
 export const CLI_PYTHON_ASSET_MANIFEST = 'manifest.json';
 
+function pnpmCommand(args) {
+  if (process.platform === 'win32') {
+    return {
+      command: 'cmd.exe',
+      args: ['/d', '/s', '/c', 'pnpm', ...args],
+    };
+  }
+
+  return {
+    command: 'pnpm',
+    args,
+  };
+}
+
 function scriptRootDir() {
   return resolve(dirname(fileURLToPath(import.meta.url)), '..');
 }
@@ -70,8 +84,7 @@ export function packageArtifactLayout(rootDir = scriptRootDir(), version = publi
 export function buildArtifactCommands(layout) {
   return [
     {
-      command: 'pnpm',
-      args: ['--filter', PUBLIC_NPM_PACKAGE_NAME, 'run', 'build'],
+      ...pnpmCommand(['--filter', PUBLIC_NPM_PACKAGE_NAME, 'run', 'build']),
       cwd: layout.rootDir,
     },
     {
@@ -80,8 +93,7 @@ export function buildArtifactCommands(layout) {
       cwd: layout.rootDir,
     },
     {
-      command: 'pnpm',
-      args: ['pack', '--out', layout.cliTarball],
+      ...pnpmCommand(['pack', '--out', layout.cliTarball]),
       cwd: join(layout.rootDir, 'packages', 'cli'),
     },
   ];
@@ -949,10 +961,19 @@ async function verifyNpmArtifacts(layout, tmpRoot) {
   await writeFile(join(projectDir, 'verify-installed-cli.mjs'), npmRuntimeSmokeSource());
   await writeFile(join(projectDir, 'verify-installed-cli-commands.mjs'), npmCliSmokeSource());
 
-  await runCommand('pnpm', ['install'], { cwd: projectDir });
-  await runCommand('pnpm', ['rebuild', 'better-sqlite3'], { cwd: projectDir });
+  {
+    const pnpmInstall = pnpmCommand(['install']);
+    await runCommand(pnpmInstall.command, pnpmInstall.args, { cwd: projectDir });
+  }
+  {
+    const pnpmRebuild = pnpmCommand(['rebuild', 'better-sqlite3']);
+    await runCommand(pnpmRebuild.command, pnpmRebuild.args, { cwd: projectDir });
+  }
   await runCommand('node', ['verify-npm.mjs'], { cwd: projectDir });
-  await runCommand('pnpm', ['exec', 'ktx', '--version'], { cwd: projectDir });
+  {
+    const pnpmExecVersion = pnpmCommand(['exec', 'ktx', '--version']);
+    await runCommand(pnpmExecVersion.command, pnpmExecVersion.args, { cwd: projectDir });
+  }
   await runCommand('node', ['verify-installed-cli.mjs'], { cwd: projectDir });
   await runCommand('node', ['verify-installed-cli-commands.mjs'], { cwd: projectDir });
 }
@@ -968,7 +989,10 @@ async function verifyNpmCliArtifacts(layout, tmpRoot) {
   await writeFile(join(projectDir, 'pnpm-workspace.yaml'), npmSmokePnpmWorkspaceYaml());
   await writeFile(join(projectDir, 'verify-installed-cli-commands.mjs'), npmCliSmokeSource());
 
-  await runCommand('pnpm', ['install'], { cwd: projectDir });
+  {
+    const pnpmInstall = pnpmCommand(['install']);
+    await runCommand(pnpmInstall.command, pnpmInstall.args, { cwd: projectDir });
+  }
   await runCommand('node', ['verify-installed-cli-commands.mjs'], { cwd: projectDir });
 }
 

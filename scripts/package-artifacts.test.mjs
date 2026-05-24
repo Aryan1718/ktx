@@ -97,12 +97,12 @@ describe('packageArtifactLayout', () => {
   it('uses stable artifact paths under ktx/dist/artifacts', () => {
     const layout = packageArtifactLayout('/repo/ktx', PUBLIC_NPM_PACKAGE_VERSION);
 
-    assert.equal(layout.artifactDir, '/repo/ktx/dist/artifacts');
-    assert.equal(layout.npmDir, '/repo/ktx/dist/artifacts/npm');
-    assert.equal(layout.pythonDir, '/repo/ktx/dist/artifacts/python');
+    assert.equal(layout.artifactDir, join('/repo/ktx', 'dist', 'artifacts'));
+    assert.equal(layout.npmDir, join('/repo/ktx', 'dist', 'artifacts', 'npm'));
+    assert.equal(layout.pythonDir, join('/repo/ktx', 'dist', 'artifacts', 'python'));
     assert.equal(
       layout.cliTarball,
-      `/repo/ktx/dist/artifacts/npm/kaelio-ktx-${PUBLIC_NPM_PACKAGE_VERSION}.tgz`,
+      join('/repo/ktx', 'dist', 'artifacts', 'npm', `kaelio-ktx-${PUBLIC_NPM_PACKAGE_VERSION}.tgz`),
     );
     assert.deepEqual(Object.keys(layout.npmTarballs), ['@kaelio/ktx']);
   });
@@ -112,17 +112,21 @@ describe('buildArtifactCommands', () => {
   it('builds the CLI package, then the runtime wheel, then packs the npm tarball directly', () => {
     const layout = packageArtifactLayout('/repo/ktx', PUBLIC_NPM_PACKAGE_VERSION);
     const commands = buildArtifactCommands(layout);
+    const expectedBuildCommand =
+      process.platform === 'win32'
+        ? ['cmd.exe', ['/d', '/s', '/c', 'pnpm', '--filter', '@kaelio/ktx', 'run', 'build'], layout.rootDir]
+        : ['pnpm', ['--filter', '@kaelio/ktx', 'run', 'build'], layout.rootDir];
+    const expectedPackCommand =
+      process.platform === 'win32'
+        ? ['cmd.exe', ['/d', '/s', '/c', 'pnpm', 'pack', '--out', layout.cliTarball], join('/repo/ktx', 'packages', 'cli')]
+        : ['pnpm', ['pack', '--out', layout.cliTarball], join('/repo/ktx', 'packages', 'cli')];
 
     assert.deepEqual(
       commands.map((command) => [command.command, command.args, command.cwd]),
       [
-        ['pnpm', ['--filter', '@kaelio/ktx', 'run', 'build'], '/repo/ktx'],
-        [process.execPath, ['scripts/build-python-runtime-wheel.mjs'], '/repo/ktx'],
-        [
-          'pnpm',
-          ['pack', '--out', `/repo/ktx/dist/artifacts/npm/kaelio-ktx-${PUBLIC_NPM_PACKAGE_VERSION}.tgz`],
-          '/repo/ktx/packages/cli',
-        ],
+        expectedBuildCommand,
+        [process.execPath, ['scripts/build-python-runtime-wheel.mjs'], layout.rootDir],
+        expectedPackCommand,
       ],
     );
   });
