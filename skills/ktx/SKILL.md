@@ -138,7 +138,7 @@ ktx setup --no-input --yes --skip-databases --skip-llm --skip-embeddings \
 # Notion
 ktx setup --no-input --yes --skip-databases --skip-llm --skip-embeddings \
   --source notion --source-connection-id <id> \
-  --source-api-key-ref env:NOTION_TOKEN \
+  --source-auth-token-ref env:NOTION_TOKEN \
   --notion-crawl-mode selected_roots --notion-root-page-id <page-id>
 ```
 
