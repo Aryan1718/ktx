@@ -8,9 +8,12 @@ import { createKtxEntityDetailsService } from '../../context/scan/entity-details
 import type { KtxScanConnector } from '../../context/scan/types.js';
 import type { LocalScanMcpOptions } from '../../context/scan/local-scan.js';
 import { createKtxDiscoverDataService } from '../../context/search/discover.js';
-import type { SqlAnalysisDialect, SqlAnalysisPort } from '../../context/sql-analysis/ports.js';
+import { sqlAnalysisDialectForDriver } from '../../context/sql-analysis/dialect.js';
+import type { SqlAnalysisPort } from '../../context/sql-analysis/ports.js';
 import { compileLocalSlQuery } from '../../context/sl/local-query.js';
 import { createKtxDictionarySearchService } from '../../context/sl/dictionary-search.js';
+import { readLocalSlSource } from '../../context/sl/local-sl.js';
+import { assertSafeConnectionId } from '../../context/sl/source-files.js';
 import { readLocalKnowledgePage, searchLocalKnowledgePages } from '../wiki/local-knowledge.js';
 import type { KtxMcpContextPorts, KtxMcpProgressCallback, KtxSqlExecutionResponse } from './types.js';
 
@@ -22,62 +25,10 @@ interface CreateLocalProjectMcpContextPortsOptions {
   embeddingService: KtxEmbeddingPort | null;
 }
 
-function dialectForDriver(driver: string | undefined): string {
-  const normalized = (driver ?? 'postgres').toUpperCase();
-  const map: Record<string, string> = {
-    POSTGRES: 'postgres',
-    BIGQUERY: 'bigquery',
-    SNOWFLAKE: 'snowflake',
-    MYSQL: 'mysql',
-    SQLSERVER: 'tsql',
-    SQLITE: 'sqlite',
-    DUCKDB: 'duckdb',
-    CLICKHOUSE: 'clickhouse',
-    DATABRICKS: 'databricks',
-  };
-  return map[normalized] ?? 'postgres';
-}
-
-function sqlAnalysisDialectForDriver(driver: string | undefined): SqlAnalysisDialect {
-  return dialectForDriver(driver) as SqlAnalysisDialect;
-}
-
-function assertSafePathToken(kind: string, value: string): string {
-  if (
-    value.trim().length === 0 ||
-    value.includes('..') ||
-    value.includes('\\') ||
-    value.startsWith('/') ||
-    value.startsWith('.') ||
-    value.includes('//')
-  ) {
-    throw new Error(`Unsafe ${kind}: ${value}`);
-  }
-  return value;
-}
-
-function assertSafeConnectionId(connectionId: string): string {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(connectionId)) {
-    throw new Error(`Unsafe connection id: ${connectionId}`);
-  }
-  return assertSafePathToken('connection id', connectionId);
-}
-
-function assertSafeSourceName(sourceName: string): string {
-  if (!/^[a-z0-9][a-z0-9_]*$/.test(sourceName)) {
-    throw new Error(`Unsafe semantic-layer source name: ${sourceName}`);
-  }
-  return assertSafePathToken('semantic-layer source name', sourceName);
-}
-
 async function cleanupConnector(connector: KtxScanConnector | null): Promise<void> {
   if (connector?.cleanup) {
     await connector.cleanup();
   }
-}
-
-function slPath(connectionId: string, sourceName: string): string {
-  return `semantic-layer/${assertSafeConnectionId(connectionId)}/${assertSafeSourceName(sourceName)}.yaml`;
 }
 
 async function executeValidatedReadOnlySql(
@@ -201,13 +152,11 @@ export function createLocalProjectMcpContextPorts(
     },
     semanticLayer: {
       async readSource(input) {
-        const path = slPath(input.connectionId, input.sourceName);
-        try {
-          const result = await project.fileStore.readFile(path);
-          return { sourceName: input.sourceName, yaml: result.content };
-        } catch {
-          return null;
-        }
+        const source = await readLocalSlSource(project, {
+          connectionId: input.connectionId,
+          sourceName: input.sourceName,
+        });
+        return source ? { sourceName: source.name, yaml: source.yaml } : null;
       },
       async query(input, executionOptions) {
         if (!options.semanticLayerCompute) {

@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initKtxProject } from '../../../src/context/project/project.js';
 import { KtxQueryError } from '../../../src/errors.js';
 import { createKtxConnectorCapabilities, type KtxQueryResult, type KtxScanConnector, type KtxSchemaSnapshot } from '../../../src/context/scan/types.js';
-import { writeLocalSlSource } from '../../../src/context/sl/local-sl.js';
+import { SemanticLayerService } from '../../../src/context/sl/semantic-layer.service.js';
+import type { SemanticLayerSource } from '../../../src/context/sl/types.js';
+import { seedSlSourceFile } from '../sl/sl-source-seeding.test-utils.js';
 import { createLocalProjectMcpContextPorts } from '../../../src/context/mcp/local-project-ports.js';
 
 describe('createLocalProjectMcpContextPorts', () => {
@@ -739,7 +741,7 @@ describe('createLocalProjectMcpContextPorts', () => {
 
   it('reads seeded semantic-layer sources', async () => {
     const project = await initKtxProject({ projectDir: tempDir });
-    await writeLocalSlSource(project, {
+    await seedSlSourceFile(project, {
       connectionId: 'warehouse',
       sourceName: 'orders',
       yaml: [
@@ -763,7 +765,92 @@ describe('createLocalProjectMcpContextPorts', () => {
     });
   });
 
-  it('rejects path traversal keys before touching the project directory', async () => {
+  it('reads manifest-backed sources with uppercase warehouse identifiers', async () => {
+    const project = await initKtxProject({ projectDir: tempDir });
+    await project.fileStore.writeFile(
+      'semantic-layer/warehouse/_schema/PUBLIC.yaml',
+      [
+        'tables:',
+        '  WIDGET_SALES:',
+        '    table: PUBLIC.WIDGET_SALES',
+        '    columns:',
+        '      - name: ID',
+        '        type: number',
+        '        pk: true',
+        '',
+      ].join('\n'),
+      'ktx',
+      'ktx@example.com',
+      'seed uppercase manifest shard',
+    );
+    const ports = createLocalProjectMcpContextPorts(project, { embeddingService: null });
+
+    await expect(
+      ports.semanticLayer?.readSource({ connectionId: 'warehouse', sourceName: 'WIDGET_SALES' }),
+    ).resolves.toMatchObject({
+      sourceName: 'WIDGET_SALES',
+      yaml: expect.stringContaining('table: PUBLIC.WIDGET_SALES'),
+    });
+  });
+
+  it('composes an overlay written for an uppercase manifest source at a derived filename', async () => {
+    const project = await initKtxProject({ projectDir: tempDir });
+    await project.fileStore.writeFile(
+      'semantic-layer/warehouse/_schema/PUBLIC.yaml',
+      [
+        'tables:',
+        '  WIDGET_SALES:',
+        '    table: PUBLIC.WIDGET_SALES',
+        '    columns:',
+        '      - name: ID',
+        '        type: number',
+        '        pk: true',
+        '',
+      ].join('\n'),
+      'ktx',
+      'ktx@example.com',
+      'seed uppercase manifest shard',
+    );
+
+    // The production write path: agents overlay manifest sources via
+    // SemanticLayerService.writeSource using the verbatim warehouse name.
+    const service = new SemanticLayerService(project.fileStore as never, {} as never, {} as never);
+    const overlay = {
+      name: 'WIDGET_SALES',
+      measures: [{ name: 'widget_sales_count', expr: 'count(*)' }],
+    } as SemanticLayerSource;
+    const write = await service.writeSource('warehouse', overlay, 'ktx', 'ktx@example.com');
+    expect(write.path).toMatch(/^semantic-layer\/warehouse\/widget_sales-[0-9a-f]{8}\.yaml$/);
+
+    const ports = createLocalProjectMcpContextPorts(project, { embeddingService: null });
+    await expect(
+      ports.semanticLayer?.readSource({ connectionId: 'warehouse', sourceName: 'WIDGET_SALES' }),
+    ).resolves.toMatchObject({
+      sourceName: 'WIDGET_SALES',
+      yaml: expect.stringContaining('widget_sales_count'),
+    });
+  });
+
+  it('returns a standalone source verbatim even when its YAML is currently broken', async () => {
+    const project = await initKtxProject({ projectDir: tempDir });
+    await project.fileStore.writeFile(
+      'semantic-layer/warehouse/orders.yaml',
+      'name: orders\nmeasures:\n  - name: revenue\n    expr: [unterminated\n',
+      'ktx',
+      'ktx@example.com',
+      'seed broken source mid-edit',
+    );
+    const ports = createLocalProjectMcpContextPorts(project, { embeddingService: null });
+
+    await expect(
+      ports.semanticLayer?.readSource({ connectionId: 'warehouse', sourceName: 'orders' }),
+    ).resolves.toMatchObject({
+      sourceName: 'orders',
+      yaml: expect.stringContaining('[unterminated'),
+    });
+  });
+
+  it('keeps path-traversal keys away from the project directory', async () => {
     const project = await initKtxProject({ projectDir: tempDir });
     const ports = createLocalProjectMcpContextPorts(project, { embeddingService: null });
 
@@ -774,12 +861,14 @@ describe('createLocalProjectMcpContextPorts', () => {
       }),
     ).rejects.toThrow('Invalid wiki key "../outside". Wiki keys must be flat; use "outside".');
 
+    // Source reads never derive a file path from the name; a traversal-style
+    // name simply matches no record.
     await expect(
       ports.semanticLayer?.readSource({
         connectionId: 'warehouse',
         sourceName: '../orders',
       }),
-    ).rejects.toThrow('Unsafe semantic-layer source name');
+    ).resolves.toBeNull();
   });
 
   it('uses semantic compute for compile-only sl_query when supplied', async () => {
@@ -788,7 +877,7 @@ describe('createLocalProjectMcpContextPorts', () => {
       driver: 'postgres',
       url: 'env:DATABASE_URL',
     };
-    await writeLocalSlSource(project, {
+    await seedSlSourceFile(project, {
       connectionId: 'warehouse',
       sourceName: 'orders',
       yaml: [
@@ -850,7 +939,7 @@ describe('createLocalProjectMcpContextPorts', () => {
       driver: 'postgres',
       url: 'env:DATABASE_URL',
     };
-    await writeLocalSlSource(project, {
+    await seedSlSourceFile(project, {
       connectionId: 'warehouse',
       sourceName: 'orders',
       yaml: [
