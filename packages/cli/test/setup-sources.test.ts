@@ -292,7 +292,7 @@ describe('setup sources step', () => {
           inputMode: 'disabled',
           source: 'gdrive',
           sourceConnectionId: 'gdrive-main',
-          gdriveServiceAccountKeyRef: 'file:/tmp/gdrive-key.json',
+          gdriveServiceAccountKeyRef: 'file:/tmp/gdrive-key.json', // pragma: allowlist secret
           gdriveFolderId: 'folder-123',
           runInitialSourceIngest: false,
           skipSources: false,
@@ -1466,7 +1466,7 @@ describe('setup sources step', () => {
     await addPrimarySource();
     await addConnection('gdrive-main', {
       driver: 'gdrive',
-      service_account_key_ref: 'file:/tmp/old-key.json',
+      service_account_key_ref: 'file:/tmp/old-key.json', // pragma: allowlist secret
       folder_id: 'old-folder',
       recursive: false,
     });
@@ -1489,7 +1489,7 @@ describe('setup sources step', () => {
 
     expect((await readConfig()).connections['gdrive-main']).toMatchObject({
       driver: 'gdrive',
-      service_account_key_ref: 'file:/tmp/new-key.json',
+      service_account_key_ref: 'file:/tmp/new-key.json', // pragma: allowlist secret
       folder_id: 'new-folder',
       recursive: true,
     });

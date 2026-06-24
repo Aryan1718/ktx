@@ -70,7 +70,7 @@ export interface GoogleDocsList {
   };
 }
 
-export interface GoogleDocsListNestingLevel {
+interface GoogleDocsListNestingLevel {
   glyphType?: string;
   glyphSymbol?: string;
 }
@@ -117,7 +117,7 @@ export interface GoogleDocsTable {
   tableRows?: GoogleDocsTableRow[];
 }
 
-export interface GoogleDocsTableRow {
+interface GoogleDocsTableRow {
   tableCells?: GoogleDocsTableCell[];
 }
 

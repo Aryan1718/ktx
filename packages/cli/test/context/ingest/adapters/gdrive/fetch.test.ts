@@ -11,7 +11,7 @@ const getDocument = vi.fn(async () => ({
 const listFiles = vi.fn(async () => ({
   files: [
     {
-      id: '1A74GH0di2jrBvSJMfkzQSI_PqPZdT3raqsFRcEc7_gc',
+      id: 'doc-1',
       name: 'Herness and Enterprise Agent Operating Framework for Connected Systems',
       mimeType: 'application/vnd.google-apps.document',
       parents: ['folder-123'],
@@ -53,32 +53,32 @@ describe('fetchGdriveSnapshot', () => {
     stagedDir = await mkdtemp(join(tmpdir(), 'ktx-gdrive-fetch-'));
 
     const manifest = await fetchGdriveSnapshot({
-      key: { client_email: 'bot@example.com', private_key: 'secret' },
+      key: { client_email: 'bot@example.com', private_key: 'secret' }, // pragma: allowlist secret
       config: { serviceAccountKey: 'unused', folderId: 'folder-123', recursive: false },
       stagedDir,
     });
 
     expect(manifest.fileCount).toBe(1);
     expect(listFiles).toHaveBeenCalledWith({ q: "'folder-123' in parents and trashed = false", pageToken: undefined });
-    expect(getDocument).toHaveBeenCalledWith('1A74GH0di2jrBvSJMfkzQSI_PqPZdT3raqsFRcEc7_gc');
+    expect(getDocument).toHaveBeenCalledWith('doc-1');
 
     const files = await listRelativeFiles(stagedDir);
     expect(files).toEqual([
-      'docs/herness-and-enterprise-a-a88aa1bf05/metadata.json',
-      'docs/herness-and-enterprise-a-a88aa1bf05/page.md',
+      'docs/herness-and-enterprise-a-7913523027/metadata.json',
+      'docs/herness-and-enterprise-a-7913523027/page.md',
       'manifest.json',
     ]);
 
     const metadata = JSON.parse(
-      await readFile(join(stagedDir, 'docs', 'herness-and-enterprise-a-a88aa1bf05', 'metadata.json'), 'utf-8'),
+      await readFile(join(stagedDir, 'docs', 'herness-and-enterprise-a-7913523027', 'metadata.json'), 'utf-8'),
     );
     expect(metadata).toMatchObject({
-      id: '1A74GH0di2jrBvSJMfkzQSI_PqPZdT3raqsFRcEc7_gc',
+      id: 'doc-1',
       title: 'Herness and Enterprise Agent Operating Framework for Connected Systems',
       path: 'Herness and Enterprise Agent Operating Framework for Connected Systems',
     });
     await expect(
-      readFile(join(stagedDir, 'docs', 'herness-and-enterprise-a-a88aa1bf05', 'page.md'), 'utf-8'),
+      readFile(join(stagedDir, 'docs', 'herness-and-enterprise-a-7913523027', 'page.md'), 'utf-8'),
     ).resolves.toContain('# Herness and Enterprise Agent Operating Framework for Connected Systems');
   });
 });

@@ -37,7 +37,7 @@ export function parseGdriveConnectionConfig(raw: unknown): KtxGdriveConnectionCo
     throw new Error('gdrive connection config requires driver: gdrive');
   }
   const keyRef =
-    typeof raw.service_account_key_ref === 'string' && raw.service_account_key_ref.trim().length > 0
+    typeof raw.service_account_key_ref === 'string' && raw.service_account_key_ref.trim().length > 0 // pragma: allowlist secret
       ? raw.service_account_key_ref.trim()
       : null;
   if (!keyRef) {

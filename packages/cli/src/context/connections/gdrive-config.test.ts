@@ -22,13 +22,13 @@ describe('standalone gdrive connection config', () => {
   it('parses config with safe defaults', () => {
     const parsed = parseGdriveConnectionConfig({
       driver: 'gdrive',
-      service_account_key_ref: 'file:/tmp/google-key.json',
+      service_account_key_ref: 'file:/tmp/google-key.json', // pragma: allowlist secret
       folder_id: 'folder-123',
     });
 
     expect(parsed).toEqual({
       driver: 'gdrive',
-      service_account_key_ref: 'file:/tmp/google-key.json',
+      service_account_key_ref: 'file:/tmp/google-key.json', // pragma: allowlist secret
       folder_id: 'folder-123',
       recursive: false,
     });
@@ -38,7 +38,7 @@ describe('standalone gdrive connection config', () => {
     expect(() =>
       parseGdriveConnectionConfig({
         driver: 'gdrive',
-        service_account_key_ref: 'env:GOOGLE_KEY',
+        service_account_key_ref: 'env:GOOGLE_KEY', // pragma: allowlist secret
         folder_id: 'folder-123',
       }),
     ).toThrow('gdrive service_account_key_ref must use file:/path/to/key.json');
@@ -46,7 +46,7 @@ describe('standalone gdrive connection config', () => {
 
   it('resolves service account key files', async () => {
     const keyPath = join(tempDir, 'google-key.json');
-    await writeFile(keyPath, '{"client_email":"bot@example.com","private_key":"line-1"}\n', 'utf-8');
+    await writeFile(keyPath, '{"client_email":"bot@example.com","private_key":"line-1"}\n', 'utf-8'); // pragma: allowlist secret
     await expect(resolveGdriveServiceAccountKey(`file:${keyPath}`)).resolves.toContain('"client_email":"bot@example.com"');
   });
 
@@ -56,7 +56,7 @@ describe('standalone gdrive connection config', () => {
     const pullConfig = await gdriveConnectionToPullConfig(
       parseGdriveConnectionConfig({
         driver: 'gdrive',
-        service_account_key_ref: `file:${keyPath}`,
+        service_account_key_ref: `file:${keyPath}`, // pragma: allowlist secret
         folder_id: 'folder-123',
         recursive: true,
       }),

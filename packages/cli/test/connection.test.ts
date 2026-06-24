@@ -422,7 +422,7 @@ describe('runKtxConnection', () => {
     await writeConnections(projectDir, {
       docs_drive: {
         driver: 'gdrive',
-        service_account_key_ref: 'file:/tmp/gdrive-key.json',
+        service_account_key_ref: 'file:/tmp/gdrive-key.json', // pragma: allowlist secret
         folder_id: 'folder-123',
         recursive: false,
       },
