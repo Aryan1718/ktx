@@ -231,8 +231,10 @@ function credentialRef(value: string | undefined, label: string): string {
   return ref;
 }
 
+type SharedSourceCredentialField = 'sourceAuthTokenRef' | 'sourceApiKeyRef' | 'sourceClientSecretRef';
+
 type SourceCredentialFlag = {
-  field: 'sourceAuthTokenRef' | 'sourceApiKeyRef' | 'sourceClientSecretRef';
+  field: SharedSourceCredentialField | null;
   flag: string;
 };
 
@@ -245,9 +247,10 @@ const SOURCE_CREDENTIAL_FLAG: Record<KtxSetupSourceType, SourceCredentialFlag> =
   notion: { field: 'sourceAuthTokenRef', flag: '--source-auth-token-ref' },
   metabase: { field: 'sourceApiKeyRef', flag: '--source-api-key-ref' },
   looker: { field: 'sourceClientSecretRef', flag: '--source-client-secret-ref' },
+  gdrive: { field: null, flag: '--gdrive-service-account-key-ref' },
 };
 
-const ALL_SOURCE_CREDENTIAL_FLAGS: SourceCredentialFlag[] = [
+const ALL_SOURCE_CREDENTIAL_FLAGS: Array<{ field: SharedSourceCredentialField; flag: string }> = [
   { field: 'sourceAuthTokenRef', flag: '--source-auth-token-ref' },
   { field: 'sourceApiKeyRef', flag: '--source-api-key-ref' },
   { field: 'sourceClientSecretRef', flag: '--source-client-secret-ref' },
