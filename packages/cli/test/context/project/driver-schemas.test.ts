@@ -127,7 +127,7 @@ describe('connectionConfigSchema - notion / gdrive / dbt / metricflow', () => {
     });
     expect(parsed).toMatchObject({
       driver: 'gdrive',
-      service_account_key_ref: 'file:/tmp/google-service-account.json',
+      service_account_key_ref: 'file:/tmp/google-service-account.json', // pragma: allowlist secret
       folder_id: 'folder-123',
       recursive: true,
     });

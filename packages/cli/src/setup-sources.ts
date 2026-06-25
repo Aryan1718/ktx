@@ -1382,18 +1382,18 @@ async function promptForInteractiveSource(
           label: 'Notion integration token',
           envName: 'NOTION_TOKEN',
           secretFileName: `${currentState.sourceConnectionId ?? 'notion-main'}-token`,
-          existingRef: currentState.sourceApiKeyRef,
+          existingRef: currentState.sourceAuthTokenRef,
         });
         if (ref === 'back') return 'back';
-        currentState.sourceApiKeyRef = ref;
+        currentState.sourceAuthTokenRef = ref;
         return 'next';
       },
       async (currentState) => {
         const crawlMode = await prompts.select({
-          message: 'Which Notion pages should KTX ingest?',
+          message: 'Which Notion pages should ktx ingest?',
           options: [
-            { value: 'selected_roots', label: 'Specific pages and their subpages (choose them in a picker)' },
             { value: 'all_accessible', label: 'All pages the integration can access' },
+            { value: 'selected_roots', label: 'Specific pages and their subpages (choose them in a picker)' },
             { value: 'back', label: 'Back' },
           ],
         });
@@ -1413,7 +1413,7 @@ async function promptForInteractiveSource(
                   connectionId,
                   connection: {
                     driver: 'notion',
-                    auth_token_ref: credentialRef(currentState.sourceApiKeyRef, 'Notion token ref'),
+                    auth_token_ref: credentialRef(currentState.sourceAuthTokenRef, 'Notion token ref'),
                     crawl_mode: 'selected_roots',
                     root_page_ids: currentState.notionRootPageIds ?? [],
                     root_database_ids: [],
@@ -1647,7 +1647,7 @@ function sourceArgsFromExistingConnection(input: {
     return sourceArgs;
   }
 
-  sourceArgs.sourceApiKeyRef = stringField(input.connection.auth_token_ref);
+  sourceArgs.sourceAuthTokenRef = stringField(input.connection.auth_token_ref);
   sourceArgs.notionCrawlMode =
     input.connection.crawl_mode === 'all_accessible' ? 'all_accessible' : 'selected_roots';
   if (Array.isArray(input.connection.root_page_ids)) {

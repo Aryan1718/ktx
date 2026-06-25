@@ -54,7 +54,7 @@ describe('fetchGdriveSnapshot', () => {
 
     const manifest = await fetchGdriveSnapshot({
       key: { client_email: 'bot@example.com', private_key: 'secret' }, // pragma: allowlist secret
-      config: { serviceAccountKey: 'unused', folderId: 'folder-123', recursive: false },
+      config: { serviceAccountKey: 'unused', folderId: 'folder-123', recursive: false }, // pragma: allowlist secret
       stagedDir,
     });
 

@@ -52,7 +52,7 @@ describe('standalone gdrive connection config', () => {
 
   it('converts config into adapter pull config', async () => {
     const keyPath = join(tempDir, 'google-key.json');
-    await writeFile(keyPath, '{"client_email":"bot@example.com","private_key":"line-1"}\n', 'utf-8');
+    await writeFile(keyPath, '{"client_email":"bot@example.com","private_key":"line-1"}\n', 'utf-8'); // pragma: allowlist secret
     const pullConfig = await gdriveConnectionToPullConfig(
       parseGdriveConnectionConfig({
         driver: 'gdrive',
@@ -63,7 +63,7 @@ describe('standalone gdrive connection config', () => {
     );
 
     expect(pullConfig).toEqual({
-      serviceAccountKey: '{"client_email":"bot@example.com","private_key":"line-1"}',
+      serviceAccountKey: '{"client_email":"bot@example.com","private_key":"line-1"}', // pragma: allowlist secret
       folderId: 'folder-123',
       recursive: true,
     });
